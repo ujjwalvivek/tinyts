@@ -1,0 +1,41 @@
+{
+    "name": "tinyts",
+    "version": "0.1.0",
+    "description": "A tiny TypeScript-first 2D web game engine",
+    "license": "MIT",
+    "author": "",
+    "type": "module",
+    "main": "dist/tinyts.cjs",
+    "module": "dist/tinyts.esm.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/tinyts.esm.js",
+            "require": "./dist/tinyts.cjs"
+        }
+    },
+    "unpkg": "dist/tinyts.min.js",
+    "files": [
+        "dist/"
+    ],
+    "scripts": {
+        "build": "npm run build:esm && npm run build:global && npm run build:min && npm run docs",
+        "build:esm": "esbuild src/index.ts --bundle --format=esm --outfile=dist/tinyts.esm.js",
+        "build:global": "esbuild src/index.ts --bundle --format=iife --global-name=tinyts --footer:js=\"for(var _k in tinyts)globalThis[_k]=tinyts[_k]\" --outfile=dist/tinyts.js",
+        "build:cjs": "esbuild src/index.ts --bundle --format=cjs --outfile=dist/tinyts.cjs",
+        "build:min": "esbuild src/index.ts --bundle --format=iife --global-name=tinyts --minify --footer:js=\"for(var _k in tinyts)globalThis[_k]=tinyts[_k]\" --outfile=dist/tinyts.min.js && esbuild src/index.ts --bundle --format=esm --minify --outfile=dist/tinyts.esm.min.js",
+        "build:types": "tsc --emitDeclarationOnly --outDir dist",
+        "build:all": "npm run build && npm run build:cjs && npm run build:types && npm run size",
+        "test": "node --test src/index.test.mjs && node --test src/**/*.test.mjs",
+        "check": "npm exec tsc -- --noEmit && npm run build:all && npm test",
+        "size": "esbuild src/index.ts --bundle --format=esm --minify --outfile=/dev/null 2>&1 || true",
+        "serve": "python3 -m http.server 8000",
+        "docs": "typedoc"
+    },
+    "devDependencies": {
+        "esbuild": "^0.25.0",
+        "typedoc": "^0.28.19",
+        "typescript": "^5.7.0"
+    }
+}
