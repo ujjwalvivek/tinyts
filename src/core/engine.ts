@@ -1,5 +1,8 @@
 import { CanvasManager, type ScaleMode } from './canvas';
 export type { ScaleMode };
+import { InputManager } from './input';
+import { createRenderer, beginFrame, endFrame } from '../render/renderer2d';
+import type { Renderer } from '../render/types';
 import { processTextInput, stopTextInput } from './textInput';
 
 /** Lifecycle hooks for extending the engine. */
@@ -68,6 +71,8 @@ const DEFAULT_MAX_FRAME_DT = 0.25;
 export class Engine {
   readonly config: EngineConfig;
   readonly canvasManager: CanvasManager;
+  readonly inputManager: InputManager;
+  readonly renderer: Renderer;
   private overlayCanvas: HTMLCanvasElement | null = null;
   private removeResizeListener: (() => void) | null = null;
   private readonly plugins: EnginePlugin[] = [];
@@ -118,6 +123,12 @@ export class Engine {
       pixelated: config.pixelated,
     });
 
+    const renderSetup = createRenderer(this.canvasManager.canvas, config.webgl ?? false, this.canvasManager);
+    this.renderer = renderSetup.renderer;
+    this.overlayCanvas = renderSetup.overlayCanvas;
+    this.removeResizeListener = renderSetup.removeResizeListener;
+    this.inputManager = new InputManager(this.canvasManager);
+
     this.running = true;
     this.lastTime = performance.now();
 
@@ -154,6 +165,8 @@ export class Engine {
     this.accumulator += frameDt;
     let steps = 0;
 
+    this.inputManager.updateGamepad();
+
     while (this.accumulator >= fixedDt && steps < maxSteps) {
       this.config.update?.(fixedDt);
       this.accumulator -= fixedDt;
@@ -168,9 +181,15 @@ export class Engine {
     // Synchronize globals for backward compatibility:
     updateGlobals(this);
 
+    beginFrame();
     this.config.render?.(this.alpha);
     for (const plugin of this.plugins) {
       plugin.render?.(this, this.alpha);
+    }
+    endFrame();
+
+    if (steps > 0) {
+      this.inputManager.clearTransient();
     }
   }
 
@@ -187,6 +206,7 @@ export class Engine {
       plugin.destroy?.(this);
     }
     this.plugins.length = 0;
+    this.inputManager.destroy();
     this.removeResizeListener?.();
     this.overlayCanvas?.remove();
     this.canvasManager.destroy(true);
