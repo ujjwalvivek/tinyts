@@ -3,7 +3,9 @@ export type { ScaleMode };
 import { InputManager } from './input';
 import { createRenderer, beginFrame, endFrame } from '../render/renderer2d';
 import type { Renderer } from '../render/types';
+import { consumeGlobalTweenManager, TweenManager } from './easing';
 import { processTextInput, stopTextInput } from './textInput';
+import { consumeGlobalAudioManager, AudioManager } from '../audio/audio';
 
 /** Lifecycle hooks for extending the engine. */
 export interface EnginePlugin {
@@ -73,6 +75,8 @@ export class Engine {
   readonly canvasManager: CanvasManager;
   readonly inputManager: InputManager;
   readonly renderer: Renderer;
+  readonly audioManager: AudioManager;
+  readonly tweenManager: TweenManager;
   private overlayCanvas: HTMLCanvasElement | null = null;
   private removeResizeListener: (() => void) | null = null;
   private readonly plugins: EnginePlugin[] = [];
@@ -129,6 +133,20 @@ export class Engine {
     this.removeResizeListener = renderSetup.removeResizeListener;
     this.inputManager = new InputManager(this.canvasManager);
 
+    const globalAudio = consumeGlobalAudioManager();
+    if (globalAudio) {
+      this.audioManager = globalAudio;
+    } else {
+      this.audioManager = new AudioManager();
+    }
+
+    const globalTweens = consumeGlobalTweenManager();
+    if (globalTweens) {
+      this.tweenManager = globalTweens;
+    } else {
+      this.tweenManager = new TweenManager();
+    }
+
     this.running = true;
     this.lastTime = performance.now();
 
@@ -153,6 +171,8 @@ export class Engine {
     this.stats.fps = avgDt > 0 ? Math.round(1 / avgDt) : 0;
     this.stats.avgFps = this.stats.fps;
     this.stats.frameMs = frameDt * 1000;
+
+    this.tweenManager.update(frameDt);
 
     for (const plugin of this.plugins) {
       plugin.update?.(this, frameDt);
@@ -207,6 +227,8 @@ export class Engine {
     }
     this.plugins.length = 0;
     this.inputManager.destroy();
+    this.audioManager.destroy();
+    this.tweenManager.clear();
     this.removeResizeListener?.();
     this.overlayCanvas?.remove();
     this.canvasManager.destroy(true);
