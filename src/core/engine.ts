@@ -6,6 +6,7 @@ import type { Renderer } from '../render/types';
 import { consumeGlobalTweenManager, TweenManager } from './easing';
 import { processTextInput, stopTextInput } from './textInput';
 import { consumeGlobalAudioManager, AudioManager } from '../audio/audio';
+import { ParticleSystem } from '../fx/particles';
 
 /** Lifecycle hooks for extending the engine. */
 export interface EnginePlugin {
@@ -76,6 +77,7 @@ export class Engine {
   readonly inputManager: InputManager;
   readonly renderer: Renderer;
   readonly audioManager: AudioManager;
+  readonly particleSystem: ParticleSystem;
   readonly tweenManager: TweenManager;
   private overlayCanvas: HTMLCanvasElement | null = null;
   private removeResizeListener: (() => void) | null = null;
@@ -140,6 +142,7 @@ export class Engine {
       this.audioManager = new AudioManager();
     }
 
+    this.particleSystem = new ParticleSystem();
     const globalTweens = consumeGlobalTweenManager();
     if (globalTweens) {
       this.tweenManager = globalTweens;
@@ -228,6 +231,7 @@ export class Engine {
     this.plugins.length = 0;
     this.inputManager.destroy();
     this.audioManager.destroy();
+    this.particleSystem.clear();
     this.tweenManager.clear();
     this.removeResizeListener?.();
     this.overlayCanvas?.remove();
