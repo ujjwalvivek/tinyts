@@ -3,7 +3,11 @@
     "version": "0.1.0",
     "description": "A tiny TypeScript-first 2D web game engine",
     "license": "MIT",
-    "author": "",
+    "author": "ujjwalvivek",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/ujjwalvivek/tinyts.git"
+    },
     "type": "module",
     "main": "dist/tinyts.cjs",
     "module": "dist/tinyts.esm.js",
