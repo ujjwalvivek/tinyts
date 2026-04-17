@@ -1,0 +1,63 @@
+name: Release Package
+
+on:
+    push:
+        tags:
+            - "v*"
+
+permissions:
+    contents: write
+    id-token: write
+    packages: write
+
+jobs:
+    publish:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+
+            - name: Install dependencies
+              run: npm install
+
+            - name: Build and Test
+              run: npm run check
+
+            - name: Publish to NPM
+              run: |
+                  VERSION=${{ github.ref_name }}
+                  VERSION=${VERSION#v}
+                  if npm view @ujjwalvivek/tinyts@$VERSION version >/dev/null 2>&1; then
+                    echo "Version $VERSION already exists on NPM, skipping publish step."
+                  else
+                    npm publish --provenance --access public
+                  fi
+
+            - name: Publish to GitHub Packages
+              run: |
+                  VERSION=${{ github.ref_name }}
+                  VERSION=${VERSION#v}
+                  echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" > ~/.npmrc
+                  if npm view @ujjwalvivek/tinyts@$VERSION version --registry=https://npm.pkg.github.com/ >/dev/null 2>&1; then
+                    echo "Version $VERSION already exists on GitHub Packages, skipping publish step."
+                  else
+                    npm publish --registry=https://npm.pkg.github.com/
+                  fi
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Create Release Archive
+              run: |
+                  zip -r tinyts-release-${{ github.ref_name }}.zip dist/ examples/ README.md LICENSE REFERENCE.md FAQ.md TUTORIAL.md
+
+            - name: Create GitHub Release
+              run: |
+                  gh release create ${{ github.ref_name }} tinyts-release-${{ github.ref_name }}.zip \
+                    --title "TinyTS ${{ github.ref_name }}" \
+                    --notes-file RELEASE-NOTES.md
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
