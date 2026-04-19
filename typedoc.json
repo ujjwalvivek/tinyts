@@ -1,0 +1,7 @@
+{
+    "entryPoints": ["src/index.ts"],
+    "out": "docs",
+    "projectDocuments": ["REFERENCE.md"],
+    "customCss": "examples/public/customStyle.css",
+    "customJs": "examples/public/customTheme.js"
+}
