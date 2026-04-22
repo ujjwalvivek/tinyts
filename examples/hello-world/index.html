@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="TinyTS front art showcase screen." />
+        <meta name="theme-color" content="#1e1e2e" />
+        <title>TinyTS - Welcome</title>
+        <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 480,
+                H = 270;
+
+            const FONT = {
+                T: ["11111", "00100", "00100", "00100", "00100"],
+                i: ["010", "000", "110", "010", "111"],
+                n: ["1110", "1001", "1001", "1001", "1001"],
+                y: ["1001", "1001", "1111", "0001", "1110"],
+                S: ["01111", "10000", "01110", "00001", "11110"],
+            };
+
+            const word = ["T", "i", "n", "y", "T", "S"];
+            const blockScale = 10;
+            const startX = 85;
+            const startY = 80;
+
+            function getGradientColor(pct) {
+                const colors = [
+                    Color.fromHex("#cba6f7"),
+                    Color.fromHex("#b4befe"),
+                    Color.fromHex("#89b4fa"),
+                    Color.fromHex("#89dceb"),
+                ];
+                const idx = pct * (colors.length - 1);
+                const i = Math.floor(idx);
+                const f = idx - i;
+                if (i >= colors.length - 1) return colors[colors.length - 1];
+                return colors[i].lerp(colors[i + 1], f);
+            }
+
+            const activePixels = [];
+            let totalCols = 0;
+
+            {
+                let colOffset = 0;
+                for (const char of word) {
+                    const glyph = FONT[char];
+                    for (let r = 0; r < glyph.length; r++) {
+                        for (let c = 0; c < glyph[r].length; c++) {
+                            if (glyph[r][c] === "1") {
+                                activePixels.push({ r, c: colOffset + c });
+                            }
+                        }
+                    }
+                    colOffset += glyph[0].length + 1;
+                }
+                totalCols = colOffset - 1;
+            }
+
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
+
+                update(dt) {
+                    updateParticles(dt);
+
+                    if (rand(0, 1) < 0.2) {
+                        const pick = choose(activePixels);
+                        if (pick) {
+                            const px =
+                                startX + pick.c * blockScale + blockScale / 2;
+                            const py =
+                                startY +
+                                pick.r * blockScale +
+                                blockScale / 2 +
+                                Math.sin(time * 2.5) * 8;
+                            const color = getGradientColor(pick.c / totalCols);
+
+                            emitParticles({
+                                pos: vec2(px, py),
+                                count: 1,
+                                life: [1.2, 2.0],
+                                speed: [15, 45],
+                                angle: [-Math.PI * 0.6, -Math.PI * 0.4],
+                                size: [1.5, 3.5],
+                                sizeEnd: [0, 0.5],
+                                color: [color, "#11111b"],
+                                damping: 0.97,
+                                gravity: -10,
+                            });
+                        }
+                    }
+                },
+
+                render() {
+                    clear("#11111b");
+
+                    const gridSpacing = 20;
+                    for (let x = 0; x < W; x += gridSpacing) {
+                        drawLine(
+                            vec2(x, 0),
+                            vec2(x, H),
+                            "rgba(49, 50, 68, 0.15)",
+                        );
+                    }
+                    for (let y = 0; y < H; y += gridSpacing) {
+                        drawLine(
+                            vec2(0, y),
+                            vec2(W, y),
+                            "rgba(49, 50, 68, 0.15)",
+                        );
+                    }
+
+                    renderParticles();
+
+                    const yOffset = Math.sin(time * 2.5) * 8;
+                    let colOffset = 0;
+
+                    for (const char of word) {
+                        const glyph = FONT[char];
+                        for (let r = 0; r < glyph.length; r++) {
+                            for (let c = 0; c < glyph[r].length; c++) {
+                                if (glyph[r][c] === "1") {
+                                    const px =
+                                        startX + (colOffset + c) * blockScale;
+                                    const py =
+                                        startY + r * blockScale + yOffset;
+                                    const pct = (colOffset + c) / totalCols;
+                                    const color = getGradientColor(pct);
+
+                                    drawRect(
+                                        vec2(px, py),
+                                        vec2(blockScale - 1, blockScale - 1),
+                                        color,
+                                    );
+                                    drawRect(
+                                        vec2(px + 1, py + 1),
+                                        vec2(blockScale / 3, blockScale / 3),
+                                        "rgba(255, 255, 255, 0.3)",
+                                    );
+                                }
+                            }
+                        }
+                        colOffset += glyph[0].length + 1;
+                    }
+
+                    const underlineY = startY + 6 * blockScale + yOffset;
+                    drawLine(
+                        vec2(startX, underlineY),
+                        vec2(startX + totalCols * blockScale - 1, underlineY),
+                        "#313244",
+                        2,
+                    );
+
+                    drawText("HELLO WORLD", vec2(W / 2, 175), {
+                        color: "#cdd6f4",
+                        size: 14,
+                        align: "center",
+                        weight: "bold",
+                    });
+                    drawText("A TINY 2D TYPESCRIPT ENGINE", vec2(W / 2, 195), {
+                        color: "#a6adc8",
+                        size: 8,
+                        align: "center",
+                    });
+
+                    const pulse = 0.5 + 0.5 * Math.sin(time * 4);
+                    drawText(
+                        "READY // OPEN EDITOR ON LEFT TO LIVE REMIX",
+                        vec2(W / 2, H - 25),
+                        {
+                            color: Color.fromHex("#a6e3a1").lerp(
+                                Color.fromHex("#313244"),
+                                pulse * 0.4,
+                            ),
+                            size: 9,
+                            align: "center",
+                        },
+                    );
+                },
+            });
+
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
+</html>

@@ -35,7 +35,7 @@
         "check": "npm exec tsc -- --noEmit && npm run build:all && npm test",
         "size": "esbuild src/index.ts --bundle --format=esm --minify --outfile=/dev/null 2>&1 || true",
         "serve": "python3 -m http.server 8000",
-        "docs": "typedoc"
+        "docs": "typedoc && cp -r examples docs/examples && cp -r dist docs/dist"
     },
     "devDependencies": {
         "esbuild": "^0.25.0",

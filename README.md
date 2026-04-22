@@ -1,5 +1,10 @@
 # TinyTS
 
+[![API Quick Reference](https://echopoint.ujjwalvivek.com/svg/badges/custom?bg=111111&badgeColor=7316e4&textColor=e8e8e8&border=7316e4&borderWidth=2&rx=0&px=2&py=2&logo=docs&leftText=Reference&rightText=CHEATSHEET)](https://tinyts.ujjwalvivek.com/documents/REFERENCE)
+[![Examples Browser](https://echopoint.ujjwalvivek.com/svg/badges/custom?bg=111111&badgeColor=7316e4&textColor=e8e8e8&border=7316e4&borderWidth=2&rx=0&px=2&py=2&logo=game&leftText=Examples&rightText=DEMO)](https://tinyts.ujjwalvivek.com/documents/EXAMPLES)
+[![Engine API](https://echopoint.ujjwalvivek.com/svg/badges/custom?bg=111111&badgeColor=7316e4&textColor=e8e8e8&border=7316e4&borderWidth=2&rx=0&px=2&py=2&logo=typescript&leftText=ENGINE&rightText=API)](https://tinyts.ujjwalvivek.com)
+[![NPM](https://echopoint.ujjwalvivek.com/svg/badges/custom?bg=111111&badgeColor=7316e4&textColor=e8e8e8&border=7316e4&borderWidth=2&rx=0&px=2&py=2&logo=npm&leftText=%40ujjwalvivek%2Ftinyts&rightText=LATEST)](https://www.npmjs.com/package/@ujjwalvivek/tinyts)
+
 A tiny, fast, TypeScript-first 2D web game engine.
 
 **~88 KB minified, ~27 KB gzip** - zero runtime dependencies.
@@ -52,7 +57,7 @@ All engine exports are automatically mapped to the browser's global namespace:
 Install via npm and import components into your build system:
 
 ```ts
-import { engineStart, vec2, clear, drawRect, Color } from "tinyts";
+import { engineStart, vec2, clear, drawRect, Color } from "@ujjwalvivek/tinyts";
 
 engineStart({
     size: { width: 640, height: 360 },
@@ -72,7 +77,7 @@ Follow these steps to scaffold a project from scratch:
     ```bash
     npm create vite@latest my-tinyts-game -- --template vanilla-ts
     cd my-tinyts-game
-    npm install tinyts
+    npm install @ujjwalvivek/tinyts
     ```
 
 2. **Configure your files**:
@@ -80,7 +85,7 @@ Follow these steps to scaffold a project from scratch:
     Update `src/main.ts` with this setup template:
 
     ```ts
-    import { engineStart, vec2, clear, drawRect, keyDown } from "tinyts";
+    import { engineStart, vec2, clear, drawRect, keyDown } from "@ujjwalvivek/tinyts";
 
     const pos = vec2(100, 100);
 
@@ -201,7 +206,6 @@ cd tinyts
 npm install        # Install package dependencies
 npm run check      # Typecheck, run ES module / CJS builds, and execute tests
 npm run docs       # Generate the API Documentation site locally
-npm run build:all  # Build all package formats (ES module, CJS, and UMD)
 npm run serve      # Start a local HTTP utility server to test examples
 ```
 

@@ -1,7 +1,10 @@
 {
     "entryPoints": ["src/index.ts"],
     "out": "docs",
-    "projectDocuments": ["REFERENCE.md"],
+    "projectDocuments": ["REFERENCE.md", "TUTORIAL.md"],
     "customCss": "examples/public/customStyle.css",
-    "customJs": "examples/public/customTheme.js"
+    "customJs": "examples/public/customTheme.js",
+    "navigationLinks": {
+        "Demos + Examples": "/examples/index.html"
+    }
 }

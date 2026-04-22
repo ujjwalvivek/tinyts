@@ -10,8 +10,8 @@ import type { SynthOptions } from "../audio/audio";
  *
  * ── Examples ─────────────────────────────────────────────────────────────────
  *
- *   import { playSound } from "tinyts";
- *   import * as sfx from "tinyts/plugins/audioPresets";
+ *   import { playSound } from "@ujjwalvivek/tinyts";
+ *   import * as sfx from "@ujjwalvivek/tinyts/plugins/audioPresets";
  *
  *   // One-shot
  *   playSound(sfx.coin());

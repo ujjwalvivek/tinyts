@@ -52,7 +52,7 @@ jobs:
 
             - name: Create Release Archive
               run: |
-                  zip -r tinyts-release-${{ github.ref_name }}.zip dist/ examples/ README.md LICENSE REFERENCE.md FAQ.md TUTORIAL.md
+                  zip -r tinyts-release-${{ github.ref_name }}.zip dist/ examples/ README.md LICENSE REFERENCE.md
 
             - name: Create GitHub Release
               run: |
@@ -61,3 +61,22 @@ jobs:
                     --notes-file RELEASE-NOTES.md
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    deploy-docs:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 24
+            - name: Install dependencies
+              run: npm install
+            - name: Build Engine and Docs
+              run: npm run build:all
+            - name: Deploy to Cloudflare Pages
+              uses: cloudflare/wrangler-action@v3
+              with:
+                  apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+                  command: pages deploy docs --project-name=tinyts --branch=main
