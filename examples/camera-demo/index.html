@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="TinyTS camera demo showing follow, deadzone, shake, and bounds."
+        />
+        <meta name="theme-color" content="#1e1e2e" />
+        <title>TinyTS - Camera Demo</title>
+        <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
+            const WORLD_W = 1600,
+                WORLD_H = 900;
+
+            const player = { x: 200, y: 200, size: 24, speed: 250 };
+
+            const camera = createCamera({
+                pos: vec2(W / 2, H / 2),
+                size: vec2(W, H),
+                zoom: 1,
+                bounds: { pos: vec2(0, 0), size: vec2(WORLD_W, WORLD_H) },
+            });
+
+            camera.follow(player, {
+                deadZone: vec2(40, 30),
+                lookahead: vec2(0, 0),
+                speed: 4,
+            });
+
+            bindAction("up", ["ArrowUp", "KeyW"]);
+            bindAction("down", ["ArrowDown", "KeyS"]);
+            bindAction("left", ["ArrowLeft", "KeyA"]);
+            bindAction("right", ["ArrowRight", "KeyD"]);
+            bindAction("shake", ["Space"]);
+
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
+
+                update(dt) {
+                    if (actionDown("up")) player.y -= player.speed * dt;
+                    if (actionDown("down")) player.y += player.speed * dt;
+                    if (actionDown("left")) player.x -= player.speed * dt;
+                    if (actionDown("right")) player.x += player.speed * dt;
+                    player.x = clamp(
+                        player.x,
+                        player.size,
+                        WORLD_W - player.size,
+                    );
+                    player.y = clamp(
+                        player.y,
+                        player.size,
+                        WORLD_H - player.size,
+                    );
+
+                    if (actionPressed("shake")) camera.shake(8, 0.3);
+
+                    camera.update(dt);
+                },
+
+                render() {
+                    clear("#11111b");
+                    camera.apply();
+
+                    for (let x = 0; x < WORLD_W; x += 50) {
+                        drawLine(
+                            vec2(x, 0),
+                            vec2(x, WORLD_H),
+                            "rgba(49,50,68,0.3)",
+                        );
+                    }
+                    for (let y = 0; y < WORLD_H; y += 50) {
+                        drawLine(
+                            vec2(0, y),
+                            vec2(WORLD_W, y),
+                            "rgba(49,50,68,0.3)",
+                        );
+                    }
+
+                    for (let i = 0; i < 30; i++) {
+                        const dx = 50 + ((i * 137 + 41) % (WORLD_W - 100));
+                        const dy = 50 + ((i * 97 + 23) % (WORLD_H - 100));
+                        drawCircle(
+                            vec2(dx, dy),
+                            4 + (i % 5),
+                            Color.fromHex("#cba6f7").darken(0.5),
+                        );
+                    }
+
+                    const dz = camera.deadZone;
+                    const cp = camera.pos;
+                    drawRectOutline(
+                        vec2(cp.x - dz.x, cp.y - dz.y),
+                        vec2(dz.x * 2, dz.y * 2),
+                        "rgba(250,179,135,0.25)",
+                        1,
+                    );
+
+                    drawRect(
+                        vec2(
+                            player.x - player.size / 2,
+                            player.y - player.size / 2,
+                        ),
+                        vec2(player.size, player.size),
+                        "#a6e3a1",
+                    );
+                    drawRect(
+                        vec2(player.x - 4, player.y - 4),
+                        vec2(8, 8),
+                        "#11111b",
+                    );
+
+                    camera.end();
+
+                    drawText(
+                        "ARROW KEYS / WASD to move • SPACE to shake",
+                        vec2(W / 2, 14),
+                        { color: "#a6adc8", size: 8, align: "center" },
+                    );
+                    drawText(
+                        `CAMERA: (${Math.round(camera.pos.x)}, ${Math.round(camera.pos.y)})`,
+                        vec2(10, H - 40),
+                        { color: "#585b70", size: 7 },
+                    );
+                    drawText(
+                        `PLAYER: (${Math.round(player.x)}, ${Math.round(player.y)})`,
+                        vec2(10, H - 28),
+                        { color: "#585b70", size: 7 },
+                    );
+                    drawText(
+                        `ZOOM: ${camera.zoom.toFixed(2)}`,
+                        vec2(10, H - 16),
+                        { color: "#585b70", size: 7 },
+                    );
+                    if (camera.shakeIntensity > 0) {
+                        drawText("SHAKING!", vec2(W - 10, H - 16), {
+                            color: "#f38ba8",
+                            size: 9,
+                            align: "right",
+                        });
+                    }
+
+                    drawText(
+                        `WORLD: ${WORLD_W}×${WORLD_H}`,
+                        vec2(W / 2, H - 10),
+                        {
+                            color: "#45475a",
+                            size: 7,
+                            align: "center",
+                            baseline: "bottom",
+                        },
+                    );
+                },
+            });
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas)
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+        </script>
+    </body>
+</html>

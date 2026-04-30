@@ -1,0 +1,1657 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="TinyTS interactive particle system designer - tweak parameters live and copy the code."
+        />
+        <meta name="theme-color" content="#1e1e2e" />
+        <title>TinyTS - Particle Lab</title>
+        <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                font-family: "Monaspace Neon", monospace;
+                background: #1e1e2e;
+                color: #cdd6f4;
+                overflow: hidden;
+                height: 100vh;
+            }
+
+            #game-container {
+                display: flex;
+                width: 100vw;
+                height: 100vh;
+                flex-direction: row;
+            }
+
+            #canvas-container {
+                flex: 1;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 100% !important;
+                max-height: 100% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+
+            #panel {
+                position: relative;
+                width: 380px;
+                height: 100%;
+                background: #181825;
+                border-left: 1px solid #313244;
+                z-index: 10;
+                display: flex;
+                flex-direction: column;
+            }
+            #panel-header {
+                padding: 12px 16px 10px;
+                border-bottom: 1px solid #313244;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-shrink: 0;
+            }
+            #panel-header .badge {
+                font-size: 9px;
+                background: rgba(166, 227, 161, 0.12);
+                color: #a6e3a1;
+                padding: 2px 7px;
+                letter-spacing: 0.5px;
+                border-radius: 0 !important;
+                border: 1px solid #a6e3a1;
+                text-transform: uppercase;
+            }
+            #random-btn {
+                font: inherit;
+                font-size: 10px;
+                padding: 4px 12px;
+                background: #313244;
+                border: 1px solid #45475a;
+                color: #cdd6f4;
+                cursor: pointer;
+                margin-left: auto;
+                transition: all 0.15s;
+                border-radius: 0 !important;
+            }
+            #random-btn:hover {
+                border-color: #fab387;
+                color: #fab387;
+                background: #45475a;
+            }
+
+            #scroll-area {
+                flex: 1;
+                overflow-y: auto;
+                padding: 10px 16px 24px;
+            }
+            #scroll-area::-webkit-scrollbar {
+                width: 6px;
+            }
+            #scroll-area::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            #scroll-area::-webkit-scrollbar-thumb {
+                background: #313244;
+                border-radius: 0;
+            }
+
+            /* Preset bar */
+            #preset-bar {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 5px;
+                margin-bottom: 14px;
+            }
+            .preset-btn {
+                font: inherit;
+                font-size: 10px;
+                font-weight: 600;
+                padding: 4px 10px;
+                background: #313244;
+                border: 1px solid #45475a;
+                color: #cdd6f4;
+                cursor: pointer;
+                transition: all 0.15s;
+                letter-spacing: 0.3px;
+                text-transform: uppercase;
+                border-radius: 0 !important;
+            }
+            .preset-btn:hover {
+                border-color: #89b4fa;
+                color: #cdd6f4;
+                background: #45475a;
+            }
+            .preset-btn.active {
+                border-color: #cba6f7;
+                color: #cba6f7;
+                background: rgba(203, 166, 247, 0.08);
+            }
+
+            .section {
+                margin-bottom: 14px;
+            }
+            .section-title {
+                font-size: 10px;
+                font-weight: 700;
+                color: #b4befe;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                margin-bottom: 8px;
+                padding-bottom: 4px;
+                border-bottom: 1px solid #313244;
+            }
+            .ctrl-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 5px;
+            }
+            .ctrl-row label {
+                font-size: 11px;
+                color: #a6adc8;
+                width: 72px;
+                flex-shrink: 0;
+                text-align: right;
+            }
+            .ctrl-row input[type="range"] {
+                flex: 1;
+                height: 6px;
+                -webkit-appearance: none;
+                appearance: none;
+                background: #11111b;
+                border: 1px solid #313244;
+                outline: none;
+                border-radius: 0 !important;
+            }
+            .ctrl-row input[type="range"]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: 12px;
+                height: 12px;
+                border-radius: 0 !important;
+                background: #cba6f7;
+                cursor: pointer;
+                border: none;
+            }
+            .ctrl-row input[type="range"]::-moz-range-thumb {
+                width: 12px;
+                height: 12px;
+                border-radius: 0 !important;
+                background: #cba6f7;
+                cursor: pointer;
+                border: none;
+            }
+            .ctrl-val {
+                font-size: 11px;
+                color: #cdd6f4;
+                min-width: 44px;
+                text-align: right;
+                font-variant-numeric: tabular-nums;
+            }
+            .color-row {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                margin-bottom: 5px;
+            }
+            .color-row label {
+                font-size: 11px;
+                color: #a6adc8;
+                width: 72px;
+                flex-shrink: 0;
+                text-align: right;
+            }
+            .color-swatch {
+                width: 26px;
+                height: 26px;
+                border: 1px solid #313244;
+                border-radius: 0 !important;
+                flex-shrink: 0;
+                cursor: pointer;
+            }
+            .color-row input[type="color"] {
+                opacity: 0;
+                width: 0;
+                height: 0;
+                position: absolute;
+            }
+            .color-row .alpha-wrap {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                flex: 1;
+            }
+            .color-row .alpha-wrap input[type="range"] {
+                flex: 1;
+            }
+            .color-row .alpha-wrap .ctrl-val {
+                min-width: 30px;
+            }
+
+            .toggle-wrap {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .toggle-wrap input[type="checkbox"] {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 32px;
+                height: 16px;
+                background: #313244;
+                border: 1px solid #45475a;
+                cursor: pointer;
+                position: relative;
+                transition: background 0.15s;
+                flex-shrink: 0;
+                border-radius: 0 !important;
+            }
+            .toggle-wrap input[type="checkbox"]::after {
+                content: "";
+                position: absolute;
+                width: 10px;
+                height: 10px;
+                background: #a6adc8;
+                top: 2px;
+                left: 2px;
+                transition: all 0.15s;
+                border-radius: 0 !important;
+            }
+            .toggle-wrap input[type="checkbox"]:checked {
+                background: rgba(137, 180, 250, 0.15);
+                border-color: #89b4fa;
+            }
+            .toggle-wrap input[type="checkbox"]:checked::after {
+                background: #89b4fa;
+                left: 18px;
+            }
+            .toggle-wrap span {
+                font-size: 11px;
+                color: #a6adc8;
+            }
+
+            select.shape-select {
+                flex: 1;
+                background: #313244;
+                border: 1px solid #45475a;
+                color: #cdd6f4;
+                font: inherit;
+                font-size: 11px;
+                padding: 2px 4px;
+                border-radius: 0 !important;
+                outline: none;
+                cursor: pointer;
+            }
+            select.shape-select:focus {
+                border-color: #89b4fa;
+            }
+
+            #code-area {
+                margin-top: 6px;
+            }
+            #code-area summary {
+                font-size: 10px;
+                font-weight: 700;
+                color: #b4befe;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                cursor: pointer;
+                padding: 4px 0;
+            }
+            #code-area summary:hover {
+                color: #cdd6f4;
+            }
+            #code-box {
+                background: #11111b;
+                border: 1px solid #313244;
+                padding: 10px 12px;
+                font-size: 11px;
+                line-height: 1.5;
+                color: #cdd6f4;
+                white-space: pre;
+                overflow-x: auto;
+                max-height: 200px;
+                overflow-y: auto;
+                border-radius: 0 !important;
+            }
+            #copy-btn {
+                font: inherit;
+                font-size: 10px;
+                padding: 4px 12px;
+                background: #313244;
+                border: 1px solid #45475a;
+                color: #cdd6f4;
+                cursor: pointer;
+                margin-top: 4px;
+                transition: all 0.15s;
+                border-radius: 0 !important;
+            }
+            #copy-btn:hover {
+                border-color: #89b4fa;
+                background: #45475a;
+            }
+            #copy-btn.copied {
+                border-color: #a6e3a1;
+                color: #a6e3a1;
+            }
+
+            /* HUD */
+            #hud {
+                position: absolute;
+                top: 12px;
+                left: 14px;
+                font-size: 11px;
+                color: #a6adc8;
+                pointer-events: none;
+                z-index: 5;
+                line-height: 1.6;
+            }
+            #hud strong {
+                color: #cdd6f4;
+            }
+            #hud span {
+                color: #89b4fa;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="game-container">
+            <div id="canvas-container">
+                <div id="hud">
+                    <strong>Particles:</strong>
+                    <span id="particle-count">0</span><br />
+                    <strong>Emitters:</strong> <span id="emitter-count">0</span>
+                </div>
+            </div>
+            <div id="panel">
+                <div id="panel-header">
+                    <span class="badge">live</span>
+                    <button id="random-btn">&#10022; Randomize</button>
+                </div>
+                <div id="scroll-area">
+                    <div id="preset-bar">
+                        <button
+                            class="preset-btn active"
+                            data-preset="explosion"
+                        >
+                            Explosion
+                        </button>
+                        <button class="preset-btn" data-preset="smoke">
+                            Smoke
+                        </button>
+                        <button class="preset-btn" data-preset="fire">
+                            Fire
+                        </button>
+                        <button class="preset-btn" data-preset="sparkBurst">
+                            Sparks
+                        </button>
+                        <button class="preset-btn" data-preset="rain">
+                            Rain
+                        </button>
+                        <button class="preset-btn" data-preset="confetti">
+                            Confetti
+                        </button>
+                        <button class="preset-btn" data-preset="trail">
+                            Trail
+                        </button>
+                        <button class="preset-btn" data-preset="dust">
+                            Dust
+                        </button>
+                        <button class="preset-btn" data-preset="bubble">
+                            Bubbles
+                        </button>
+                        <button class="preset-btn" data-preset="portal">
+                            Portal
+                        </button>
+                        <button class="preset-btn" data-preset="magicSparkle">
+                            Magic
+                        </button>
+                        <button class="preset-btn" data-preset="snow">
+                            Snow
+                        </button>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">Emission</div>
+                        <div class="ctrl-row">
+                            <label>Rate /s</label>
+                            <input
+                                type="range"
+                                id="rate"
+                                min="0"
+                                max="200"
+                                value="0"
+                                step="1"
+                            />
+                            <span class="ctrl-val" id="rate-val">0</span>
+                        </div>
+                        <div class="ctrl-row">
+                            <label>Count</label>
+                            <input
+                                type="range"
+                                id="count"
+                                min="1"
+                                max="100"
+                                value="24"
+                            />
+                            <span class="ctrl-val" id="count-val">24</span>
+                        </div>
+                        <div class="ctrl-row">
+                            <label>Duration</label>
+                            <input
+                                type="range"
+                                id="duration"
+                                min="0"
+                                max="10"
+                                value="0"
+                                step="0.1"
+                            />
+                            <span class="ctrl-val" id="duration-val">0</span>
+                        </div>
+                        <div class="ctrl-row">
+                            <label></label>
+                            <div class="toggle-wrap">
+                                <input type="checkbox" id="loop" />
+                                <span>Loop</span>
+                            </div>
+                            <div class="toggle-wrap">
+                                <input type="checkbox" id="prewarm" checked />
+                                <span>Prewarm</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">Particle</div>
+                        <div class="ctrl-row">
+                            <label>Life</label>
+                            <input
+                                type="range"
+                                id="life-min"
+                                min="0.05"
+                                max="5"
+                                value="0.3"
+                                step="0.05"
+                            />
+                            <span class="ctrl-val" id="life-min-val">0.3</span>
+                        </div>
+                        <div class="ctrl-row">
+                            <label>Life Max</label>
+                            <input
+                                type="range"
+                                id="life-max"
+                                min="0.05"
+                                max="5"
+                                value="0.8"
+                                step="0.05"
+                            />
+                            <span class="ctrl-val" id="life-max-val">0.8</span>
+                        </div>
+                        <div class="ctrl-row">
+                            <label>Speed</label>
+                            <input
+                                type="range"
+                                id="speed-min"
+                                min="0"
+                                max="500"
+                                value="60"
+                                step="1"
+                            />
+                            <span class="ctrl-val" id="speed-min-val">60</span>
+                        </div>
+                        <div class="ctrl-row">
+                            <label>Speed Max</label>
+                            <input
+                                type="range"
+                                id="speed-max"
+                                min="0"
+                                max="500"
+                                value="200"
+                                step="1"
+                            />
+                            <span class="ctrl-val" id="speed-max-val">200</span>
+                        </div>
+                        <div class="ctrl-row">
+                            <label>Size</label>
+                            <input
+                                type="range"
+                                id="size-min"
+                                min="0.5"
+                                max="50"
+                                value="3"
+                                step="0.5"
+                            />
+                            <span class="ctrl-val" id="size-min-val">3</span>
+                        </div>
+                        <div class="ctrl-row">
+                            <label>Size Max</label>
+                            <input
+                                type="range"
+                                id="size-max"
+                                min="0.5"
+                                max="50"
+                                value="8"
+                                step="0.5"
+                            />
+                            <span class="ctrl-val" id="size-max-val">8</span>
+                        </div>
+                        <div class="ctrl-row">
+                            <label>End Size</label>
+                            <input
+                                type="range"
+                                id="sizeEnd-min"
+                                min="0"
+                                max="50"
+                                value="0"
+                                step="0.5"
+                            />
+                            <span class="ctrl-val" id="sizeEnd-min-val">0</span>
+                        </div>
+                        <div class="ctrl-row">
+                            <label>End Size Max</label>
+                            <input
+                                type="range"
+                                id="sizeEnd-max"
+                                min="0"
+                                max="50"
+                                value="2"
+                                step="0.5"
+                            />
+                            <span class="ctrl-val" id="sizeEnd-max-val">2</span>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">Direction</div>
+                        <div class="ctrl-row">
+                            <label>Angle</label>
+                            <input
+                                type="range"
+                                id="angle"
+                                min="0"
+                                max="360"
+                                value="0"
+                                step="1"
+                            />
+                            <span class="ctrl-val" id="angle-val">0&deg;</span>
+                        </div>
+                        <div class="ctrl-row">
+                            <label>Spread</label>
+                            <input
+                                type="range"
+                                id="spread"
+                                min="0"
+                                max="360"
+                                value="360"
+                                step="1"
+                            />
+                            <span class="ctrl-val" id="spread-val"
+                                >360&deg;</span
+                            >
+                        </div>
+                        <div class="ctrl-row">
+                            <label>Rotation</label>
+                            <input
+                                type="range"
+                                id="rotation"
+                                min="0"
+                                max="360"
+                                value="0"
+                                step="1"
+                            />
+                            <span class="ctrl-val" id="rotation-val"
+                                >0&deg;</span
+                            >
+                        </div>
+                        <div class="ctrl-row">
+                            <label>Ang Vel</label>
+                            <input
+                                type="range"
+                                id="angularVel"
+                                min="-10"
+                                max="10"
+                                value="0"
+                                step="0.1"
+                            />
+                            <span class="ctrl-val" id="angularVel-val"
+                                >0.0</span
+                            >
+                        </div>
+                        <div class="ctrl-row">
+                            <label>Shape</label>
+                            <select class="shape-select" id="shape">
+                                <option value="rect">Rect</option>
+                                <option value="circle" selected>Circle</option>
+                                <option value="streak">Streak</option>
+                            </select>
+                            <span class="ctrl-val" id="shape-val">circle</span>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">Color</div>
+                        <div class="color-row">
+                            <label>Start</label>
+                            <div
+                                class="color-swatch"
+                                id="start-swatch"
+                                style="background: #ff4400"
+                            ></div>
+                            <input
+                                type="color"
+                                id="start-color"
+                                value="#ff4400"
+                            />
+                            <div class="alpha-wrap">
+                                <span style="font-size: 10px; color: #666"
+                                    >a</span
+                                >
+                                <input
+                                    type="range"
+                                    id="start-alpha"
+                                    min="0"
+                                    max="1"
+                                    value="1"
+                                    step="0.01"
+                                />
+                                <span class="ctrl-val" id="start-alpha-val"
+                                    >1.00</span
+                                >
+                            </div>
+                        </div>
+                        <div class="color-row">
+                            <label>End</label>
+                            <div
+                                class="color-swatch"
+                                id="end-swatch"
+                                style="background: #ffcc00"
+                            ></div>
+                            <input
+                                type="color"
+                                id="end-color"
+                                value="#ffcc00"
+                            />
+                            <div class="alpha-wrap">
+                                <span style="font-size: 10px; color: #666"
+                                    >a</span
+                                >
+                                <input
+                                    type="range"
+                                    id="end-alpha"
+                                    min="0"
+                                    max="1"
+                                    value="1"
+                                    step="0.01"
+                                />
+                                <span class="ctrl-val" id="end-alpha-val"
+                                    >1.00</span
+                                >
+                            </div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">Physics</div>
+                        <div class="ctrl-row">
+                            <label>Gravity X</label>
+                            <input
+                                type="range"
+                                id="gravity-x"
+                                min="-500"
+                                max="500"
+                                value="0"
+                                step="1"
+                            />
+                            <span class="ctrl-val" id="gravity-x-val">0</span>
+                        </div>
+                        <div class="ctrl-row">
+                            <label>Gravity Y</label>
+                            <input
+                                type="range"
+                                id="gravity-y"
+                                min="-500"
+                                max="500"
+                                value="0"
+                                step="1"
+                            />
+                            <span class="ctrl-val" id="gravity-y-val">0</span>
+                        </div>
+                        <div class="ctrl-row">
+                            <label>Damping</label>
+                            <input
+                                type="range"
+                                id="damping"
+                                min="0"
+                                max="1"
+                                value="0.9"
+                                step="0.01"
+                            />
+                            <span class="ctrl-val" id="damping-val">0.90</span>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <div class="section-title">Rendering</div>
+                        <div class="ctrl-row">
+                            <label></label>
+                            <div class="toggle-wrap">
+                                <input type="checkbox" id="additive" />
+                                <span>Additive Blend</span>
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <label></label>
+                            <div class="toggle-wrap">
+                                <input type="checkbox" id="show-sprite" />
+                                <span>Use Sprite</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="code-area">
+                        <details open>
+                            <summary>Generated Config</summary>
+                            <pre id="code-box">{ }</pre>
+                            <button id="copy-btn">Copy Code</button>
+                        </details>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            (function () {
+                const W = 320;
+                const H = 240;
+
+                function $(id) {
+                    return document.getElementById(id);
+                }
+
+                const C = {
+                    rate: 0,
+                    count: 24,
+                    duration: 0,
+                    loop: false,
+                    prewarm: true,
+                    lifeMin: 0.3,
+                    lifeMax: 0.8,
+                    speedMin: 60,
+                    speedMax: 200,
+                    sizeMin: 3,
+                    sizeMax: 8,
+                    sizeEndMin: 0,
+                    sizeEndMax: 2,
+                    angle: 0,
+                    spread: 360,
+                    rotation: 0,
+                    angularVel: 0,
+                    gravityX: 0,
+                    gravityY: 0,
+                    damping: 0.9,
+                    startHex: "#ff4400",
+                    startAlpha: 1,
+                    endHex: "#ffcc00",
+                    endAlpha: 1,
+                    additive: false,
+                    sprite: false,
+                    shape: "circle",
+                };
+
+                const PRESETS = {
+                    explosion: {
+                        rate: 0,
+                        count: 24,
+                        lifeMin: 0.2,
+                        lifeMax: 0.7,
+                        speedMin: 60,
+                        speedMax: 220,
+                        sizeMin: 4,
+                        sizeMax: 10,
+                        sizeEndMin: 0,
+                        sizeEndMax: 2,
+                        angle: 0,
+                        spread: 360,
+                        rotation: 0,
+                        angularVel: 0,
+                        gravityX: 0,
+                        gravityY: 0,
+                        damping: 0.88,
+                        startHex: "#ff6622",
+                        endHex: "#ffcc44",
+                        startAlpha: 1,
+                        endAlpha: 1,
+                        additive: true,
+                        duration: 0,
+                        loop: false,
+                        prewarm: false,
+                        sprite: false,
+                        shape: "rect",
+                    },
+                    smoke: {
+                        rate: 6,
+                        count: 8,
+                        lifeMin: 1.0,
+                        lifeMax: 2.5,
+                        speedMin: 4,
+                        speedMax: 16,
+                        sizeMin: 6,
+                        sizeMax: 14,
+                        sizeEndMin: 16,
+                        sizeEndMax: 32,
+                        angle: 0,
+                        spread: 360,
+                        rotation: 0,
+                        angularVel: 0,
+                        gravityX: 0,
+                        gravityY: -18,
+                        damping: 0.97,
+                        startHex: "#b4b4c3",
+                        endHex: "#646478",
+                        startAlpha: 0.45,
+                        endAlpha: 0,
+                        additive: false,
+                        duration: 0,
+                        loop: false,
+                        prewarm: true,
+                        sprite: false,
+                        shape: "circle",
+                    },
+                    fire: {
+                        rate: 28,
+                        count: 12,
+                        lifeMin: 0.35,
+                        lifeMax: 0.9,
+                        speedMin: 40,
+                        speedMax: 100,
+                        sizeMin: 3,
+                        sizeMax: 9,
+                        sizeEndMin: 1,
+                        sizeEndMax: 3,
+                        angle: 0,
+                        spread: 360,
+                        rotation: 0,
+                        angularVel: 0,
+                        gravityX: 0,
+                        gravityY: -70,
+                        damping: 0.82,
+                        startHex: "#ff5500",
+                        endHex: "#ffdd44",
+                        startAlpha: 1,
+                        endAlpha: 1,
+                        additive: true,
+                        duration: 0,
+                        loop: false,
+                        prewarm: true,
+                        sprite: false,
+                        shape: "circle",
+                    },
+                    sparkBurst: {
+                        rate: 0,
+                        count: 16,
+                        lifeMin: 0.15,
+                        lifeMax: 0.45,
+                        speedMin: 120,
+                        speedMax: 300,
+                        sizeMin: 1.5,
+                        sizeMax: 3.5,
+                        sizeEndMin: 0,
+                        sizeEndMax: 1,
+                        angle: 0,
+                        spread: 360,
+                        rotation: 0,
+                        angularVel: 0,
+                        gravityX: 0,
+                        gravityY: 0,
+                        damping: 0.55,
+                        startHex: "#ffeeaa",
+                        endHex: "#ff8800",
+                        startAlpha: 1,
+                        endAlpha: 1,
+                        additive: true,
+                        duration: 0,
+                        loop: false,
+                        prewarm: false,
+                        sprite: false,
+                        shape: "streak",
+                    },
+                    rain: {
+                        rate: 60,
+                        count: 10,
+                        lifeMin: 0.8,
+                        lifeMax: 2.0,
+                        speedMin: 350,
+                        speedMax: 550,
+                        sizeMin: 1.8,
+                        sizeMax: 3.5,
+                        sizeEndMin: 1.8,
+                        sizeEndMax: 3.5,
+                        angle: 90,
+                        spread: 15,
+                        rotation: 0,
+                        angularVel: 0,
+                        gravityX: 8,
+                        gravityY: 250,
+                        damping: 1,
+                        startHex: "#a0c3ff",
+                        endHex: "#a0c3ff",
+                        startAlpha: 0.5,
+                        endAlpha: 0,
+                        additive: false,
+                        duration: 0,
+                        loop: false,
+                        prewarm: true,
+                        sprite: false,
+                        shape: "streak",
+                    },
+                    confetti: {
+                        rate: 0,
+                        count: 50,
+                        lifeMin: 1.0,
+                        lifeMax: 2.5,
+                        speedMin: 80,
+                        speedMax: 220,
+                        sizeMin: 3,
+                        sizeMax: 7,
+                        sizeEndMin: 3,
+                        sizeEndMax: 7,
+                        angle: 0,
+                        spread: 360,
+                        rotation: 360,
+                        angularVel: 5,
+                        gravityX: 0,
+                        gravityY: 80,
+                        damping: 0.96,
+                        startHex: "#ff3366",
+                        endHex: "#66ff99",
+                        startAlpha: 1,
+                        endAlpha: 1,
+                        additive: false,
+                        duration: 0,
+                        loop: false,
+                        prewarm: false,
+                        sprite: false,
+                        shape: "rect",
+                    },
+                    trail: {
+                        rate: 24,
+                        count: 5,
+                        lifeMin: 0.25,
+                        lifeMax: 0.7,
+                        speedMin: 0,
+                        speedMax: 3,
+                        sizeMin: 2,
+                        sizeMax: 5,
+                        sizeEndMin: 0,
+                        sizeEndMax: 0,
+                        angle: 180,
+                        spread: 15,
+                        rotation: 0,
+                        angularVel: 0,
+                        gravityX: 0,
+                        gravityY: 0,
+                        damping: 0.98,
+                        startHex: "#c8dcff",
+                        endHex: "#c8dcff",
+                        startAlpha: 0.5,
+                        endAlpha: 0,
+                        additive: false,
+                        duration: 0,
+                        loop: false,
+                        prewarm: true,
+                        sprite: false,
+                        shape: "circle",
+                    },
+                    dust: {
+                        rate: 0,
+                        count: 6,
+                        lifeMin: 0.3,
+                        lifeMax: 0.7,
+                        speedMin: 8,
+                        speedMax: 28,
+                        sizeMin: 1.5,
+                        sizeMax: 4,
+                        sizeEndMin: 3,
+                        sizeEndMax: 7,
+                        angle: 270,
+                        spread: 180,
+                        rotation: 0,
+                        angularVel: 0,
+                        gravityX: 0,
+                        gravityY: 8,
+                        damping: 0.9,
+                        startHex: "#beb4aa",
+                        endHex: "#beb4aa",
+                        startAlpha: 0.45,
+                        endAlpha: 0,
+                        additive: false,
+                        duration: 0,
+                        loop: false,
+                        prewarm: false,
+                        sprite: false,
+                        shape: "circle",
+                    },
+                    bubble: {
+                        rate: 3,
+                        count: 3,
+                        lifeMin: 1.0,
+                        lifeMax: 3.0,
+                        speedMin: 6,
+                        speedMax: 22,
+                        sizeMin: 2,
+                        sizeMax: 7,
+                        sizeEndMin: 3,
+                        sizeEndMax: 9,
+                        angle: 0,
+                        spread: 360,
+                        rotation: 0,
+                        angularVel: 0,
+                        gravityX: 2,
+                        gravityY: -12,
+                        damping: 0.98,
+                        startHex: "#ffffff",
+                        endHex: "#b4d2ff",
+                        startAlpha: 0.35,
+                        endAlpha: 0,
+                        additive: false,
+                        duration: 0,
+                        loop: false,
+                        prewarm: true,
+                        sprite: false,
+                        shape: "circle",
+                    },
+                    portal: {
+                        rate: 30,
+                        count: 12,
+                        lifeMin: 0.6,
+                        lifeMax: 1.4,
+                        speedMin: 20,
+                        speedMax: 60,
+                        sizeMin: 2,
+                        sizeMax: 6,
+                        sizeEndMin: 0,
+                        sizeEndMax: 1,
+                        angle: 0,
+                        spread: 360,
+                        rotation: 0,
+                        angularVel: 3,
+                        gravityX: 0,
+                        gravityY: 0,
+                        damping: 0.9,
+                        startHex: "#8844ff",
+                        endHex: "#ff44aa",
+                        startAlpha: 1,
+                        endAlpha: 1,
+                        additive: true,
+                        duration: 0,
+                        loop: false,
+                        prewarm: true,
+                        sprite: false,
+                        shape: "circle",
+                    },
+                    magicSparkle: {
+                        rate: 0,
+                        count: 22,
+                        lifeMin: 0.2,
+                        lifeMax: 0.6,
+                        speedMin: 50,
+                        speedMax: 140,
+                        sizeMin: 1,
+                        sizeMax: 3,
+                        sizeEndMin: 0,
+                        sizeEndMax: 0.5,
+                        angle: 0,
+                        spread: 360,
+                        rotation: 0,
+                        angularVel: 0,
+                        gravityX: 0,
+                        gravityY: 0,
+                        damping: 0.7,
+                        startHex: "#ffddff",
+                        endHex: "#ff66ff",
+                        startAlpha: 1,
+                        endAlpha: 1,
+                        additive: true,
+                        duration: 0,
+                        loop: false,
+                        prewarm: false,
+                        sprite: false,
+                        shape: "circle",
+                    },
+                    snow: {
+                        rate: 25,
+                        count: 5,
+                        lifeMin: 2.0,
+                        lifeMax: 4.0,
+                        speedMin: 5,
+                        speedMax: 20,
+                        sizeMin: 1.5,
+                        sizeMax: 4,
+                        sizeEndMin: 1.5,
+                        sizeEndMax: 4,
+                        angle: 0,
+                        spread: 360,
+                        rotation: 0,
+                        angularVel: 0,
+                        gravityX: 3,
+                        gravityY: 25,
+                        damping: 0.995,
+                        startHex: "#e6f0ff",
+                        endHex: "#e6f0ff",
+                        startAlpha: 0.7,
+                        endAlpha: 0,
+                        additive: false,
+                        duration: 0,
+                        loop: false,
+                        prewarm: true,
+                        sprite: false,
+                        shape: "circle",
+                    },
+                };
+
+                let particleSprite = null;
+                function makeSprite() {
+                    const c = document.createElement("canvas");
+                    c.width = 16;
+                    c.height = 16;
+                    const ctx = c.getContext("2d");
+                    const g = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
+                    g.addColorStop(0, "rgba(255,255,255,1)");
+                    g.addColorStop(0.4, "rgba(255,255,255,0.8)");
+                    g.addColorStop(1, "rgba(255,255,255,0)");
+                    ctx.fillStyle = g;
+                    ctx.fillRect(0, 0, 16, 16);
+                    return c;
+                }
+
+                function readUI() {
+                    C.rate = parseFloat($("rate").value);
+                    C.count = parseInt($("count").value);
+                    C.duration = parseFloat($("duration").value);
+                    C.loop = $("loop").checked;
+                    C.prewarm = $("prewarm").checked;
+                    C.lifeMin = parseFloat($("life-min").value);
+                    C.lifeMax = parseFloat($("life-max").value);
+                    C.speedMin = parseFloat($("speed-min").value);
+                    C.speedMax = parseFloat($("speed-max").value);
+                    C.sizeMin = parseFloat($("size-min").value);
+                    C.sizeMax = parseFloat($("size-max").value);
+                    C.sizeEndMin = parseFloat($("sizeEnd-min").value);
+                    C.sizeEndMax = parseFloat($("sizeEnd-max").value);
+                    C.angle = parseFloat($("angle").value);
+                    C.spread = parseFloat($("spread").value);
+                    C.rotation = parseFloat($("rotation").value);
+                    C.angularVel = parseFloat($("angularVel").value);
+                    C.gravityX = parseFloat($("gravity-x").value);
+                    C.gravityY = parseFloat($("gravity-y").value);
+                    C.damping = parseFloat($("damping").value);
+                    C.startHex = $("start-color").value;
+                    C.endHex = $("end-color").value;
+                    C.startAlpha = parseFloat($("start-alpha").value);
+                    C.endAlpha = parseFloat($("end-alpha").value);
+                    C.additive = $("additive").checked;
+                    C.sprite = $("show-sprite").checked;
+                    C.shape = $("shape").value;
+                }
+
+                function hexToRgb(hex) {
+                    return (
+                        parseInt(hex.slice(1, 3), 16) +
+                        "," +
+                        parseInt(hex.slice(3, 5), 16) +
+                        "," +
+                        parseInt(hex.slice(5, 7), 16)
+                    );
+                }
+
+                function buildConfig() {
+                    readUI();
+                    const startCol =
+                        C.startAlpha < 1
+                            ? "rgba(" +
+                              hexToRgb(C.startHex) +
+                              "," +
+                              C.startAlpha +
+                              ")"
+                            : C.startHex;
+                    const endCol =
+                        C.endAlpha < 1
+                            ? "rgba(" +
+                              hexToRgb(C.endHex) +
+                              "," +
+                              C.endAlpha +
+                              ")"
+                            : C.endHex;
+                    return {
+                        rate: C.rate || undefined,
+                        count: C.count,
+                        life: [
+                            Math.min(C.lifeMin, C.lifeMax),
+                            Math.max(C.lifeMin, C.lifeMax),
+                        ],
+                        speed: [
+                            Math.min(C.speedMin, C.speedMax),
+                            Math.max(C.speedMin, C.speedMax),
+                        ],
+                        size: [
+                            Math.min(C.sizeMin, C.sizeMax),
+                            Math.max(C.sizeMin, C.sizeMax),
+                        ],
+                        sizeEnd: [
+                            Math.min(C.sizeEndMin, C.sizeEndMax),
+                            Math.max(C.sizeEndMin, C.sizeEndMax),
+                        ],
+                        angle: (C.angle * Math.PI) / 180,
+                        spread: (C.spread * Math.PI) / 180,
+                        rotation:
+                            C.rotation > 0
+                                ? [
+                                      (C.rotation * Math.PI) / 180,
+                                      (C.rotation * Math.PI) / 180,
+                                  ]
+                                : undefined,
+                        angularVel:
+                            C.angularVel !== 0
+                                ? [C.angularVel, C.angularVel]
+                                : undefined,
+                        startColor: startCol,
+                        endColor: endCol,
+                        gravity:
+                            C.gravityX !== 0 || C.gravityY !== 0
+                                ? tinyts.vec2(C.gravityX, C.gravityY)
+                                : undefined,
+                        shape: C.shape === "rect" ? undefined : C.shape,
+                        damping: C.damping,
+                        additive: C.additive || undefined,
+                        sprite: C.sprite ? particleSprite : undefined,
+                        duration: C.duration > 0 ? C.duration : undefined,
+                        loop: C.loop || undefined,
+                        prewarm: C.prewarm ? 1.5 : undefined,
+                        pos: tinyts.vec2(W / 2, H / 2),
+                    };
+                }
+
+                function refreshEffect() {
+                    const e = tinyts.getActiveEngine();
+                    if (!e) return;
+                    e.particleSystem.clear();
+                    e.particleSystem.addEmitter(buildConfig());
+                    updateHUD();
+                }
+
+                function updateHUD() {
+                    const e = tinyts.getActiveEngine();
+                    if (!e) return;
+                    $("particle-count").textContent = e.particleSystem.count;
+                    $("emitter-count").textContent =
+                        e.particleSystem.emitters.length;
+                }
+
+                function generateCode() {
+                    readUI();
+                    const a = (v) => v.toFixed(v % 1 === 0 ? 0 : 2);
+                    const life = [
+                        Math.min(C.lifeMin, C.lifeMax),
+                        Math.max(C.lifeMin, C.lifeMax),
+                    ];
+                    const speed = [
+                        Math.min(C.speedMin, C.speedMax),
+                        Math.max(C.speedMin, C.speedMax),
+                    ];
+                    const size = [
+                        Math.min(C.sizeMin, C.sizeMax),
+                        Math.max(C.sizeMin, C.sizeMax),
+                    ];
+                    const sizeEnd = [
+                        Math.min(C.sizeEndMin, C.sizeEndMax),
+                        Math.max(C.sizeEndMin, C.sizeEndMax),
+                    ];
+                    const lines = ["{"];
+                    const L = (k, v) => {
+                        if (v !== undefined && v !== null)
+                            lines.push("  " + k + ": " + v + ",");
+                    };
+                    L("rate", C.rate > 0 ? C.rate : undefined);
+                    if (C.rate > 0 && C.count !== 24) L("count", C.count);
+                    L("life", "[" + life.join(", ") + "]");
+                    L("speed", "[" + speed.join(", ") + "]");
+                    L("size", "[" + size.join(", ") + "]");
+                    if (sizeEnd[0] !== 0 || sizeEnd[1] !== 2)
+                        L("sizeEnd", "[" + sizeEnd.join(", ") + "]");
+                    const aRad = (C.angle * Math.PI) / 180;
+                    const sRad = (C.spread * Math.PI) / 180;
+                    if (C.angle !== 0) L("angle", a(aRad));
+                    if (C.spread !== 360) L("spread", a(sRad));
+                    if (C.rotation > 0)
+                        L(
+                            "rotation",
+                            "[" +
+                                a((C.rotation * Math.PI) / 180) +
+                                ", " +
+                                a((C.rotation * Math.PI) / 180) +
+                                "]",
+                        );
+                    if (C.angularVel !== 0)
+                        L(
+                            "angularVel",
+                            "[" +
+                                a(C.angularVel) +
+                                ", " +
+                                a(C.angularVel) +
+                                "]",
+                        );
+                    const sc =
+                        C.startAlpha < 1
+                            ? "'rgba(" +
+                              hexToRgb(C.startHex) +
+                              "," +
+                              C.startAlpha +
+                              ")'"
+                            : "'" + C.startHex + "'";
+                    const ec =
+                        C.endAlpha < 1
+                            ? "'rgba(" +
+                              hexToRgb(C.endHex) +
+                              "," +
+                              C.endAlpha +
+                              ")'"
+                            : "'" + C.endHex + "'";
+                    if (C.startHex !== "#ffffff") L("startColor", sc);
+                    if (C.endHex !== "#888888") L("endColor", ec);
+                    if (C.gravityX !== 0 || C.gravityY !== 0)
+                        L(
+                            "gravity",
+                            "vec2(" + C.gravityX + ", " + C.gravityY + ")",
+                        );
+                    if (C.damping !== 0.95) L("damping", C.damping.toFixed(2));
+                    if (C.shape !== "rect") L("shape", "'" + C.shape + "'");
+                    if (C.additive) L("additive", "true");
+                    if (C.duration > 0) L("duration", C.duration.toFixed(1));
+                    if (C.loop) L("loop", "true");
+                    if (C.prewarm) L("prewarm", "1.5");
+                    L("pos", "vec2(" + W / 2 + ", " + H / 2 + ")");
+                    lines.push("}");
+                    return lines.join("\n");
+                }
+
+                function updateCode() {
+                    $("code-box").textContent = generateCode();
+                }
+
+                function bind(id, valId, fmt) {
+                    $(id).addEventListener("input", () => {
+                        const v = parseFloat($(id).value);
+                        $(valId).textContent = fmt ? fmt(v) : v;
+                        refreshEffect();
+                    });
+                }
+                function bindPair(minId, maxId, v1, v2) {
+                    const f = () => {
+                        $(v1).textContent = parseFloat($(minId).value);
+                        $(v2).textContent = parseFloat($(maxId).value);
+                        refreshEffect();
+                    };
+                    $(minId).addEventListener("input", f);
+                    $(maxId).addEventListener("input", f);
+                }
+
+                bind("rate", "rate-val", (v) => v);
+                bind("count", "count-val", (v) => v);
+                bind("duration", "duration-val", (v) => v.toFixed(1));
+                bindPair(
+                    "life-min",
+                    "life-max",
+                    "life-min-val",
+                    "life-max-val",
+                );
+                bindPair(
+                    "speed-min",
+                    "speed-max",
+                    "speed-min-val",
+                    "speed-max-val",
+                );
+                bindPair(
+                    "size-min",
+                    "size-max",
+                    "size-min-val",
+                    "size-max-val",
+                );
+                bindPair(
+                    "sizeEnd-min",
+                    "sizeEnd-max",
+                    "sizeEnd-min-val",
+                    "sizeEnd-max-val",
+                );
+                bind("angle", "angle-val", (v) => v + "\u00b0");
+                bind("spread", "spread-val", (v) => v + "\u00b0");
+                bind("rotation", "rotation-val", (v) => v + "\u00b0");
+                bind("angularVel", "angularVel-val", (v) => v.toFixed(1));
+                bind("gravity-x", "gravity-x-val", (v) => v);
+                bind("gravity-y", "gravity-y-val", (v) => v);
+                bind("damping", "damping-val", (v) => v.toFixed(2));
+                bind("start-alpha", "start-alpha-val", (v) => v.toFixed(2));
+                bind("end-alpha", "end-alpha-val", (v) => v.toFixed(2));
+
+                $("start-color").addEventListener("input", () => {
+                    $("start-swatch").style.background = $("start-color").value;
+                    refreshEffect();
+                });
+                $("end-color").addEventListener("input", () => {
+                    $("end-swatch").style.background = $("end-color").value;
+                    refreshEffect();
+                });
+                ["loop", "prewarm", "additive", "show-sprite"].forEach((id) => {
+                    $(id).addEventListener("change", refreshEffect);
+                });
+
+                $("shape").addEventListener("change", function () {
+                    $("shape-val").textContent = this.value;
+                    refreshEffect();
+                });
+
+                document.querySelectorAll(".preset-btn").forEach((btn) => {
+                    btn.addEventListener("click", () => {
+                        document
+                            .querySelectorAll(".preset-btn")
+                            .forEach((b) => b.classList.remove("active"));
+                        btn.classList.add("active");
+                        loadPreset(btn.dataset.preset);
+                    });
+                });
+
+                function loadPreset(name) {
+                    const p = PRESETS[name];
+                    if (!p) return;
+                    Object.keys(p).forEach((k) => {
+                        const el = $(k);
+                        if (el) {
+                            if (el.type === "checkbox") el.checked = p[k];
+                            else el.value = p[k];
+                        }
+                        const valEl = $(k + "-val");
+                        if (valEl) {
+                            if (
+                                k === "lifeMin" ||
+                                k === "lifeMax" ||
+                                k === "speedMin" ||
+                                k === "speedMax" ||
+                                k === "sizeMin" ||
+                                k === "sizeMax" ||
+                                k === "sizeEndMin" ||
+                                k === "sizeEndMax"
+                            )
+                                valEl.textContent = p[k];
+                            else if (k === "rate" || k === "count")
+                                valEl.textContent = p[k];
+                            else if (k === "duration")
+                                valEl.textContent = p[k].toFixed(1);
+                            else if (
+                                k === "angle" ||
+                                k === "spread" ||
+                                k === "rotation"
+                            )
+                                valEl.textContent = p[k] + "\u00b0";
+                            else if (k === "angularVel")
+                                valEl.textContent = p[k].toFixed(1);
+                            else if (k === "gravityX" || k === "gravityY")
+                                valEl.textContent = p[k];
+                            else if (k === "damping")
+                                valEl.textContent = p[k].toFixed(2);
+                            else if (k === "startAlpha" || k === "endAlpha")
+                                valEl.textContent = p[k].toFixed(2);
+                        }
+                        // Swatch
+                        if (k === "startHex")
+                            $("start-swatch").style.background = p[k];
+                        if (k === "endHex")
+                            $("end-swatch").style.background = p[k];
+                        // Shape
+                        if (k === "shape") {
+                            $("shape").value = p[k];
+                            $("shape-val").textContent = p[k];
+                        }
+                    });
+                    refreshEffect();
+                }
+
+                $("random-btn").addEventListener("click", () => {
+                    document
+                        .querySelectorAll(".preset-btn")
+                        .forEach((b) => b.classList.remove("active"));
+                    const r = (mn, mx) =>
+                        Math.round((Math.random() * (mx - mn) + mn) * 100) /
+                        100;
+                    const set = (id, val, fmt) => {
+                        $(id).value = val;
+                        const ve = $(id + "-val");
+                        if (ve) ve.textContent = fmt ? fmt(val) : val;
+                    };
+                    set(
+                        "rate",
+                        Math.random() < 0.5 ? 0 : Math.round(r(1, 100)),
+                    );
+                    set("count", Math.round(r(5, 60)));
+                    set("life-min", r(0.1, 2));
+                    set("life-max", r(0.3, 4));
+                    set("speed-min", r(0, 200));
+                    set("speed-max", r(50, 500));
+                    set("size-min", r(1, 20));
+                    set("size-max", r(3, 40));
+                    set("sizeEnd-min", r(0, 20));
+                    set("sizeEnd-max", r(0, 40));
+                    set("angle", r(0, 360), (v) => v + "\u00b0");
+                    set("spread", r(0, 360), (v) => v + "\u00b0");
+                    set("rotation", r(0, 360), (v) => v + "\u00b0");
+                    set("angularVel", r(-8, 8), (v) => v.toFixed(1));
+                    set("gravity-x", r(-200, 200));
+                    set("gravity-y", r(-200, 200));
+                    set("damping", r(0.5, 1), (v) => v.toFixed(2));
+                    set("start-alpha", r(0.3, 1), (v) => v.toFixed(2));
+                    set("end-alpha", r(0, 1), (v) => v.toFixed(2));
+                    $("additive").checked = Math.random() < 0.4;
+                    $("loop").checked = Math.random() < 0.3;
+                    $("prewarm").checked = true;
+                    $("show-sprite").checked = Math.random() < 0.2;
+                    C.shape = ["rect", "circle", "streak"][
+                        Math.floor(Math.random() * 3)
+                    ];
+                    $("shape").value = C.shape;
+                    $("shape-val").textContent = C.shape;
+                    const rc = () =>
+                        "#" +
+                        Math.floor(Math.random() * 0xffffff)
+                            .toString(16)
+                            .padStart(6, "0");
+                    $("start-color").value = rc();
+                    $("start-swatch").style.background = $("start-color").value;
+                    $("end-color").value = rc();
+                    $("end-swatch").style.background = $("end-color").value;
+                    set("duration", Math.random() < 0.7 ? 0 : r(0.5, 5), (v) =>
+                        v.toFixed(1),
+                    );
+                    refreshEffect();
+                });
+
+                $("copy-btn").addEventListener("click", () => {
+                    navigator.clipboard.writeText(generateCode()).then(() => {
+                        $("copy-btn").textContent = "Copied!";
+                        $("copy-btn").classList.add("copied");
+                        setTimeout(() => {
+                            $("copy-btn").textContent = "Copy Code";
+                            $("copy-btn").classList.remove("copied");
+                        }, 1500);
+                    });
+                });
+
+                particleSprite = makeSprite();
+
+                var eng = tinyts.engineStart({
+                    size: { width: W, height: H },
+                    pixelated: true,
+                    fixedHz: 60,
+                    update: function () {},
+                    render: function () {
+                        var e = tinyts.getActiveEngine();
+                        if (!e) return;
+                        tinyts.clear("#11111b");
+                        tinyts.drawLine(
+                            tinyts.vec2(W / 2 - 10, H / 2),
+                            tinyts.vec2(W / 2 + 10, H / 2),
+                            "rgba(137,180,250,0.08)",
+                        );
+                        tinyts.drawLine(
+                            tinyts.vec2(W / 2, H / 2 - 10),
+                            tinyts.vec2(W / 2, H / 2 + 10),
+                            "rgba(137,180,250,0.08)",
+                        );
+                        e.particleSystem.render();
+                        $("particle-count").textContent =
+                            e.particleSystem.count;
+                        $("emitter-count").textContent =
+                            e.particleSystem.emitters.length;
+                    },
+                });
+
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(eng.canvasManager.canvas);
+                if (eng.overlayCanvas) {
+                    document
+                        .getElementById("canvas-container")
+                        .appendChild(eng.overlayCanvas);
+                }
+
+                if (eng) {
+                    var orig = eng.config.update;
+                    eng.config.update = function (dt) {
+                        eng.particleSystem.update(dt);
+                        if (orig) orig(dt);
+                    };
+                }
+
+                loadPreset("explosion");
+            })();
+        </script>
+    </body>
+</html>

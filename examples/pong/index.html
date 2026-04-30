@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>TinyTS - Pong</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
+            const PADDLE_W = 8,
+                PADDLE_H = 48,
+                BALL_SIZE = 8;
+            const PADDLE_SPEED = 280,
+                AI_SPEED = 190;
+            const BALL_SPEED = 260;
+
+            const ball = {
+                pos: vec2(W / 2, H / 2),
+                vel: vec2(0, 0),
+                size: vec2(BALL_SIZE, BALL_SIZE),
+                stuck: true,
+            };
+
+            const player = {
+                pos: vec2(20, H / 2 - PADDLE_H / 2),
+                size: vec2(PADDLE_W, PADDLE_H),
+                score: 0,
+            };
+            const ai = {
+                pos: vec2(W - 20 - PADDLE_W, H / 2 - PADDLE_H / 2),
+                size: vec2(PADDLE_W, PADDLE_H),
+                score: 0,
+            };
+
+            let gameState = "playing";
+
+            function resetBall(winner) {
+                ball.stuck = true;
+                ball.pos.set(W / 2, H / 2);
+                ball.vel.set(0, 0);
+
+                if (winner) {
+                    playSound({
+                        wave: "square",
+                        frequency: 880,
+                        frequencySlide: -400,
+                        attack: 0.01,
+                        decay: 0.15,
+                        volume: 0.15,
+                    });
+                }
+            }
+
+            function launchBall() {
+                ball.stuck = false;
+                const dir = rand(0, 1) > 0.5 ? 1 : -1;
+                const angle = mapRange(rand(0, 1), 0, 1, -0.4, 0.4);
+                ball.vel.x = Math.cos(angle) * BALL_SPEED * dir;
+                ball.vel.y = Math.sin(angle) * BALL_SPEED;
+                playSound({
+                    wave: "square",
+                    frequency: 440,
+                    frequencySlide: 200,
+                    attack: 0.01,
+                    decay: 0.08,
+                    volume: 0.12,
+                });
+            }
+
+            bindAction("up", ["ArrowUp", "KeyW"]);
+            bindAction("down", ["ArrowDown", "KeyS"]);
+
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
+
+                update(dt) {
+                    if (actionDown("up")) player.pos.y -= PADDLE_SPEED * dt;
+                    if (actionDown("down")) player.pos.y += PADDLE_SPEED * dt;
+                    player.pos.y = clamp(player.pos.y, 0, H - PADDLE_H);
+
+                    const targetY = ball.pos.y - PADDLE_H / 2;
+                    const diff = targetY - ai.pos.y;
+                    if (Math.abs(diff) > 6) {
+                        ai.pos.y +=
+                            Math.sign(diff) *
+                            Math.min(AI_SPEED * dt, Math.abs(diff));
+                    }
+                    ai.pos.y = clamp(ai.pos.y, 0, H - PADDLE_H);
+
+                    if (ball.stuck) {
+                        if (keyPressed("Space")) launchBall();
+                        return;
+                    }
+
+                    ball.pos.x += ball.vel.x * dt;
+                    ball.pos.y += ball.vel.y * dt;
+
+                    if (ball.pos.y < 0) {
+                        ball.pos.y = 0;
+                        ball.vel.y = -ball.vel.y;
+                    }
+                    if (ball.pos.y + BALL_SIZE > H) {
+                        ball.pos.y = H - BALL_SIZE;
+                        ball.vel.y = -ball.vel.y;
+                    }
+
+                    if (ball.pos.x + BALL_SIZE < 0) {
+                        ai.score++;
+                        if (ai.score >= 5) {
+                            gameState = "gameover";
+                            return;
+                        }
+                        resetBall("ai");
+                        return;
+                    }
+                    if (ball.pos.x > W) {
+                        player.score++;
+                        if (player.score >= 5) {
+                            gameState = "gameover";
+                            return;
+                        }
+                        resetBall("player");
+                        return;
+                    }
+
+                    const ballBox = { pos: ball.pos, size: ball.size };
+                    for (const paddle of [player, ai]) {
+                        const pBox = { pos: paddle.pos, size: paddle.size };
+                        if (aabbOverlap(ballBox, pBox)) {
+                            const paddleCenter = paddle.pos.y + PADDLE_H / 2;
+                            const ballCenter = ball.pos.y + BALL_SIZE / 2;
+                            const hitPos =
+                                (ballCenter - paddleCenter) / (PADDLE_H / 2);
+                            const angle = hitPos * Math.PI * 0.35;
+                            const dir = paddle === player ? 1 : -1;
+                            ball.vel.x = Math.cos(angle) * BALL_SPEED * dir;
+                            ball.vel.y = Math.sin(angle) * BALL_SPEED;
+
+                            if (paddle === player)
+                                ball.pos.x = player.pos.x + PADDLE_W;
+                            else ball.pos.x = ai.pos.x - BALL_SIZE;
+
+                            emitParticles({
+                                pos: vec2(
+                                    ball.pos.x + BALL_SIZE / 2,
+                                    ball.pos.y + BALL_SIZE / 2,
+                                ),
+                                count: 6,
+                                life: [0.1, 0.3],
+                                speed: [30, 100],
+                                size: [2, 4],
+                                sizeEnd: [0, 1],
+                                color: ["#cdd6f4", "#89b4fa"],
+                                damping: 0.85,
+                            });
+
+                            playSound({
+                                wave: "square",
+                                frequency: 520,
+                                frequencySlide: 80,
+                                attack: 0.005,
+                                decay: 0.06,
+                                volume: 0.14,
+                            });
+                        }
+                    }
+                },
+
+                render() {
+                    clear("#11111b");
+
+                    for (let y = 0; y < H; y += 20) {
+                        drawRect(
+                            vec2(W / 2 - 1, y),
+                            vec2(2, 10),
+                            "rgba(49, 50, 68, 0.6)",
+                        );
+                    }
+
+                    drawRect(player.pos, player.size, "#cba6f7");
+                    drawRect(ai.pos, ai.size, "#f38ba8");
+                    drawRect(ball.pos, ball.size, "#cdd6f4");
+                    drawText(`${player.score}`, vec2(W / 2 - 40, 20), {
+                        color: "#a6adc8",
+                        size: 36,
+                        align: "center",
+                    });
+                    drawText(`${ai.score}`, vec2(W / 2 + 40, 20), {
+                        color: "#a6adc8",
+                        size: 36,
+                        align: "center",
+                    });
+
+                    if (ball.stuck) {
+                        drawText("SPACE to serve", vec2(W / 2, H / 2 + 30), {
+                            color: "#a6adc8",
+                            size: 16,
+                            align: "center",
+                        });
+                    }
+
+                    if (gameState === "gameover") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.7)",
+                        );
+                        const winner =
+                            player.score >= 5 ? "YOU WIN!" : "AI WINS!";
+                        drawText(winner, vec2(W / 2, H / 2 - 20), {
+                            color: "#f9e2af",
+                            size: 40,
+                            align: "center",
+                        });
+                        drawText("SPACE to restart", vec2(W / 2, H / 2 + 30), {
+                            color: "#a6adc8",
+                            size: 16,
+                            align: "center",
+                        });
+
+                        if (keyPressed("Space")) {
+                            player.score = 0;
+                            ai.score = 0;
+                            gameState = "playing";
+                            resetBall();
+                        }
+                    }
+                },
+            });
+
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
+</html>
