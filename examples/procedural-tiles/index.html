@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>TinyTS - Procedural Tile Designer</title>
+        <style>
+  @font-face {
+  font-family: 'Monaspace Neon';
+  src: url('https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: 'Monaspace Neon', monospace;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                overflow-y: auto;
+                padding: 20px;
+            }
+            .container {
+                max-width: 1100px;
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
+            .main {
+                display: flex;
+                gap: 20px;
+                width: 100%;
+            }
+
+            /* Preview panel */
+            .preview-panel {
+                width: 40%;
+                flex-shrink: 0;
+                background: #181825;
+                border: 2px dashed #cba6f7;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 12px;
+            }
+            .preview-panel canvas {
+                display: block;
+                image-rendering: pixelated;
+                border: 1px solid #313244;
+            }
+            .preview-label {
+                font-size: 10px;
+                color: #a6adc8;
+                margin-top: 8px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+            .preview-size {
+                font-size: 18px;
+                color: #cdd6f4;
+                margin-top: 2px;
+            }
+
+            /* Code panel */
+            .code-panel {
+                flex: 1;
+                min-width: 0;
+                background: #181825;
+                border: 2px dashed #cba6f7;
+                padding: 16px;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+            .code-panel .label {
+                font-size: 11px;
+                color: #b4befe;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 12px;
+            }
+            .code-panel pre {
+                font-family: 'Monaspace Neon', monospace;
+                font-size: 12px;
+                line-height: 1.5;
+                color: #cdd6f4;
+                white-space: pre-wrap;
+                word-break: break-all;
+                max-height: 500px;
+                overflow-y: auto;
+                background: #11111b;
+                padding: 15px;
+                border: 1px solid #313244;
+            }
+
+            /* Shape picks */
+            .shape-bar {
+                display: flex;
+                gap: 6px;
+                flex-wrap: wrap;
+                justify-content: center;
+                margin: 12px 0;
+            }
+            .shape-bar button {
+                background: transparent;
+                border: 1px solid #313244;
+                color: #a6adc8;
+                padding: 6px 12px;
+                font-family: 'Monaspace Neon', monospace;
+                font-size: 11px;
+                cursor: pointer;
+                border-radius: 0 !important;
+                transition: all 0.15s;
+            }
+            .shape-bar button:hover {
+                border-color: #89b4fa;
+                color: #cdd6f4;
+            }
+            .shape-bar button.active {
+                border-color: #89b4fa;
+                color: #89b4fa;
+                background: rgba(137, 180, 250, 0.1);
+            }
+
+            /* Controls */
+            .controls {
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+                justify-content: center;
+                margin: 8px 0 12px;
+            }
+            .controls label {
+                font-size: 11px;
+                color: #a6adc8;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .controls input[type="color"] {
+                width: 28px;
+                height: 28px;
+                border: 1px solid #45475a;
+                background: transparent;
+                cursor: pointer;
+                padding: 0;
+            }
+            .controls input[type="range"] {
+                width: 80px;
+                accent-color: #cba6f7;
+                background: transparent;
+            }
+            .controls input[type="number"] {
+                width: 48px;
+                background: #313244;
+                border: 1px solid #45475a;
+                color: #cdd6f4;
+                padding: 2px 4px;
+                font-family: 'Monaspace Neon', monospace;
+                font-size: 11px;
+                border-radius: 0 !important;
+            }
+            .controls select {
+                background: #313244;
+                border: 1px solid #45475a;
+                color: #cdd6f4;
+                padding: 4px 8px;
+                font-family: 'Monaspace Neon', monospace;
+                font-size: 11px;
+                border-radius: 0 !important;
+            }
+
+            /* Action buttons */
+            .actions {
+                display: flex;
+                gap: 8px;
+                justify-content: center;
+                flex-wrap: wrap;
+                margin-top: 8px;
+            }
+            .actions button {
+                background: #313244;
+                border: 1px solid #45475a;
+                color: #cdd6f4;
+                padding: 6px 18px;
+                font-family: 'Monaspace Neon', monospace;
+                font-size: 12px;
+                cursor: pointer;
+                border-radius: 0 !important;
+                transition: all 0.15s;
+            }
+            .actions button:hover {
+                background: #45475a;
+                border-color: #89b4fa;
+            }
+            .actions button.build {
+                border-color: #a6e3a1;
+                color: #a6e3a1;
+            }
+            .actions button.build:hover {
+                background: rgba(166, 227, 161, 0.1);
+            }
+
+            /* Layer display */
+            .layers {
+                margin-top: 12px;
+                padding: 12px;
+                background: #181825;
+                border: 2px dashed #cba6f7;
+                font-size: 11px;
+            }
+            .layers .label {
+                font-size: 10px;
+                color: #a6adc8;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+            .layers .layer-item {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                padding: 4px 0;
+                color: #cdd6f4;
+            }
+            .layers .layer-item .del {
+                color: #f38ba8;
+                cursor: pointer;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="main">
+                <div class="preview-panel">
+                    <canvas id="tile-preview" width="96" height="96"></canvas>
+                    <div class="preview-label">tile</div>
+                    <div class="preview-size" id="tile-size-info">16 × 16</div>
+                    <div class="preview-label" style="margin-top: 8px">
+                        World Preview
+                    </div>
+                    <canvas
+                        id="world-preview"
+                        width="160"
+                        height="160"
+                    ></canvas>
+                </div>
+                <div class="code-panel">
+                    <div class="label">📋 Code - click to select all</div>
+                    <pre id="code-display" onclick="selectCode()"></pre>
+                </div>
+            </div>
+
+            <div class="shape-bar" id="shape-bar"></div>
+
+            <div class="controls" id="controls"></div>
+
+            <div class="actions">
+                <button onclick="addLayer()">➕ Add Shape</button>
+                <button onclick="clearLayers()">🗑 Clear All</button>
+                <button onclick="generateRandom()">🎲 Random</button>
+                <button class="build" onclick="buildWorld()">
+                    🏗 Build World from Tile
+                </button>
+            </div>
+
+            <div class="layers" id="layers"></div>
+        </div>
+
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            // ═════════════════════════════════════════════════════════════════════════════
+            //  PROCEDURAL TILE DESIGNER
+            //  Design individual tile textures by layering procedural shapes.
+            //  Each shape shows its code. Click "Build World" to stamp the tile into
+            //  a random tilemap pattern.
+            // ═════════════════════════════════════════════════════════════════════════════
+
+            const TILE = 16;
+            const SCALE = 6;
+            const PREVIEW = TILE * SCALE; // 96px
+            const W = 10,
+                H = 10; // world preview size
+
+            // ─── Shape definitions ──────────────────────────────────────────────────────
+
+            const shapes = [
+                {
+                    id: "rect",
+                    name: "Rectangle",
+                    params: [
+                        { key: "x", label: "X", default: 2, min: 0, max: 14 },
+                        { key: "y", label: "Y", default: 2, min: 0, max: 14 },
+                        { key: "w", label: "W", default: 12, min: 1, max: 16 },
+                        { key: "h", label: "H", default: 12, min: 1, max: 16 },
+                        {
+                            key: "fill",
+                            label: "Fill",
+                            default: "#585b70",
+                            type: "color",
+                        },
+                    ],
+                    code(params) {
+                        return `drawProceduralRect(ctx, ${params.x}, ${params.y}, ${params.w}, ${params.h}, '${params.fill}');`;
+                    },
+                    draw(ctx, p) {
+                        drawProceduralRect(ctx, p.x, p.y, p.w, p.h, p.fill);
+                    },
+                },
+                {
+                    id: "circle",
+                    name: "Circle",
+                    params: [
+                        { key: "cx", label: "CX", default: 8, min: 0, max: 16 },
+                        { key: "cy", label: "CY", default: 8, min: 0, max: 16 },
+                        { key: "r", label: "R", default: 7, min: 1, max: 12 },
+                        {
+                            key: "fill",
+                            label: "Fill",
+                            default: "#f38ba8",
+                            type: "color",
+                        },
+                    ],
+                    code(params) {
+                        return `drawProceduralCircle(ctx, ${params.cx}, ${params.cy}, ${params.r}, '${params.fill}');`;
+                    },
+                    draw(ctx, p) {
+                        drawProceduralCircle(ctx, p.cx, p.cy, p.r, p.fill);
+                    },
+                },
+                {
+                    id: "rounded-rect",
+                    name: "Rounded Rect",
+                    params: [
+                        { key: "x", label: "X", default: 2, min: 0, max: 14 },
+                        { key: "y", label: "Y", default: 2, min: 0, max: 14 },
+                        { key: "w", label: "W", default: 12, min: 1, max: 16 },
+                        { key: "h", label: "H", default: 12, min: 1, max: 16 },
+                        {
+                            key: "r",
+                            label: "Radius",
+                            default: 3,
+                            min: 0,
+                            max: 8,
+                        },
+                        {
+                            key: "fill",
+                            label: "Fill",
+                            default: "#a6e3a1",
+                            type: "color",
+                        },
+                    ],
+                    code(params) {
+                        return `drawProceduralRoundedRect(ctx, ${params.x}, ${params.y}, ${params.w}, ${params.h}, ${params.r}, '${params.fill}');`;
+                    },
+                    draw(ctx, p) {
+                        drawProceduralRoundedRect(
+                            ctx,
+                            p.x,
+                            p.y,
+                            p.w,
+                            p.h,
+                            p.r,
+                            p.fill,
+                        );
+                    },
+                },
+                {
+                    id: "star",
+                    name: "Star",
+                    params: [
+                        { key: "cx", label: "CX", default: 8, min: 0, max: 16 },
+                        { key: "cy", label: "CY", default: 8, min: 0, max: 16 },
+                        {
+                            key: "spikes",
+                            label: "Spikes",
+                            default: 5,
+                            min: 3,
+                            max: 12,
+                        },
+                        {
+                            key: "inner",
+                            label: "Inner R",
+                            default: 3,
+                            min: 1,
+                            max: 8,
+                        },
+                        {
+                            key: "outer",
+                            label: "Outer R",
+                            default: 7,
+                            min: 2,
+                            max: 10,
+                        },
+                        {
+                            key: "fill",
+                            label: "Fill",
+                            default: "#f9e2af",
+                            type: "color",
+                        },
+                    ],
+                    code(params) {
+                        return `drawProceduralStar(ctx, ${params.cx}, ${params.cy}, ${params.spikes}, ${params.inner}, ${params.outer}, 0, '${params.fill}');`;
+                    },
+                    draw(ctx, p) {
+                        drawProceduralStar(
+                            ctx,
+                            p.cx,
+                            p.cy,
+                            p.spikes,
+                            p.inner,
+                            p.outer,
+                            0,
+                            p.fill,
+                        );
+                    },
+                },
+                {
+                    id: "polygon",
+                    name: "Regular Polygon",
+                    params: [
+                        { key: "cx", label: "CX", default: 8, min: 0, max: 16 },
+                        { key: "cy", label: "CY", default: 8, min: 0, max: 16 },
+                        { key: "r", label: "R", default: 7, min: 2, max: 10 },
+                        {
+                            key: "sides",
+                            label: "Sides",
+                            default: 6,
+                            min: 3,
+                            max: 12,
+                        },
+                        {
+                            key: "fill",
+                            label: "Fill",
+                            default: "#89b4fa",
+                            type: "color",
+                        },
+                    ],
+                    code(params) {
+                        return `drawProceduralRegularPolygon(ctx, ${params.cx}, ${params.cy}, ${params.r}, ${params.sides}, 0, '${params.fill}');`;
+                    },
+                    draw(ctx, p) {
+                        drawProceduralRegularPolygon(
+                            ctx,
+                            p.cx,
+                            p.cy,
+                            p.r,
+                            p.sides,
+                            0,
+                            p.fill,
+                        );
+                    },
+                },
+                {
+                    id: "ring",
+                    name: "Ring",
+                    params: [
+                        { key: "cx", label: "CX", default: 8, min: 0, max: 16 },
+                        { key: "cy", label: "CY", default: 8, min: 0, max: 16 },
+                        {
+                            key: "inner",
+                            label: "Inner R",
+                            default: 3,
+                            min: 0,
+                            max: 8,
+                        },
+                        {
+                            key: "outer",
+                            label: "Outer R",
+                            default: 7,
+                            min: 1,
+                            max: 10,
+                        },
+                        {
+                            key: "fill",
+                            label: "Fill",
+                            default: "#f5c2e7",
+                            type: "color",
+                        },
+                    ],
+                    code(params) {
+                        return `drawProceduralRing(ctx, ${params.cx}, ${params.cy}, ${params.inner}, ${params.outer}, '${params.fill}');`;
+                    },
+                    draw(ctx, p) {
+                        drawProceduralRing(
+                            ctx,
+                            p.cx,
+                            p.cy,
+                            p.inner,
+                            p.outer,
+                            p.fill,
+                        );
+                    },
+                },
+                {
+                    id: "capsule",
+                    name: "Capsule",
+                    params: [
+                        { key: "x1", label: "X1", default: 3, min: 0, max: 14 },
+                        { key: "y1", label: "Y1", default: 4, min: 0, max: 14 },
+                        {
+                            key: "x2",
+                            label: "X2",
+                            default: 13,
+                            min: 0,
+                            max: 14,
+                        },
+                        {
+                            key: "y2",
+                            label: "Y2",
+                            default: 12,
+                            min: 0,
+                            max: 14,
+                        },
+                        {
+                            key: "rad",
+                            label: "Radius",
+                            default: 3,
+                            min: 1,
+                            max: 8,
+                        },
+                        {
+                            key: "fill",
+                            label: "Fill",
+                            default: "#fab387",
+                            type: "color",
+                        },
+                    ],
+                    code(params) {
+                        return `drawProceduralCapsule(ctx, ${params.x1}, ${params.y1}, ${params.x2}, ${params.y2}, ${params.rad}, '${params.fill}');`;
+                    },
+                    draw(ctx, p) {
+                        drawProceduralCapsule(
+                            ctx,
+                            p.x1,
+                            p.y1,
+                            p.x2,
+                            p.y2,
+                            p.rad,
+                            p.fill,
+                        );
+                    },
+                },
+                {
+                    id: "gradient",
+                    name: "Gradient Rect",
+                    params: [
+                        { key: "x", label: "X", default: 0, min: 0, max: 14 },
+                        { key: "y", label: "Y", default: 0, min: 0, max: 14 },
+                        { key: "w", label: "W", default: 16, min: 1, max: 16 },
+                        { key: "h", label: "H", default: 16, min: 1, max: 16 },
+                        {
+                            key: "c1",
+                            label: "Color 1",
+                            default: "#89b4fa",
+                            type: "color",
+                        },
+                        {
+                            key: "c2",
+                            label: "Color 2",
+                            default: "#b4befe",
+                            type: "color",
+                        },
+                        {
+                            key: "type",
+                            label: "Type",
+                            default: "linear",
+                            options: ["linear", "radial"],
+                        },
+                    ],
+                    code(params) {
+                        const stops = `[ { offset: 0, color: '${params.c1}' }, { offset: 1, color: '${params.c2}' } ]`;
+                        return `drawProceduralGradientRect(ctx, ${params.x}, ${params.y}, ${params.w}, ${params.h}, ${stops}, '${params.type}');`;
+                    },
+                    draw(ctx, p) {
+                        const stops = [
+                            { offset: 0, color: p.c1 },
+                            { offset: 1, color: p.c2 },
+                        ];
+                        drawProceduralGradientRect(
+                            ctx,
+                            p.x,
+                            p.y,
+                            p.w,
+                            p.h,
+                            stops,
+                            p.type,
+                        );
+                    },
+                },
+            ];
+
+            // ─── State ──────────────────────────────────────────────────────────────────
+
+            let currentShape = shapes[0];
+            const layers = []; // { shape, params }
+
+            function getDefaultParams(shape) {
+                const p = {};
+                for (const def of shape.params) p[def.key] = def.default;
+                return p;
+            }
+
+            // ─── Rendering ──────────────────────────────────────────────────────────────
+
+            function renderTile() {
+                const canvas = document.getElementById("tile-preview");
+                const ctx = canvas.getContext("2d");
+                ctx.clearRect(0, 0, PREVIEW, PREVIEW);
+
+                // Draw a subtle checkerboard background
+                for (let y = 0; y < TILE; y++)
+                    for (let x = 0; x < TILE; x++) {
+                        ctx.fillStyle =
+                            (x + y) % 2 === 0 ? "#0e0e18" : "#121222";
+                        ctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE);
+                    }
+
+                // Draw grid lines
+                ctx.strokeStyle = "rgba(255,255,255,0.04)";
+                ctx.lineWidth = 1;
+                for (let i = 0; i <= TILE; i++) {
+                    const pos = i * SCALE;
+                    ctx.beginPath();
+                    ctx.moveTo(pos, 0);
+                    ctx.lineTo(pos, PREVIEW);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(0, pos);
+                    ctx.lineTo(PREVIEW, pos);
+                    ctx.stroke();
+                }
+
+                // Scale context so procedural functions work in tile-coordinates
+                ctx.save();
+                ctx.scale(SCALE, SCALE);
+
+                // Draw each layer
+                for (const layer of layers) {
+                    layer.shape.draw(ctx, layer.params);
+                }
+
+                ctx.restore();
+
+                // Update code display
+                updateCode();
+            }
+
+            function updateCode() {
+                const lines = [];
+                lines.push("// Create a 16×16 tile texture");
+                lines.push("const texture = createTexture((ctx, w, h) => {");
+                for (const layer of layers) {
+                    lines.push("  " + layer.shape.code(layer.params));
+                }
+                lines.push('}, "my-tile");');
+                lines.push("");
+                lines.push("// Use it:");
+                lines.push("drawSprite(texture, vec2(x, y), vec2(16, 16));");
+                document.getElementById("code-display").textContent =
+                    lines.join("\n");
+            }
+
+            // ─── Layer management ───────────────────────────────────────────────────────
+
+            function addLayer() {
+                layers.push({
+                    shape: currentShape,
+                    params: getDefaultParams(currentShape),
+                });
+                renderTile();
+                renderLayers();
+            }
+
+            function removeLayer(idx) {
+                layers.splice(idx, 1);
+                renderTile();
+                renderLayers();
+            }
+
+            function clearLayers() {
+                layers.length = 0;
+                renderTile();
+                renderLayers();
+            }
+
+            function renderLayers() {
+                const el = document.getElementById("layers");
+                if (layers.length === 0) {
+                    el.innerHTML =
+                        '<div class="label">Layers</div><div style="color:#555;font-size:11px">No shapes yet - click "Add Shape"</div>';
+                    return;
+                }
+                let html =
+                    '<div class="label">Layers <span style="color:#555">(' +
+                    layers.length +
+                    ")</span></div>";
+                for (let i = 0; i < layers.length; i++) {
+                    const l = layers[i];
+                    const pstr = Object.entries(l.params)
+                        .filter(
+                            ([k]) => k !== "fill" && k !== "c1" && k !== "c2",
+                        )
+                        .map(([, v]) => v)
+                        .join(" ");
+                    html +=
+                        '<div class="layer-item"><span class="del" onclick="removeLayer(' +
+                        i +
+                        ')">✕</span> ' +
+                        l.shape.name +
+                        ' <span style="color:#555">' +
+                        pstr +
+                        "</span></div>";
+                }
+                el.innerHTML = html;
+            }
+
+            // ─── Shape / param controls ─────────────────────────────────────────────────
+
+            function selectShape(shape) {
+                currentShape = shape;
+                document
+                    .querySelectorAll(".shape-bar button")
+                    .forEach((b) =>
+                        b.classList.toggle("active", b.dataset.id === shape.id),
+                    );
+                buildParamControls();
+            }
+
+            function buildShapeBar() {
+                const bar = document.getElementById("shape-bar");
+                bar.innerHTML = shapes
+                    .map(
+                        (s) =>
+                            `<button data-id="${s.id}" class="${s === currentShape ? "active" : ""}" onclick="selectShape(shapes.find(x => x.id === '${s.id}'))">${s.name}</button>`,
+                    )
+                    .join("");
+            }
+
+            function buildParamControls() {
+                const el = document.getElementById("controls");
+                let html = "";
+                for (const p of currentShape.params) {
+                    if (p.type === "color") {
+                        html += `<label>${p.label} <input type="color" value="${p.default}" data-key="${p.key}" onchange="updateParam('${p.key}', this.value)"></label>`;
+                    } else if (p.options) {
+                        html += `<label>${p.label} <select data-key="${p.key}" onchange="updateParam('${p.key}', this.value)">${p.options.map((o) => `<option value="${o}" ${o === p.default ? "selected" : ""}>${o}</option>`).join("")}</select></label>`;
+                    } else {
+                        html += `<label>${p.label} <input type="range" min="${p.min}" max="${p.max}" value="${p.default}" data-key="${p.key}" oninput="updateParam('${p.key}', Number(this.value))"> <input type="number" min="${p.min}" max="${p.max}" value="${p.default}" data-key="${p.key}" onchange="updateParam('${p.key}', Number(this.value))" style="width:38px"></label>`;
+                    }
+                }
+                el.innerHTML = html;
+            }
+
+            function updateParam(key, value) {
+                // Update the preview layer if one exists, otherwise just the code
+                if (layers.length === 0) {
+                    // Show code for current shape without adding a layer
+                    const tempParams = getDefaultParams(currentShape);
+                    tempParams[key] = value;
+                    const lines = [];
+                    lines.push("// Preview - add a shape layer to save");
+                    lines.push(
+                        "const texture = createTexture((ctx, w, h) => {",
+                    );
+                    lines.push("  " + currentShape.code(tempParams));
+                    lines.push('}, "my-tile");');
+                    document.getElementById("code-display").textContent =
+                        lines.join("\n");
+                    return;
+                }
+
+                // Update the LAST layer's params
+                const last = layers[layers.length - 1];
+                last.params[key] = value;
+
+                // Sync number inputs with sliders
+                document
+                    .querySelectorAll(`input[data-key="${key}"]`)
+                    .forEach((el) => {
+                        if (el.type === "range" || el.type === "number")
+                            el.value = value;
+                    });
+
+                renderTile();
+            }
+
+            // ─── Build world from tile ──────────────────────────────────────────────────
+
+            function buildWorld() {
+                if (layers.length === 0) return;
+
+                // Generate a random tilemap pattern using the current tile design
+                const worldCanvas = document.getElementById("world-preview");
+                const wctx = worldCanvas.getContext("2d");
+                wctx.clearRect(0, 0, worldCanvas.width, worldCanvas.height);
+
+                // Build legend mapping: sprite index → TileDef with our first layer's fill color
+                const firstFill = layers[0].params.fill || "#666";
+                const secondFill =
+                    layers.length > 1
+                        ? layers[layers.length - 1].params.fill || "#444"
+                        : "#444";
+
+                const defs = [
+                    {},
+                    { solid: true, color: firstFill },
+                    { solid: true, color: secondFill },
+                    { color: "#89b4fa" },
+                ];
+
+                // Generate a simple pattern via seeded RNG
+                const seed = (Math.random() * 100000) | 0;
+                function rng() {
+                    let s = seed;
+                    return function () {
+                        s = (s * 1664525 + 1013904223) & 0xffffffff;
+                        return (s >>> 0) / 4294967296;
+                    };
+                }
+                const rand = rng();
+
+                const tiles = Array.from({ length: H }, () => Array(W).fill(0));
+
+                // Simple terrain: cellular noise
+                for (let y = 0; y < H; y++) {
+                    for (let x = 0; x < W; x++) {
+                        const v = fractalNoise2D(
+                            (x + seed) / 4,
+                            (y + seed) / 4,
+                            3,
+                        );
+                        if (v < 0.3)
+                            tiles[y][x] = 3; // water
+                        else if (v < 0.45)
+                            tiles[y][x] = 2; // secondary
+                        else tiles[y][x] = 1; // primary tile
+                    }
+                }
+                // Walls around
+                for (let x = 0; x < W; x++) tiles[0][x] = tiles[H - 1][x] = 1;
+                for (let y = 0; y < H; y++) tiles[y][0] = tiles[y][W - 1] = 1;
+
+                // Render the world preview at 16px per tile
+                const TS = 16;
+                for (let y = 0; y < H; y++)
+                    for (let x = 0; x < W; x++) {
+                        const def = defs[tiles[y][x]];
+                        wctx.fillStyle = def?.color || "#11111b";
+                        wctx.fillRect(x * TS, y * TS, TS, TS);
+                    }
+
+                // Show world code
+                const codeLines = [
+                    "// Tile definitions (using your designed tile colors)",
+                    `const TILE_DEFS = [`,
+                    `  {},                                     // 0 - air`,
+                    `  { solid: true, color: '${firstFill}' },  // 1 - primary tile`,
+                    `  { solid: true, color: '${secondFill}' }, // 2 - secondary tile`,
+                    `  { color: '#89b4fa' },                    // 3 - water`,
+                    `];`,
+                    `const map = createTilemap(${W}, ${H}, 16, TILE_DEFS);`,
+                    `// Fill with noise (see Pattern Browser for recipes)`,
+                    `for (let y = 0; y < ${H}; y++)`,
+                    `  for (let x = 0; x < ${W}; x++) {`,
+                    `    const v = fractalNoise2D((x + ${seed}) / 4, (y + ${seed}) / 4, 3);`,
+                    `    map.tiles[y][x] = v < 0.3 ? 3 : v < 0.45 ? 2 : 1;`,
+                    `  }`,
+                ];
+                document.getElementById("code-display").textContent =
+                    codeLines.join("\n");
+            }
+
+            // ─── Random generation ────────────────────────────────────────────────────
+
+function generateRandom() {
+    clearLayers();
+    const count = 1 + ((Math.random() * 3) | 0); // 1-4 layers
+    for (let i = 0; i < count; i++) {
+        const shape = shapes[(Math.random() * shapes.length) | 0];
+        const params = {};
+        for (const def of shape.params) {
+            if (def.type === 'color') {
+                const hue = (Math.random() * 360) | 0;
+                const sat = 40 + ((Math.random() * 50) | 0);
+                const lit = 30 + ((Math.random() * 40) | 0);
+                params[def.key] = 'hsl(' + hue + ',' + sat + '%,' + lit + '%)';
+            } else if (def.options) {
+                params[def.key] = def.options[(Math.random() * def.options.length) | 0];
+            } else {
+                params[def.key] = def.min + ((Math.random() * (def.max - def.min)) | 0);
+            }
+        }
+        layers.push({ shape, params });
+    }
+    renderTile();
+    renderLayers();
+}
+
+// ─── Utils ──────────────────────────────────────────────────────────────────
+
+            function selectCode() {
+                const el = document.getElementById("code-display");
+                const range = document.createRange();
+                range.selectNodeContents(el);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+
+            // ─── Keyboard shortcuts ─────────────────────────────────────────────────────
+
+            document.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" && e.ctrlKey) addLayer();
+                if (e.key === "b" && e.ctrlKey) buildWorld();
+            });
+
+            // ─── Init ───────────────────────────────────────────────────────────────────
+
+            buildShapeBar();
+            buildParamControls();
+            renderLayers();
+            renderTile();
+        </script>
+    </body>
+</html>

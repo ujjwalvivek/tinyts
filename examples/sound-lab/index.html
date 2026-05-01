@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="TinyTS interactive procedural sound designer - tweak waveforms, ADSR, frequency, effects, and copy the code." />
+  <meta name="theme-color" content="#1e1e2e" />
+  <title>TinyTS - Sound Lab</title>
+  <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
+  <style>
+  @font-face {
+  font-family: 'Monaspace Neon';
+  src: url('https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Monaspace Neon', monospace;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    #app {
+      max-width: 680px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* ── Layout rows ────────────────────────────────────────── */
+    .row { display: flex; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+    .col { flex: 1; min-width: 200px; }
+
+    /* ── Section ────────────────────────────────────────────── */
+    .section {
+      background: #181825;
+      border: 2px dashed #cba6f7;
+      padding: 14px 16px;
+    }
+    .section-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: #b4befe;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 10px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #313244;
+    }
+
+    /* ── Controls ───────────────────────────────────────────── */
+    .ctrl {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .ctrl label {
+      font-size: 11px;
+      color: #a6adc8;
+      width: 70px;
+      flex-shrink: 0;
+      text-align: right;
+    }
+    .ctrl input[type="range"] {
+      flex: 1;
+      height: 6px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: #11111b;
+      border: 1px solid #313244;
+      outline: none;
+      border-radius: 0 !important;
+    }
+    .ctrl input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px; height: 12px;
+      border-radius: 0 !important;
+      background: #cba6f7;
+      cursor: pointer;
+      border: none;
+    }
+    .ctrl input[type="range"]::-moz-range-thumb {
+      width: 12px; height: 12px;
+      border-radius: 0 !important;
+      background: #cba6f7;
+      cursor: pointer;
+      border: none;
+    }
+    .ctrl .val {
+      font-size: 11px;
+      color: #cdd6f4;
+      min-width: 48px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .ctrl select {
+      flex: 1;
+      background: #313244;
+      border: 1px solid #45475a;
+      color: #cdd6f4;
+      font: inherit;
+      font-size: 11px;
+      padding: 3px 4px;
+      border-radius: 0 !important;
+      outline: none;
+      cursor: pointer;
+    }
+    .ctrl select:focus { border-color: #89b4fa; }
+    .ctrl input[type="text"] {
+      flex: 1;
+      background: #313244;
+      border: 1px solid #45475a;
+      color: #cdd6f4;
+      font: inherit;
+      font-size: 11px;
+      padding: 3px 6px;
+      border-radius: 0 !important;
+      outline: none;
+    }
+    .ctrl input[type="text"]:focus { border-color: #89b4fa; }
+
+    /* ── Presets bar ────────────────────────────────────────── */
+    #presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 14px;
+    }
+    .preset-btn {
+      font: inherit;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 4px 10px;
+      background: #313244;
+      border: 1px solid #45475a;
+      color: #cdd6f4;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      border-radius: 0 !important;
+    }
+    .preset-btn:hover { border-color: #89b4fa; color: #cdd6f4; background: #45475a; }
+    .preset-btn.active { border-color: #cba6f7; color: #cba6f7; background: rgba(203, 166, 247, 0.08); }
+
+    /* ── Play bar ───────────────────────────────────────────── */
+    #playbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .play-btn {
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 24px;
+      background: #a6e3a1;
+      border: 1px solid #45475a;
+      color: #11111b;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.5px;
+      border-radius: 0 !important;
+    }
+    .play-btn:hover { background: #89b4fa; border-color: #89b4fa; }
+    .play-btn.secondary {
+      background: #313244;
+      border: 1px solid #45475a;
+      color: #cdd6f4;
+      padding: 7px 16px;
+      font-weight: 600;
+      border-radius: 0 !important;
+    }
+    .play-btn.secondary:hover { border-color: #f38ba8; color: #f38ba8; background: #45475a; }
+    #active-voices {
+      font-size: 11px;
+      color: #a6adc8;
+      margin-left: auto;
+    }
+    #active-voices strong { color: #89b4fa; }
+
+    /* ── ADSR visual ────────────────────────────────────────── */
+    #adsr-canvas {
+      width: 100%;
+      height: 60px;
+      background: #11111b;
+      border: 1px solid #313244;
+      margin-top: 8px;
+      display: block;
+      border-radius: 0 !important;
+    }
+
+    /* ── Code ───────────────────────────────────────────────── */
+    #code-area { margin-top: 6px; }
+    #code-area summary {
+      font-size: 10px;
+      font-weight: 700;
+      color: #b4befe;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      cursor: pointer;
+      padding: 4px 0;
+    }
+    #code-area summary:hover { color: #cdd6f4; }
+    #code-box {
+      background: #11111b;
+      border: 2px dashed #cba6f7;
+      padding: 10px 12px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #cdd6f4;
+      white-space: pre;
+      border-radius: 0 !important;
+      overflow-x: auto;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    #copy-btn {
+      font: inherit;
+      font-size: 10px;
+      padding: 4px 12px;
+      background: #313244;
+      border: 1px solid #45475a;
+      color: #cdd6f4;
+      cursor: pointer;
+      margin-top: 4px;
+      transition: all 0.15s;
+      border-radius: 0 !important;
+    }
+    #copy-btn:hover { border-color: #89b4fa; background: #45475a; }
+    #copy-btn.copied { border-color: #a6e3a1; color: #a6e3a1; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Presets -->
+  <div id="presets">
+    <button class="preset-btn" data-preset="blip">Blip</button>
+    <button class="preset-btn" data-preset="laser">Laser</button>
+    <button class="preset-btn" data-preset="explosion">Explosion</button>
+    <button class="preset-btn" data-preset="coin">Coin</button>
+    <button class="preset-btn" data-preset="jump">Jump</button>
+    <button class="preset-btn" data-preset="hit">Hit</button>
+    <button class="preset-btn" data-preset="powerup">Powerup</button>
+    <button class="preset-btn" data-preset="whoosh">Whoosh</button>
+    <button class="preset-btn" data-preset="alarm">Alarm</button>
+  </div>
+
+  <!-- Play bar -->
+  <div id="playbar">
+    <button class="play-btn" id="play-btn">&#9654; Play</button>
+    <button class="play-btn secondary" id="stop-btn">&#9632; Stop</button>
+    <button class="play-btn secondary" id="stopall-btn">Stop All</button>
+    <span id="active-voices"><strong id="voice-count">0</strong> active</span>
+  </div>
+
+  <div class="row">
+    <!-- Waveform + Frequency -->
+    <div class="col">
+      <div class="section">
+        <div class="section-title">Waveform</div>
+        <div class="ctrl">
+          <label>Type</label>
+          <select id="wave">
+            <option value="sine">Sine</option>
+            <option value="square" selected>Square</option>
+            <option value="triangle">Triangle</option>
+            <option value="sawtooth">Sawtooth</option>
+            <option value="noise">Noise</option>
+          </select>
+        </div>
+        <div class="ctrl">
+          <label>Frequency</label>
+          <input type="range" id="frequency" min="40" max="2000" value="440" step="1">
+          <span class="val" id="frequency-val">440</span>
+        </div>
+        <div class="ctrl">
+          <label>Slide</label>
+          <input type="range" id="freqSlide" min="-2000" max="2000" value="0" step="1">
+          <span class="val" id="freqSlide-val">0</span>
+        </div>
+        <div class="ctrl">
+          <label>Pitch</label>
+          <input type="range" id="pitch" min="0.25" max="3" value="1" step="0.01">
+          <span class="val" id="pitch-val">1.00</span>
+        </div>
+      </div>
+
+      <div class="section" style="margin-top:14px;">
+        <div class="section-title">Mix</div>
+        <div class="ctrl">
+          <label>Volume</label>
+          <input type="range" id="volume" min="0" max="1" value="0.3" step="0.01">
+          <span class="val" id="volume-val">0.30</span>
+        </div>
+        <div class="ctrl">
+          <label>Pan</label>
+          <input type="range" id="pan" min="-1" max="1" value="0" step="0.01">
+          <span class="val" id="pan-val">0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADSR -->
+    <div class="col">
+      <div class="section">
+        <div class="section-title">Envelope (ADSR)</div>
+        <div class="ctrl">
+          <label>Attack</label>
+          <input type="range" id="attack" min="0" max="1" value="0.01" step="0.001">
+          <span class="val" id="attack-val">0.010</span>
+        </div>
+        <div class="ctrl">
+          <label>Decay</label>
+          <input type="range" id="decay" min="0" max="1" value="0.1" step="0.001">
+          <span class="val" id="decay-val">0.100</span>
+        </div>
+        <div class="ctrl">
+          <label>Sustain</label>
+          <input type="range" id="sustain" min="0" max="1" value="0" step="0.01">
+          <span class="val" id="sustain-val">0.00</span>
+        </div>
+        <div class="ctrl">
+          <label>Release</label>
+          <input type="range" id="release" min="0" max="2" value="0.1" step="0.001">
+          <span class="val" id="release-val">0.100</span>
+        </div>
+        <canvas id="adsr-canvas"></canvas>
+      </div>
+
+      <div class="section" style="margin-top:14px;">
+        <div class="section-title">Routing</div>
+        <div class="ctrl">
+          <label>Group</label>
+          <select id="group">
+            <option value="sfx">sfx</option>
+            <option value="music">music</option>
+            <option value="ambient">ambient</option>
+            <option value="custom">custom</option>
+          </select>
+        </div>
+        <div class="ctrl">
+          <label>Tag</label>
+          <input type="text" id="tag" value="" placeholder="optional tag">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Code -->
+  <div id="code-area">
+    <details open>
+      <summary>Generated Code</summary>
+      <pre id="code-box">{ }</pre>
+      <button id="copy-btn">Copy Code</button>
+    </details>
+  </div>
+</div>
+
+<script src="../../dist/tinyts.js"></script>
+<script>
+(function() {
+
+function $(id) { return document.getElementById(id); }
+
+// ─── C: current values ──────────────────────────────────────────────────
+const C = {
+  wave: 'square',
+  frequency: 440,
+  freqSlide: 0,
+  pitch: 1,
+  volume: 0.3,
+  pan: 0,
+  attack: 0.01,
+  decay: 0.1,
+  sustain: 0,
+  release: 0.1,
+  group: 'sfx',
+  tag: '',
+};
+
+// ─── Presets ────────────────────────────────────────────────────────────
+const PRESETS = {
+  blip:     { wave:'square', frequency:880, freqSlide:-400, pitch:1, volume:0.25, pan:0, attack:0.001, decay:0.05, sustain:0, release:0.05, group:'sfx', tag:'blip' },
+  laser:    { wave:'sawtooth', frequency:600, freqSlide:-800, pitch:1, volume:0.2, pan:0, attack:0.005, decay:0.3, sustain:0, release:0.1, group:'sfx', tag:'laser' },
+  explosion:{ wave:'noise', frequency:200, freqSlide:-100, pitch:0.5, volume:0.4, pan:0, attack:0.01, decay:0.3, sustain:0, release:0.5, group:'sfx', tag:'explosion' },
+  coin:     { wave:'square', frequency:1200, freqSlide:200, pitch:1.5, volume:0.25, pan:0, attack:0.001, decay:0.1, sustain:0, release:0.05, group:'sfx', tag:'coin' },
+  jump:     { wave:'square', frequency:300, freqSlide:400, pitch:1, volume:0.25, pan:0, attack:0.002, decay:0.15, sustain:0, release:0.05, group:'sfx', tag:'jump' },
+  hit:      { wave:'noise', frequency:100, freqSlide:0, pitch:1, volume:0.35, pan:0, attack:0.001, decay:0.05, sustain:0, release:0.03, group:'sfx', tag:'hit' },
+  powerup:  { wave:'triangle', frequency:400, freqSlide:800, pitch:1, volume:0.25, pan:0, attack:0.01, decay:0.2, sustain:0, release:0.3, group:'sfx', tag:'powerup' },
+  whoosh:   { wave:'sine', frequency:200, freqSlide:600, pitch:1, volume:0.2, pan:0, attack:0.05, decay:0.2, sustain:0.2, release:0.3, group:'sfx', tag:'whoosh' },
+  alarm:    { wave:'square', frequency:800, freqSlide:0, pitch:1, volume:0.3, pan:0, attack:0.02, decay:0.1, sustain:0.5, release:0.2, group:'sfx', tag:'alarm' },
+};
+
+// ─── Read UI ────────────────────────────────────────────────────────────
+function readUI() {
+  C.wave = $('wave').value;
+  C.frequency = parseFloat($('frequency').value);
+  C.freqSlide = parseFloat($('freqSlide').value);
+  C.pitch = parseFloat($('pitch').value);
+  C.volume = parseFloat($('volume').value);
+  C.pan = parseFloat($('pan').value);
+  C.attack = parseFloat($('attack').value);
+  C.decay = parseFloat($('decay').value);
+  C.sustain = parseFloat($('sustain').value);
+  C.release = parseFloat($('release').value);
+  C.group = $('group').value;
+  C.tag = $('tag').value;
+}
+
+// ─── Build SynthOptions ─────────────────────────────────────────────────
+function buildOpts() {
+  readUI();
+  return {
+    wave: C.wave,
+    frequency: C.frequency,
+    frequencySlide: C.freqSlide,
+    pitch: C.pitch,
+    volume: C.volume,
+    pan: C.pan,
+    attack: C.attack,
+    decay: C.decay,
+    sustain: C.sustain,
+    release: C.release,
+    group: C.group,
+    tag: C.tag || undefined,
+  };
+}
+
+// ─── Play ───────────────────────────────────────────────────────────────
+let lastHandle = null;
+
+function play() {
+  const opts = buildOpts();
+  lastHandle = tinyts.playSound(opts);
+  updateVoices();
+}
+
+$('play-btn').addEventListener('click', play);
+
+$('stop-btn').addEventListener('click', () => {
+  if (lastHandle) {
+    lastHandle.stop();
+    lastHandle = null;
+    updateVoices();
+  }
+});
+
+$('stopall-btn').addEventListener('click', () => {
+  tinyts.stopAll();
+  lastHandle = null;
+  updateVoices();
+});
+
+// ─── Active voices ──────────────────────────────────────────────────────
+function updateVoices() {
+  $('voice-count').textContent = tinyts.getAudioContext() ? tinyts.getAudioManager().activeVoiceCount : 0;
+}
+setInterval(updateVoices, 200);
+
+// ─── ADSR Canvas ───────────────────────────────────────────────────────
+function drawADSR() {
+  readUI();
+  const canvas = $('adsr-canvas');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  ctx.clearRect(0, 0, w, h);
+
+  const pad = 4;
+  const x0 = pad;
+  const y0 = h - pad;
+  const x1 = w - pad;
+  const y1 = pad;
+  const aw = x1 - x0;
+
+  const total = Math.max(C.attack + C.decay + C.release + (C.sustain > 0 ? 0.2 : 0), 0.001);
+  const sx = (t) => x0 + (t / total) * aw;
+
+  ctx.strokeStyle = '#89b4fa';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+
+  // Attack
+  let x = sx(0), y = y0;
+  ctx.moveTo(x, y);
+  x = sx(C.attack);
+  y = y0 - (y0 - y1) * C.volume;
+  ctx.lineTo(x, y);
+
+  // Decay
+  x = sx(C.attack + C.decay);
+  y = y0 - (y0 - y1) * C.volume * C.sustain;
+  ctx.lineTo(x, y);
+
+  // Sustain (if sustain > 0)
+  if (C.sustain > 0) {
+    x = sx(C.attack + C.decay + 0.15);
+    ctx.lineTo(x, y);
+  }
+
+  // Release
+  x = sx(C.attack + C.decay + (C.sustain > 0 ? 0.15 : 0) + C.release);
+  y = y0;
+  ctx.lineTo(x, y);
+
+  ctx.stroke();
+
+  // Labels
+  ctx.fillStyle = '#a6adc8';
+  ctx.font = '8px monospace';
+  ctx.textAlign = 'center';
+  const labels = [
+    { t: C.attack, label: 'A' },
+    { t: C.attack + C.decay, label: 'D' },
+    { t: C.attack + C.decay + (C.sustain > 0 ? 0.15 : 0) + C.release, label: 'R' },
+  ];
+  for (const l of labels) {
+    const lx = sx(l.t);
+    if (lx > x0 && lx < x1) {
+      ctx.fillText(l.label, lx, y0 + 10);
+    }
+  }
+}
+
+// ─── Code Generation ───────────────────────────────────────────────────
+function generateCode() {
+  readUI();
+  const a = (v, d) => v.toFixed(d ?? (v < 0.1 ? 3 : v < 1 ? 2 : 1));
+  const lines = ['{'];
+  const L = (k, v) => { if (v !== undefined && v !== null) lines.push('  '+k+': '+v+','); };
+
+  L('wave', "'"+C.wave+"'");
+  if (C.frequency !== 440) L('frequency', C.frequency);
+  if (C.freqSlide !== 0) L('frequencySlide', C.freqSlide);
+  if (C.pitch !== 1) L('pitch', a(C.pitch, 2));
+  if (C.volume !== 0.3) L('volume', a(C.volume, 2));
+  if (C.pan !== 0) L('pan', a(C.pan, 2));
+  if (C.attack !== 0.01) L('attack', a(C.attack, 3));
+  if (C.decay !== 0.1) L('decay', a(C.decay, 3));
+  if (C.sustain !== 0) L('sustain', a(C.sustain, 2));
+  if (C.release !== 0.1) L('release', a(C.release, 3));
+  if (C.group !== 'sfx') L('group', "'"+C.group+"'");
+  if (C.tag) L('tag', "'"+C.tag+"'");
+
+  lines.push('}');
+  return lines.join('\n');
+}
+
+function updateCode() {
+  $('code-box').textContent = generateCode();
+}
+
+// ─── Bindings ───────────────────────────────────────────────────────────
+function bind(id, fmt) {
+  $(id).addEventListener('input', () => {
+    const v = parseFloat($(id).value);
+    const ve = $(id+'-val');
+    if (ve) ve.textContent = fmt ? fmt(v) : v;
+    drawADSR();
+    updateCode();
+  });
+}
+
+function bindSelect(id) {
+  $(id).addEventListener('change', () => {
+    drawADSR();
+    updateCode();
+  });
+}
+
+bind('frequency', v=>v);
+bind('freqSlide', v=>v);
+bind('pitch', v=>v.toFixed(2));
+bind('volume', v=>v.toFixed(2));
+bind('pan', v=>v.toFixed(2));
+bind('attack', v=>v.toFixed(3));
+bind('decay', v=>v.toFixed(3));
+bind('sustain', v=>v.toFixed(2));
+bind('release', v=>v.toFixed(3));
+bindSelect('wave');
+bindSelect('group');
+$('tag').addEventListener('input', updateCode);
+
+// Presets
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadPreset(btn.dataset.preset);
+  });
+});
+
+function loadPreset(name) {
+  const p = PRESETS[name];
+  if (!p) return;
+  Object.keys(p).forEach(k => {
+    const el = $(k === 'freqSlide' ? 'freqSlide' : k);
+    if (el) {
+      el.value = p[k];
+      const ve = $(el.id+'-val');
+      if (ve) {
+        const v = p[k];
+        if (k === 'attack' || k === 'decay' || k === 'release') ve.textContent = v.toFixed(3);
+        else if (k === 'pitch' || k === 'volume' || k === 'pan' || k === 'sustain') ve.textContent = v.toFixed(2);
+        else ve.textContent = v;
+      }
+    }
+  });
+  // Handle wave select
+  $('wave').value = p.wave;
+  // Handle tag
+  $('tag').value = p.tag;
+  drawADSR();
+  updateCode();
+}
+
+// ─── Copy ───────────────────────────────────────────────────────────────
+$('copy-btn').addEventListener('click', () => {
+  navigator.clipboard.writeText('tinyts.playSound(' + generateCode() + ')').then(() => {
+    $('copy-btn').textContent = 'Copied!';
+    $('copy-btn').classList.add('copied');
+    setTimeout(() => {
+      $('copy-btn').textContent = 'Copy Code';
+      $('copy-btn').classList.remove('copied');
+    }, 1500);
+  });
+});
+
+// ─── Init ───────────────────────────────────────────────────────────────
+// Unlock audio on first user interaction
+document.addEventListener('click', function unlock() {
+  tinyts.unlockAudio();
+  document.removeEventListener('click', unlock);
+}, { once: true });
+
+drawADSR();
+updateCode();
+
+// Also redraw ADSR on window resize
+window.addEventListener('resize', drawADSR);
+
+})();
+</script>
+</body>
+</html>
