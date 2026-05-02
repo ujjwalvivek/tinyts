@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Physics-based side-scrolling flappy game.">
+  <title>TinyTS - Flappy Bird</title>
+  <style>
+    @font-face {
+      font-family: 'Monaspace Neon';
+      src: url('https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2') format('woff2');
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: block;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1e1e2e;
+      color: #cdd6f4;
+      font-family: 'Monaspace Neon', monospace;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100vw;
+      height: 100vh;
+    }
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background: #11111b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #canvas-container canvas {
+      position: absolute !important;
+      left: 50% !important;
+      top: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      max-width: 95% !important;
+      max-height: 95% !important;
+      width: auto !important;
+      height: auto !important;
+      aspect-ratio: 16/9 !important;
+      border: 2px dashed #cba6f7;
+    }
+  </style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<script src="../../dist/tinyts.js"></script>
+<script>
+// Flappy Bird Physics & Dodge Game (640x360 Canvas)
+// Demonstrates: Constant gravitational acceleration, jump impulses, camera shake on death,
+// scrolling obstacles, spatial AABB overlap checks, and high score tracking.
+
+const W = 640, H = 360;
+
+const bird = {
+  pos: vec2(100, H / 2),
+  size: vec2(14, 12),
+  vel: vec2(0, 0),
+  gravity: 540,
+  flapImpulse: -180,
+  angle: 0,
+};
+
+let pipes = [];
+let score = 0;
+let highScore = 0;
+let gameState = "idle";
+let pipeSpawnTimer = 0;
+let shakeTimer = 0;
+let shakeIntensity = 0;
+
+// Setup input
+bindAction("flap", ["Space", "KeyW", "ArrowUp"]);
+
+function triggerShake(intensity, duration) {
+  shakeIntensity = intensity;
+  shakeTimer = duration;
+}
+
+function spawnPipe() {
+  const gap = 72; // size of the vertical passage
+  const minHeight = 45;
+  const maxHeight = H - gap - 75;
+  const topHeight = randInt(minHeight, maxHeight);
+  const pipeW = 36;
+
+  pipes.push({
+    pos: vec2(W + 10, 0),
+    size: vec2(pipeW, topHeight),
+    passed: false,
+    type: "top"
+  });
+
+  pipes.push({
+    pos: vec2(W + 10, topHeight + gap),
+    size: vec2(pipeW, H - (topHeight + gap) - 15),
+    passed: false,
+    type: "bottom"
+  });
+}
+
+function resetGame() {
+  bird.pos.set(100, H / 2 - 20);
+  bird.vel.set(0, 0);
+  bird.angle = 0;
+  pipes = [];
+  score = 0;
+  pipeSpawnTimer = 1.9; // spawn fast initially
+  gameState = "idle";
+}
+
+resetGame();
+
+const engine = engineStart({
+  size: { width: W, height: H },
+  pixelated: true,
+
+  update(dt) {
+    updateParticles(dt);
+
+    if (shakeTimer > 0) {
+      shakeTimer -= dt;
+    }
+
+    if (gameState === "idle") {
+      bird.pos.y = H / 2 + Math.sin(time * 5) * 4;
+      if (actionPressed("flap") || mousePressed(0)) {
+        gameState = "playing";
+        bird.vel.y = bird.flapImpulse;
+        playSound(sfx.jump({ volume: 0.15 }));
+      }
+      return;
+    }
+
+    if (gameState === "gameover") {
+      if (keyPressed("Space")) {
+        resetGame();
+      }
+      return;
+    }
+
+    // Apply gravity
+    bird.vel.y += bird.gravity * dt;
+    bird.pos.y += bird.vel.y * dt;
+
+    // Turn tilt
+    bird.angle = clamp(bird.vel.y * 0.003, -0.4, 0.7);
+
+    // Flap
+    if (actionPressed("flap") || mousePressed(0)) {
+      bird.vel.y = bird.flapImpulse;
+      playSound(sfx.jump({ volume: 0.15 }));
+
+      emitParticles({
+        pos: vec2(bird.pos.x, bird.pos.y + 6),
+        count: 4, life: [0.1, 0.25], speed: [20, 50], angle: [Math.PI * 0.8, Math.PI * 1.2],
+        size: [1, 2], color: ["#b4befe", "#cba6f7"]
+      });
+    }
+
+    // Boundary checks
+    if (bird.pos.y < 0) {
+      bird.pos.y = 0;
+      bird.vel.y = 0;
+    }
+    if (bird.pos.y + bird.size.y > H - 15) {
+      gameState = "gameover";
+      playSound(sfx.death());
+      triggerShake(8, 0.45);
+      emitParticles({
+        pos: bird.pos.clone().add(vec2(7, 6)),
+        count: 18, life: [0.3, 0.7], speed: [30, 100], size: [2, 4],
+        color: ["#f38ba8", "#fab387", "#313244"]
+      });
+      return;
+    }
+
+    // Move pipes
+    pipeSpawnTimer += dt;
+    if (pipeSpawnTimer >= 2.0) {
+      spawnPipe();
+      pipeSpawnTimer = 0;
+    }
+
+    const bBox = { pos: bird.pos, size: bird.size };
+
+    for (let i = pipes.length - 1; i >= 0; i--) {
+      const p = pipes[i];
+      p.pos.x -= 95 * dt;
+
+      if (p.pos.x + p.size.x < -10) {
+        pipes.splice(i, 1);
+        continue;
+      }
+
+      if (aabbOverlap(bBox, { pos: p.pos, size: p.size })) {
+        gameState = "gameover";
+        playSound(sfx.hit({ volume: 0.35 }));
+        playSound(sfx.death());
+        triggerShake(8, 0.45);
+
+        emitParticles({
+          pos: bird.pos.clone().add(vec2(7, 6)),
+          count: 18, life: [0.3, 0.7], speed: [30, 100], size: [2, 4],
+          color: ["#f38ba8", "#fab387", "#313244"]
+        });
+        return;
+      }
+
+      if (!p.passed && p.type === "top" && p.pos.x + p.size.x < bird.pos.x) {
+        p.passed = true;
+        score++;
+        if (score > highScore) highScore = score;
+        playSound(sfx.coin({ volume: 0.18 }));
+      }
+    }
+  },
+
+  render() {
+    clear("#11111b");
+
+    // Camera shake
+    if (shakeTimer > 0) {
+      const shakeX = rand(-shakeIntensity, shakeIntensity);
+      const shakeY = rand(-shakeIntensity, shakeIntensity);
+      setRenderTransform(vec2(W / 2 + shakeX, H / 2 + shakeY), 1);
+    }
+
+    // Background hills decoration
+    const hillW = 100;
+    for (let x = 0; x < W + hillW; x += hillW) {
+      const hOffset = Math.sin((x + time * 6) * 0.01) * 12;
+      drawCircle(vec2(x - (time * 15) % hillW, H - 15), 45 + hOffset, "rgba(49, 50, 68, 0.12)");
+    }
+
+    // Draw pipes
+    for (const p of pipes) {
+      drawRect(p.pos, p.size, "#313244");
+      drawRectOutline(p.pos, p.size, "#45475a", 1);
+      
+      if (p.type === "top") {
+        const capPos = vec2(p.pos.x - 2, p.size.y - 8);
+        drawRect(capPos, vec2(p.size.x + 4, 8), "#45475a");
+        drawRectOutline(capPos, vec2(p.size.x + 4, 8), "#585b70", 1);
+      } else {
+        const capPos = vec2(p.pos.x - 2, p.pos.y);
+        drawRect(capPos, vec2(p.size.x + 4, 8), "#45475a");
+        drawRectOutline(capPos, vec2(p.size.x + 4, 8), "#585b70", 1);
+      }
+    }
+
+    // Ground
+    drawRect(vec2(0, H - 15), vec2(W, 15), "#181825");
+    drawLine(vec2(0, H - 15), vec2(W, H - 15), "#a6e3a1", 2);
+
+    // Draw player bird
+    if (gameState !== "gameover") {
+      drawRect(bird.pos, bird.size, "#f9e2af");
+      const eyeX = bird.pos.x + bird.size.x - 4;
+      drawRect(vec2(eyeX, bird.pos.y + 2), vec2(2, 2), "#11111b");
+      drawRect(vec2(bird.pos.x + 2, bird.pos.y + 4), vec2(5, 4), "#fab387");
+      drawRect(vec2(bird.pos.x + bird.size.x, bird.pos.y + 5), vec2(3, 3), "#f38ba8");
+    }
+
+    renderParticles();
+
+    resetRenderTransform();
+
+    // HUD Header
+    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.85)");
+    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+
+    drawText(`SCORE: ${score}`, vec2(16, 10), { font: "bold 10px 'Monaspace Neon'", color: "#f9e2af" });
+    drawText(`HIGH: ${highScore}`, vec2(W - 16, 10), { font: "bold 10px 'Monaspace Neon'", color: "#fab387", align: "right" });
+
+    if (gameState === "idle") {
+      drawRect(vec2(0, 0), vec2(W, H), "rgba(17, 17, 27, 0.5)");
+      drawText("GRAVITY FLAPPER", vec2(W / 2, H / 2 - 20), { font: "bold 18px 'Monaspace Neon'", color: "#cba6f7", align: "center" });
+      drawText("PRESS SPACE OR TAP TO FLAP", vec2(W / 2, H / 2 + 10), { font: "10px 'Monaspace Neon'", color: "#a6adc8", align: "center" });
+    } else if (gameState === "gameover") {
+      drawRect(vec2(0, 0), vec2(W, H), "rgba(17, 17, 27, 0.8)");
+      drawText("SYSTEM SHUTDOWN // DESTROYED", vec2(W / 2, H / 2 - 15), { font: "bold 14px 'Monaspace Neon'", color: "#f38ba8", align: "center" });
+      drawText(`FINAL SCORE: ${score}`, vec2(W / 2, H / 2 + 10), { font: "10px 'Monaspace Neon'", color: "#f9e2af", align: "center" });
+      drawText("PRESS SPACE TO REBOOT", vec2(W / 2, H / 2 + 35), { font: "9px 'Monaspace Neon'", color: "#a6adc8", align: "center" });
+    }
+  }
+});
+
+document.getElementById('canvas-container').appendChild(engine.canvasManager.canvas);
+if (engine.overlayCanvas) {
+  document.getElementById('canvas-container').appendChild(engine.overlayCanvas);
+}
+</script>
+</body>
+</html>

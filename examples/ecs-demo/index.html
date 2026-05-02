@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="TinyTS ECS demo showing registry, components, views, and entity hierarchy.">
+  <meta name="theme-color" content="#1e1e2e">
+  <title>TinyTS - ECS Demo</title>
+  <link rel="icon" href="../public/favicon.svg" type="image/svg+xml">
+  <style>
+  @font-face {
+  font-family: 'Monaspace Neon';
+  src: url('https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1e1e2e; color: #cdd6f4; font-family: 'Monaspace Neon', monospace; overflow: hidden; display: flex; align-items: center; justify-content: center; width: 100vw; height: 100vh; }
+    #canvas-container { width: 100%; height: 100%; position: relative; background: #11111b; display: flex; align-items: center; justify-content: center; }
+    #canvas-container canvas { position: absolute !important; left: 50% !important; top: 50% !important; transform: translate(-50%, -50%) !important; max-width: 95% !important; max-height: 95% !important; width: auto !important; height: auto !important; aspect-ratio: 16/9 !important; border: 2px dashed #cba6f7; }
+  </style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<script src="../../dist/tinyts.js"></script>
+<script>
+const W = 640, H = 360;
+
+// -- Component constructors (plain JS classes) --
+class Position  { constructor(x = 0, y = 0) { this.x = x; this.y = y; } }
+class Velocity  { constructor(vx = 0, vy = 0) { this.vx = vx; this.vy = vy; } }
+class Health    { constructor(hp = 1, maxHp = hp) { this.hp = hp; this.maxHp = maxHp; } }
+class Sprite    { constructor(color = "#cdd6f4", size = 8) { this.color = color; this.size = size; } }
+
+// -- Registry setup --
+const reg = new Registry();
+
+// -- Pre-register component types for serialization --
+reg.registerComponentType("Position", Position);
+reg.registerComponentType("Velocity", Velocity);
+reg.registerComponentType("Health", Health);
+reg.registerComponentType("Sprite", Sprite);
+
+// Views: cached iterable collections of entities matching component sets
+const query = reg.view(Position, Sprite);       // entities with Position + Sprite
+const moving = reg.view(Position, Velocity);     // entities with Position + Velocity
+
+// Helper: spawn an entity with components (plain objects)
+function spawn(pos, vel, spr, hp) {
+  const e = reg.createEntity();
+  reg.addComponent(e, Position, pos);
+  if (vel) reg.addComponent(e, Velocity, vel);
+  if (spr) reg.addComponent(e, Sprite, spr);
+  if (hp)  reg.addComponent(e, Health, hp);
+  return e;
+}
+
+// -- Player --
+const player = spawn(
+  new Position(W / 2, H / 2),
+  new Velocity(0, 0),
+  new Sprite("#a6e3a1", 14),
+);
+
+// -- Enemies (ring formation) --
+for (let i = 0; i < 12; i++) {
+  const angle = (i / 12) * Math.PI * 2;
+  const dist = 80 + (i % 3) * 30;
+  spawn(
+    new Position(W / 2 + Math.cos(angle) * dist, H / 2 + Math.sin(angle) * dist),
+    new Velocity(0, 0),
+    new Sprite("#f38ba8", 10),
+    new Health(2),
+  );
+}
+
+// -- Health pickups (no velocity, no health component) --
+for (let i = 0; i < 4; i++) {
+  spawn(new Position(40 + i * 180, 40), null, new Sprite("#a6e3a1", 6));
+}
+
+// -- Entity hierarchy: parent with orbiting children --
+const group = spawn(new Position(120, 280), null, new Sprite("#585b70", 4));
+const childA = spawn(new Position(0, 0), null, new Sprite("#89b4fa", 8));
+const childB = spawn(new Position(0, 0), null, new Sprite("#89dceb", 8));
+reg.setParent(childA, group);
+reg.setParent(childB, group);
+
+let serialized = "";
+let serializedLen = 0;
+
+bindAction("up", ["ArrowUp", "KeyW"]);
+bindAction("down", ["ArrowDown", "KeyS"]);
+bindAction("left", ["ArrowLeft", "KeyA"]);
+bindAction("right", ["ArrowRight", "KeyD"]);
+bindAction("spawn", ["Space"]);
+bindAction("save", ["KeyX"]);
+
+const engine = engineStart({
+  size: { width: W, height: H },
+  pixelated: true,
+  update(dt) {
+    // Player movement via velocity
+    const pv = reg.getComponent(player, Velocity);
+    if (pv) {
+      pv.vx = 0; pv.vy = 0;
+      if (actionDown("up"))    pv.vy = -120;
+      if (actionDown("down"))  pv.vy = 120;
+      if (actionDown("left"))  pv.vx = -120;
+      if (actionDown("right")) pv.vx = 120;
+    }
+
+    // Move all entities with Position + Velocity
+    for (const e of moving) {
+      const pos = reg.getComponent(e, Position);
+      const vel = reg.getComponent(e, Velocity);
+      if (pos && vel) {
+        pos.x += vel.vx * dt;
+        pos.y += vel.vy * dt;
+        vel.vx *= 0.97;
+        vel.vy *= 0.97;
+        if (pos.x < -20) pos.x = W + 20;
+        if (pos.x > W + 20) pos.x = -20;
+        if (pos.y < -20) pos.y = H + 20;
+        if (pos.y > H + 20) pos.y = -20;
+      }
+    }
+
+    // Spawn random entity on Space
+    if (actionPressed("spawn")) {
+      spawn(
+        new Position(rand(20, W - 20), rand(20, H - 20)),
+        new Velocity(rand(-80, 80), rand(-80, 80)),
+        new Sprite(choose(["#fab387","#f9e2af","#94e2d5"]), rand(4, 10)),
+        new Health(1),
+      );
+    }
+
+    // Serialize registry on X
+    if (actionPressed("save")) {
+      serialized = reg.serialize();
+      serializedLen = serialized.length;
+    }
+
+    // Orbit children around parent
+    const gPos = reg.getComponent(group, Position);
+    if (gPos) {
+      const kids = reg.getComponent(group, Children);
+      if (kids) {
+        for (let i = 0; i < kids.entities.length; i++) {
+          const cPos = reg.getComponent(kids.entities[i], Position);
+          if (cPos) {
+            const angle = time * 2 + i * Math.PI;
+            cPos.x = gPos.x + Math.cos(angle) * 20;
+            cPos.y = gPos.y + Math.sin(angle) * 20;
+          }
+        }
+      }
+    }
+  },
+
+  render() {
+    clear("#11111b");
+
+    // Draw all entities with Sprite + Position
+    for (const e of query) {
+      const pos = reg.getComponent(e, Position);
+      const spr = reg.getComponent(e, Sprite);
+      if (pos && spr) {
+        drawRect(vec2(pos.x - spr.size / 2, pos.y - spr.size / 2), vec2(spr.size, spr.size), spr.color);
+        const hp = reg.getComponent(e, Health);
+        if (hp) {
+          const bw = spr.size;
+          drawRect(vec2(pos.x - bw / 2, pos.y - spr.size / 2 - 6), vec2(bw, 3), "#313244");
+          drawRect(vec2(pos.x - bw / 2, pos.y - spr.size / 2 - 6), vec2(bw * (hp.hp / hp.maxHp), 3), "#a6e3a1");
+        }
+      }
+    }
+
+    // Stats
+    const allPos = reg.view(Position);
+    drawText(`ENTITIES: ${allPos.length}`, vec2(10, 14), { color: "#a6adc8", size: 8 });
+    drawText(`VIEW (Sprite): ${query.length} drawn`, vec2(10, 26), { color: "#585b70", size: 7 });
+    drawText(`FPS: ${stats.fps}`, vec2(10, 38), { color: "#45475a", size: 7 });
+
+    if (serializedLen > 0) {
+      drawText("SERIALIZED (X)", vec2(W - 10, 14), { color: "#a6e3a1", size: 8, align: "right" });
+      drawText(`${serializedLen} chars`, vec2(W - 10, 26), { color: "#585b70", size: 7, align: "right" });
+    }
+
+    drawText("green=Player • red=Enemies • SPACE: spawn • X: serialize", vec2(W / 2, H - 10), { color: "#45475a", size: 7, align: "center", baseline: "bottom" });
+    drawText("ARROWS: move • teal dots orbit parent node", vec2(W / 2, 14), { color: "#585b70", size: 7, align: "center", baseline: "top" });
+  },
+});
+document.getElementById('canvas-container').appendChild(engine.canvasManager.canvas);
+if (engine.overlayCanvas) document.getElementById('canvas-container').appendChild(engine.overlayCanvas);
+</script>
+</body>
+</html>
