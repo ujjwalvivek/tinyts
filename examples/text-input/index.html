@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="TinyTS in-game text input demo showing chat-style text fields and name entry.">
+  <meta name="theme-color" content="#1e1e2e">
+  <title>TinyTS - Text Input</title>
+  <link rel="icon" href="../public/favicon.svg" type="image/svg+xml">
+  <style>
+  @font-face {
+  font-family: 'Monaspace Neon';
+  src: url('https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1e1e2e; color: #cdd6f4; font-family: 'Monaspace Neon', monospace; overflow: hidden; display: flex; align-items: center; justify-content: center; width: 100vw; height: 100vh; }
+    #canvas-container { width: 100%; height: 100%; position: relative; background: #11111b; display: flex; align-items: center; justify-content: center; }
+    #canvas-container canvas { position: absolute !important; left: 50% !important; top: 50% !important; transform: translate(-50%, -50%) !important; max-width: 95% !important; max-height: 95% !important; width: auto !important; height: auto !important; aspect-ratio: 16/9 !important; border: 2px dashed #cba6f7; }
+  </style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<script src="../../dist/tinyts.js"></script>
+<script>
+const W = 640, H = 360;
+
+const messages = [
+  { text: "> TinyTS v1.0 - Text Input Demo", color: "#585b70" },
+  { text: "> Press ENTER to type, ESC to cancel", color: "#585b70" },
+  { text: "> Try: /help, /name YourName, /clear", color: "#585b70" },
+];
+let inputValue = "";
+let isActive = false;
+let cursorBlink = 0;
+
+function processCmd(text) {
+  const t = text.trim();
+  if (t === "/help" || t === "/h") {
+    messages.push({ text: "> Commands: /help, /clear, /name <name>", color: "#89b4fa" });
+  } else if (t === "/clear") {
+    messages.length = 0;
+  } else if (t.startsWith("/name ")) {
+    messages.push({ text: `> Hello, ${t.slice(6).trim()}!`, color: "#f9e2af" });
+  } else if (t) {
+    messages.push({ text: `> ${t}`, color: "#cdd6f4" });
+  }
+}
+
+const engine = engineStart({
+  size: { width: W, height: H },
+  pixelated: true,
+  update(dt) {
+    cursorBlink += dt;
+
+    if (keyPressed("Enter") || keyPressed("NumpadEnter")) {
+      if (isActive) {
+        processCmd(inputValue);
+        inputValue = "";
+        stopTextInput();
+        isActive = false;
+      } else {
+        startTextInput("", (val) => { inputValue = val; });
+        isActive = true;
+      }
+    }
+
+    if (isActive) {
+      const state = getTextInput();
+      if (state) {
+        inputValue = state.value;
+        if (!state.active) { stopTextInput(); isActive = false; }
+      }
+    }
+  },
+
+  render() {
+    clear("#11111b");
+
+    // Chat window - shorter to leave room for input at bottom
+    drawRect(vec2(10, 10), vec2(W - 20, H - 80), "#181825");
+    drawRectOutline(vec2(10, 10), vec2(W - 20, H - 80), "#313244", 1);
+    drawText("TEXT INPUT", vec2(18, 16), { color: "#cba6f7", size: 8, weight: "bold" });
+    drawText("/help for commands", vec2(W - 18, 16), { color: "#45475a", size: 7, align: "right" });
+
+    const maxVis = 7;
+    const start = Math.max(0, messages.length - maxVis);
+    for (let i = start; i < messages.length; i++) {
+      drawText(messages[i].text, vec2(18, 32 + (i - start) * 20), { color: messages[i].color, size: 8 });
+    }
+
+    // Input field - moved up from bottom edge
+    const iy = H - 58;
+    drawRect(vec2(12, iy), vec2(W - 24, 22), "#11111b");
+    drawRectOutline(vec2(12, iy), vec2(W - 24, 22), isActive ? "#cba6f7" : "#313244", 1);
+
+    drawText(">", vec2(20, iy + 11), { color: "#a6e3a1", size: 9, baseline: "middle" });
+    const display = inputValue || (isActive ? "" : "press ENTER to type");
+    drawText(display, vec2(30, iy + 11), { color: isActive || inputValue ? "#cdd6f4" : "#45475a", size: 9, baseline: "middle" });
+
+    if (isActive && Math.floor(cursorBlink * 3) % 2 === 0) {
+      drawRect(vec2(30 + display.length * 5.5, iy + 4), vec2(2, 14), "#cba6f7");
+    }
+
+    drawText(isActive ? "INPUT ACTIVE - ENTER to submit, ESC to cancel" : "PRESS ENTER to start typing", vec2(W / 2, H - 6), {
+      color: isActive ? "#a6e3a1" : "#585b70", size: 6, align: "center", baseline: "bottom",
+    });
+  },
+});
+document.getElementById('canvas-container').appendChild(engine.canvasManager.canvas);
+if (engine.overlayCanvas) document.getElementById('canvas-container').appendChild(engine.overlayCanvas);
+</script>
+</body>
+</html>
