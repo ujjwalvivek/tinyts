@@ -1,599 +1,1129 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="TinyTS pattern-based music sequencer - build a cinematic synthwave game track with code." />
-  <meta name="theme-color" content="#1e1e2e" />
-  <title>TinyTS - Sequencer Lab</title>
-  <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
-  <style>
-  @font-face {
-  font-family: 'Monaspace Neon';
-  src: url('https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2') format('woff2');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: block;
-}
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Monaspace Neon', monospace;
-      background: #1e1e2e;
-      color: #cdd6f4;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      padding: 16px;
-    }
-    #app { max-width: 960px; width: 100%; }
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="TinyTS pattern-based music sequencer - build a cinematic synthwave game track with code."
+        />
+        <meta name="theme-color" content="#1e1e2e" />
+        <title>TinyTS - Sequencer Lab</title>
+        <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                font-family: "Monaspace Neon", monospace;
+                background: #1e1e2e;
+                color: #cdd6f4;
+                min-height: 100vh;
+                display: flex;
+                justify-content: center;
+                padding: 16px;
+            }
+            #app {
+                max-width: 960px;
+                width: 100%;
+            }
 
-    #transport {
-      display: flex; align-items: center; gap: 10px;
-      background: #181825; border: 2px dashed #cba6f7;
-      padding: 10px 14px; margin-bottom: 14px; flex-wrap: wrap;
-    }
-    #transport .btn {
-      font: inherit; font-size: 11px; font-weight: 700;
-      padding: 6px 18px; border: 1px solid #45475a; cursor: pointer;
-      transition: all 0.12s; letter-spacing: 0.5px;
-      border-radius: 0 !important;
-    }
-    #play-btn  { background: #a6e3a1; color: #11111b; }
-    #play-btn:hover { background: #89b4fa; border-color: #89b4fa; }
-    #stop-btn  { background: #313244; color: #cdd6f4; border: 1px solid #45475a; padding: 5px 16px; }
-    #stop-btn:hover { border-color: #f38ba8; color: #f38ba8; }
-    #position {
-      font-size: 14px; font-weight: 700; color: #89b4fa; letter-spacing: 1px;
-      margin-left: 8px; min-width: 90px; font-variant-numeric: tabular-nums;
-    }
-    #section-tag {
-      font-size: 9px; padding: 2px 8px; letter-spacing: 0.5px;
-      background: rgba(137,180,250,0.08); color: #89b4fa;
-      margin-left: 4px; text-transform: uppercase;
-      border-radius: 0 !important;
-    }
-    .ctrl-group {
-      display: flex; align-items: center; gap: 6px; margin-left: auto;
-    }
-    .ctrl-group label { font-size: 10px; color: #a6adc8; text-transform: uppercase; letter-spacing: 0.5px; }
-    .ctrl-group input[type="range"] {
-      width: 80px; height: 6px; -webkit-appearance: none; appearance: none;
-      background: #11111b; border: 1px solid #313244; outline: none; border-radius: 0 !important;
-    }
-    .ctrl-group input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 10px; height: 10px;
-      background: #cba6f7; cursor: pointer; border: none; border-radius: 0 !important;
-    }
-    .ctrl-group input[type="range"]::-moz-range-thumb {
-      width: 10px; height: 10px; background: #cba6f7; cursor: pointer; border: none; border-radius: 0 !important;
-    }
-    .ctrl-group .val { font-size: 12px; color: #cdd6f4; min-width: 28px; text-align: right; font-weight: 700; }
+            #transport {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                background: #181825;
+                border: 2px dashed #cba6f7;
+                padding: 10px 14px;
+                margin-bottom: 14px;
+                flex-wrap: wrap;
+            }
+            #transport .btn {
+                font: inherit;
+                font-size: 11px;
+                font-weight: 700;
+                padding: 6px 18px;
+                border: 1px solid #45475a;
+                cursor: pointer;
+                transition: all 0.12s;
+                letter-spacing: 0.5px;
+                border-radius: 0 !important;
+            }
+            #play-btn {
+                background: #a6e3a1;
+                color: #11111b;
+            }
+            #play-btn:hover {
+                background: #89b4fa;
+                border-color: #89b4fa;
+            }
+            #stop-btn {
+                background: #313244;
+                color: #cdd6f4;
+                border: 1px solid #45475a;
+                padding: 5px 16px;
+            }
+            #stop-btn:hover {
+                border-color: #f38ba8;
+                color: #f38ba8;
+            }
+            #position {
+                font-size: 14px;
+                font-weight: 700;
+                color: #89b4fa;
+                letter-spacing: 1px;
+                margin-left: 8px;
+                min-width: 90px;
+                font-variant-numeric: tabular-nums;
+            }
+            #section-tag {
+                font-size: 9px;
+                padding: 2px 8px;
+                letter-spacing: 0.5px;
+                background: rgba(137, 180, 250, 0.08);
+                color: #89b4fa;
+                margin-left: 4px;
+                text-transform: uppercase;
+                border-radius: 0 !important;
+            }
+            .ctrl-group {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                margin-left: auto;
+            }
+            .ctrl-group label {
+                font-size: 10px;
+                color: #a6adc8;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .ctrl-group input[type="range"] {
+                width: 80px;
+                height: 6px;
+                -webkit-appearance: none;
+                appearance: none;
+                background: #11111b;
+                border: 1px solid #313244;
+                outline: none;
+                border-radius: 0 !important;
+            }
+            .ctrl-group input[type="range"]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: 10px;
+                height: 10px;
+                background: #cba6f7;
+                cursor: pointer;
+                border: none;
+                border-radius: 0 !important;
+            }
+            .ctrl-group input[type="range"]::-moz-range-thumb {
+                width: 10px;
+                height: 10px;
+                background: #cba6f7;
+                cursor: pointer;
+                border: none;
+                border-radius: 0 !important;
+            }
+            .ctrl-group .val {
+                font-size: 12px;
+                color: #cdd6f4;
+                min-width: 28px;
+                text-align: right;
+                font-weight: 700;
+            }
 
-    #tracks { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-    .track-card {
-      flex: 1; min-width: 160px; background: #181825;
-      border: 2px dashed #cba6f7; padding: 10px 12px;
-      transition: all 0.15s;
-    }
-    .track-card.active { border-color: #cba6f7; background: #1e1e2e; }
-    .track-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-    .track-name { font-size: 11px; font-weight: 700; color: #cdd6f4; }
-    .track-wave {
-      font-size: 8px; padding: 1px 6px; letter-spacing: 0.5px; text-transform: uppercase;
-      border-radius: 0 !important;
-    }
-    .wave-square   { background: rgba(137,180,250,0.12); color: #89b4fa; }
-    .wave-sawtooth { background: rgba(243,139,168,0.12); color: #f38ba8; }
-    .wave-triangle { background: rgba(249,226,175,0.12); color: #f9e2af; }
-    .wave-sine     { background: rgba(166,227,161,0.12); color: #a6e3a1; }
-    .wave-noise    { background: rgba(203,166,247,0.12); color: #cba6f7; }
-    .track-now { font-size: 12px; font-weight: 700; color: #89b4fa; min-height: 18px; }
-    .track-now .idle { color: #585b70; font-weight: 400; font-size: 10px; }
+            #tracks {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 14px;
+            }
+            .track-card {
+                flex: 1;
+                min-width: 160px;
+                background: #181825;
+                border: 2px dashed #cba6f7;
+                padding: 10px 12px;
+                transition: all 0.15s;
+            }
+            .track-card.active {
+                border-color: #cba6f7;
+                background: #1e1e2e;
+            }
+            .track-head {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 6px;
+            }
+            .track-name {
+                font-size: 11px;
+                font-weight: 700;
+                color: #cdd6f4;
+            }
+            .track-wave {
+                font-size: 8px;
+                padding: 1px 6px;
+                letter-spacing: 0.5px;
+                text-transform: uppercase;
+                border-radius: 0 !important;
+            }
+            .wave-square {
+                background: rgba(137, 180, 250, 0.12);
+                color: #89b4fa;
+            }
+            .wave-sawtooth {
+                background: rgba(243, 139, 168, 0.12);
+                color: #f38ba8;
+            }
+            .wave-triangle {
+                background: rgba(249, 226, 175, 0.12);
+                color: #f9e2af;
+            }
+            .wave-sine {
+                background: rgba(166, 227, 161, 0.12);
+                color: #a6e3a1;
+            }
+            .wave-noise {
+                background: rgba(203, 166, 247, 0.12);
+                color: #cba6f7;
+            }
+            .track-now {
+                font-size: 12px;
+                font-weight: 700;
+                color: #89b4fa;
+                min-height: 18px;
+            }
+            .track-now .idle {
+                color: #585b70;
+                font-weight: 400;
+                font-size: 10px;
+            }
 
-    #grid-section { background: #181825; border: 2px dashed #cba6f7; padding: 12px; margin-bottom: 14px; }
-    #grid-section .title {
-      font-size: 10px; font-weight: 700; color: #b4befe;
-      text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;
-    }
-    #grid-scroll { overflow-x: auto; }
-    #grid-scroll::-webkit-scrollbar { height: 6px; }
-    #grid-scroll::-webkit-scrollbar-track { background: transparent; }
-    #grid-scroll::-webkit-scrollbar-thumb { background: #313244; border-radius: 0; }
-    #grid {
-      display: grid;
-      grid-template-columns: 44px repeat(128, 10px);
-      gap: 1px; font-size: 7px;
-    }
-    .grid-label { color: #a6adc8; padding: 1px 3px; text-align: right; line-height: 12px; height: 12px; }
-    .grid-bar { color: #a6adc8; padding: 1px 0; text-align: center; line-height: 12px; height: 12px; font-size: 6px; }
-    .grid-cell { width: 10px; height: 12px; background: #11111b; border-radius: 0 !important; }
-    .grid-cell.bass   { background: #89b4fa; }
-    .grid-cell.arp    { background: #f38ba8; }
-    .grid-cell.lead   { background: #f9e2af; }
-    .grid-cell.pad    { background: #a6e3a1; }
-    .grid-cell.perc   { background: #cba6f7; }
-    .grid-cell.beat   { background: #313244; }
-    .grid-cell.playhead { outline: 1px solid #cdd6f4; outline-offset: -1px; opacity: 0.7; }
+            #grid-section {
+                background: #181825;
+                border: 2px dashed #cba6f7;
+                padding: 12px;
+                margin-bottom: 14px;
+            }
+            #grid-section .title {
+                font-size: 10px;
+                font-weight: 700;
+                color: #b4befe;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                margin-bottom: 8px;
+            }
+            #grid-scroll {
+                overflow-x: auto;
+            }
+            #grid-scroll::-webkit-scrollbar {
+                height: 6px;
+            }
+            #grid-scroll::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            #grid-scroll::-webkit-scrollbar-thumb {
+                background: #313244;
+                border-radius: 0;
+            }
+            #grid {
+                display: grid;
+                grid-template-columns: 44px repeat(128, 10px);
+                gap: 1px;
+                font-size: 7px;
+            }
+            .grid-label {
+                color: #a6adc8;
+                padding: 1px 3px;
+                text-align: right;
+                line-height: 12px;
+                height: 12px;
+            }
+            .grid-bar {
+                color: #a6adc8;
+                padding: 1px 0;
+                text-align: center;
+                line-height: 12px;
+                height: 12px;
+                font-size: 6px;
+            }
+            .grid-cell {
+                width: 10px;
+                height: 12px;
+                background: #11111b;
+                border-radius: 0 !important;
+            }
+            .grid-cell.bass {
+                background: #89b4fa;
+            }
+            .grid-cell.arp {
+                background: #f38ba8;
+            }
+            .grid-cell.lead {
+                background: #f9e2af;
+            }
+            .grid-cell.pad {
+                background: #a6e3a1;
+            }
+            .grid-cell.perc {
+                background: #cba6f7;
+            }
+            .grid-cell.beat {
+                background: #313244;
+            }
+            .grid-cell.playhead {
+                outline: 1px solid #cdd6f4;
+                outline-offset: -1px;
+                opacity: 0.7;
+            }
 
-    #code-section { background: #181825; border: 2px dashed #cba6f7; padding: 12px; }
-    #code-section summary {
-      font-size: 10px; font-weight: 700; color: #b4befe;
-      text-transform: uppercase; letter-spacing: 0.8px; cursor: pointer;
-    }
-    #code-section summary:hover { color: #cdd6f4; }
-    #code-box {
-      background: #11111b; border: 1px solid #313244; padding: 10px 12px;
-      font-size: 10px; line-height: 1.5; color: #cdd6f4;
-      white-space: pre; overflow-x: auto; max-height: 220px; overflow-y: auto; margin-top: 8px;
-      border-radius: 0 !important;
-    }
-    #copy-btn {
-      font: inherit; font-size: 10px; padding: 4px 12px;
-      background: #313244; border: 1px solid #45475a;
-      color: #cdd6f4; cursor: pointer; margin-top: 4px;
-      border-radius: 0 !important;
-      transition: all 0.15s;
-    }
-    #copy-btn:hover { border-color: #89b4fa; background: #45475a; }
-    #copy-btn.copied { border-color: #a6e3a1; color: #a6e3a1; }
-  </style>
-</head>
-<body>
-<div id="app">
+            #code-section {
+                background: #181825;
+                border: 2px dashed #cba6f7;
+                padding: 12px;
+            }
+            #code-section summary {
+                font-size: 10px;
+                font-weight: 700;
+                color: #b4befe;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                cursor: pointer;
+            }
+            #code-section summary:hover {
+                color: #cdd6f4;
+            }
+            #code-box {
+                background: #11111b;
+                border: 1px solid #313244;
+                padding: 10px 12px;
+                font-size: 10px;
+                line-height: 1.5;
+                color: #cdd6f4;
+                white-space: pre;
+                overflow-x: auto;
+                max-height: 220px;
+                overflow-y: auto;
+                margin-top: 8px;
+                border-radius: 0 !important;
+            }
+            #copy-btn {
+                font: inherit;
+                font-size: 10px;
+                padding: 4px 12px;
+                background: #313244;
+                border: 1px solid #45475a;
+                color: #cdd6f4;
+                cursor: pointer;
+                margin-top: 4px;
+                border-radius: 0 !important;
+                transition: all 0.15s;
+            }
+            #copy-btn:hover {
+                border-color: #89b4fa;
+                background: #45475a;
+            }
+            #copy-btn.copied {
+                border-color: #a6e3a1;
+                color: #a6e3a1;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="app">
+            <div id="transport">
+                <button class="btn" id="play-btn">&#9654; PLAY</button>
+                <button class="btn" id="stop-btn">&#9632; STOP</button>
+                <span id="position">01:01:01</span>
+                <span id="section-tag">intro</span>
+                <div class="ctrl-group">
+                    <label>BPM</label>
+                    <input
+                        type="range"
+                        id="bpm"
+                        min="60"
+                        max="140"
+                        value="95"
+                        step="1"
+                    />
+                    <span class="val" id="bpm-val">95</span>
+                </div>
+            </div>
+            <div id="tracks"></div>
+            <div id="grid-section">
+                <div class="title">
+                    Piano Roll &mdash;
+                    <span id="grid-info">32 bars, 128 sixteenths</span>
+                </div>
+                <div id="grid-scroll"><div id="grid"></div></div>
+            </div>
+            <div id="code-section">
+                <details open>
+                    <summary>Generated Code</summary>
+                    <pre id="code-box">{ }</pre>
+                    <button id="copy-btn">Copy Code</button>
+                </details>
+            </div>
+        </div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            (function () {
+                const $ = (id) => document.getElementById(id);
+                const NOTE = [
+                    "C",
+                    "C#",
+                    "D",
+                    "D#",
+                    "E",
+                    "F",
+                    "F#",
+                    "G",
+                    "G#",
+                    "A",
+                    "A#",
+                    "B",
+                ];
+                const midiName = (n) => NOTE[n % 12] + Math.floor(n / 12 - 1);
 
-<div id="transport">
-  <button class="btn" id="play-btn">&#9654; PLAY</button>
-  <button class="btn" id="stop-btn">&#9632; STOP</button>
-  <span id="position">01:01:01</span>
-  <span id="section-tag">intro</span>
-  <div class="ctrl-group">
-    <label>BPM</label>
-    <input type="range" id="bpm" min="60" max="140" value="95" step="1">
-    <span class="val" id="bpm-val">95</span>
-  </div>
-</div>
+                const BAR = 32;
 
-<div id="tracks"></div>
+                const BASS = [];
+                const bassHarmony = [
+                    // bars 1-8:  Intro - sparse
+                    48,
+                    56,
+                    53,
+                    55, // C3, Ab3, F3, G3
+                    48,
+                    56,
+                    53,
+                    55,
+                    // bars 9-16: Verse - full
+                    48,
+                    56,
+                    53,
+                    55,
+                    51,
+                    56,
+                    53,
+                    58, // Eb3, Ab3, F3, Bb3
+                    // bars 17-24: Bridge - suspended
+                    48,
+                    56,
+                    51,
+                    55, // C3, Ab3, Eb3, G3
+                    53,
+                    58,
+                    51,
+                    55, // F3, Bb3, Eb3, G3
+                    // bars 25-32: Climax - driving
+                    48,
+                    56,
+                    53,
+                    55,
+                    48,
+                    56,
+                    48,
+                    48,
+                ];
+                for (let b = 0; b < BAR; b++) {
+                    const root = bassHarmony[b];
+                    BASS.push({
+                        beat: b * 4,
+                        note: root,
+                        duration: 1.5,
+                        velocity: 0.35,
+                    });
+                    BASS.push({
+                        beat: b * 4 + 2,
+                        note: root + 12,
+                        duration: 1.0,
+                        velocity: 0.25,
+                    });
+                    if (b >= 24) {
+                        BASS.push({
+                            beat: b * 4 + 3,
+                            note: root + 7,
+                            duration: 0.5,
+                            velocity: 0.2,
+                        });
+                    }
+                }
 
-<div id="grid-section">
-  <div class="title">Piano Roll &mdash; <span id="grid-info">32 bars, 128 sixteenths</span></div>
-  <div id="grid-scroll"><div id="grid"></div></div>
-</div>
+                const ARP = [];
+                const arpChords = [
+                    // Cm7: C4, Eb4, G4, Bb4
+                    [60, 63, 67, 70],
+                    // Abmaj7: Ab3, C4, Eb4, G4
+                    [56, 60, 63, 67],
+                    // Fm7: F3, Ab3, C4, Eb4
+                    [53, 56, 60, 63],
+                    // G7: G3, B3, D4, F4
+                    [55, 59, 62, 65],
+                    // Cm7
+                    [60, 63, 67, 70],
+                    // Abmaj7
+                    [56, 60, 63, 67],
+                    // Fm7
+                    [53, 56, 60, 63],
+                    // G7
+                    [55, 59, 62, 65],
+                    // Repeat for bars 9-16
+                    [60, 63, 67, 70],
+                    [56, 60, 63, 67],
+                    [53, 56, 60, 63],
+                    [55, 59, 62, 65],
+                    // Eb: Eb3, G3, Bb3, D4
+                    [51, 55, 58, 62],
+                    [56, 60, 63, 67],
+                    [53, 56, 60, 63],
+                    [58, 62, 65, 70],
+                    // Bridge (17-24): wider, more space
+                    [60, 67, 72, 79],
+                    [56, 63, 68, 75],
+                    [51, 58, 63, 70],
+                    [55, 62, 67, 74],
+                    [53, 60, 65, 72],
+                    [58, 62, 67, 74],
+                    [51, 58, 63, 70],
+                    [55, 62, 67, 74],
+                    // Climax (25-32): full
+                    [60, 63, 67, 70],
+                    [56, 60, 63, 67],
+                    [53, 56, 60, 63],
+                    [55, 59, 62, 65],
+                    [60, 63, 67, 70],
+                    [56, 60, 63, 67],
+                    [48, 51, 55, 60],
+                    [48, 51, 55, 60],
+                ];
+                for (let b = 0; b < BAR; b++) {
+                    const chord = arpChords[b];
+                    const velocity =
+                        b < 8
+                            ? 0.08
+                            : b < 12
+                              ? 0.14
+                              : b < 21
+                                ? 0.18
+                                : b < 25
+                                  ? 0.1
+                                  : 0.2;
+                    for (let i = 0; i < 8; i++) {
+                        ARP.push({
+                            beat: b * 4 + i * 0.5,
+                            note: chord[i % 4],
+                            duration: 0.35,
+                            velocity,
+                            slide: i === 0 && b % 4 === 0 ? 20 : 0,
+                        });
+                    }
+                }
 
-<div id="code-section">
-  <details open>
-    <summary>Generated Code</summary>
-    <pre id="code-box">{ }</pre>
-    <button id="copy-btn">Copy Code</button>
-  </details>
-</div>
+                const LEAD = [];
+                const leadPhrase = (bar, notes) => {
+                    for (const n of notes)
+                        LEAD.push({
+                            beat: bar * 4 + n[0],
+                            note: n[1],
+                            duration: n[2],
+                            velocity: n[3],
+                            slide: n[4] || 0,
+                        });
+                };
+                for (let b = 0; b < 8; b++) {
+                    if (b % 4 === 0)
+                        leadPhrase(b, [
+                            [0, 72, 2, 0.25, -30],
+                            [2, 75, 0.5, 0.2],
+                            [2.5, 79, 0.5, 0.2],
+                        ]);
+                    if (b % 4 === 2)
+                        leadPhrase(b, [
+                            [0, 67, 1.5, 0.2],
+                            [1.5, 70, 0.5, 0.15],
+                            [2, 72, 2, 0.25, -20],
+                        ]);
+                }
+                leadPhrase(8, [
+                    [0, 79, 1, 0.3],
+                    [1, 75, 0.5, 0.25],
+                    [1.5, 72, 0.25, 0.2],
+                    [1.75, 75, 0.25, 0.2],
+                    [2, 79, 1.5, 0.3],
+                    [3.5, 80, 0.5, 0.2],
+                ]);
+                leadPhrase(9, [
+                    [0, 82, 2, 0.35, 40],
+                    [2, 79, 0.5, 0.25],
+                    [2.5, 75, 0.5, 0.2],
+                    [3, 72, 1, 0.25],
+                ]);
+                leadPhrase(10, [
+                    [0, 75, 1, 0.25],
+                    [1, 79, 0.5, 0.3],
+                    [1.5, 75, 0.25, 0.2],
+                    [1.75, 72, 0.25, 0.2],
+                    [2, 70, 1.5, 0.3],
+                    [3.5, 72, 0.5, 0.2],
+                ]);
+                leadPhrase(11, [
+                    [0, 75, 1, 0.3],
+                    [1, 72, 0.5, 0.2],
+                    [1.5, 70, 0.25, 0.2],
+                    [1.75, 72, 0.25, 0.2],
+                    [2, 75, 2, 0.35, -50],
+                ]);
+                leadPhrase(12, [
+                    [0, 77, 1, 0.3],
+                    [1, 75, 0.5, 0.25],
+                    [1.5, 72, 0.25, 0.2],
+                    [1.75, 70, 0.25, 0.2],
+                    [2, 72, 1.5, 0.3],
+                    [3.5, 75, 0.5, 0.2],
+                ]);
+                leadPhrase(13, [
+                    [0, 79, 1.5, 0.3],
+                    [1.5, 77, 0.5, 0.25],
+                    [2, 75, 1, 0.3],
+                    [3, 72, 0.5, 0.2],
+                    [3.5, 75, 0.5, 0.25],
+                ]);
+                leadPhrase(14, [
+                    [0, 79, 2, 0.35, 30],
+                    [2, 82, 1, 0.3],
+                    [3, 84, 1, 0.35, -40],
+                ]);
+                leadPhrase(15, [
+                    [0, 87, 2, 0.4, -60],
+                    [2, 84, 0.5, 0.25],
+                    [2.5, 82, 0.5, 0.2],
+                    [3, 79, 1, 0.3],
+                ]);
+                for (let b = 16; b < 20; b++) {
+                    if (b % 2 === 0)
+                        leadPhrase(b, [
+                            [0.5, 75, 2, 0.15, -20],
+                            [2.5, 79, 1.5, 0.12, 20],
+                        ]);
+                    else
+                        leadPhrase(b, [
+                            [1, 72, 2, 0.12, -15],
+                            [3, 75, 1, 0.1],
+                        ]);
+                }
+                for (let b = 20; b < 24; b++) {
+                    leadPhrase(b, [
+                        [0, 79 + (b % 2) * 3, 1.5, 0.25],
+                        [1.5, 75 + (b % 2) * 2, 0.5, 0.2],
+                        [2, 72 + (b % 2) * 4, 1, 0.25, 30],
+                        [3, 79, 1, 0.2],
+                    ]);
+                }
+                leadPhrase(24, [
+                    [0, 79, 1, 0.3],
+                    [1, 75, 0.5, 0.25],
+                    [1.5, 79, 0.25, 0.2],
+                    [1.75, 82, 0.25, 0.2],
+                    [2, 84, 2, 0.4, -50],
+                ]);
+                leadPhrase(25, [
+                    [0, 82, 1, 0.3],
+                    [1, 79, 0.5, 0.25],
+                    [1.5, 75, 0.25, 0.2],
+                    [1.75, 72, 0.25, 0.2],
+                    [2, 75, 2, 0.35, -40],
+                ]);
+                leadPhrase(26, [
+                    [0, 79, 1.5, 0.3],
+                    [1.5, 75, 0.5, 0.2],
+                    [2, 72, 1.5, 0.3],
+                    [3.5, 75, 0.5, 0.2],
+                ]);
+                leadPhrase(27, [
+                    [0, 79, 1, 0.3],
+                    [1, 82, 1, 0.35],
+                    [2, 84, 2, 0.4, -60],
+                ]);
+                leadPhrase(28, [
+                    [0, 87, 3, 0.45, -80],
+                    [3, 84, 1, 0.25],
+                ]);
+                leadPhrase(29, [
+                    [0, 82, 1.5, 0.3],
+                    [1.5, 79, 0.5, 0.2],
+                    [2, 75, 2, 0.3, -30],
+                ]);
+                leadPhrase(30, [
+                    [0, 72, 1, 0.25],
+                    [1, 75, 0.5, 0.2],
+                    [1.5, 72, 0.25, 0.15],
+                    [1.75, 70, 0.25, 0.15],
+                    [2, 72, 2, 0.3, -20],
+                ]);
+                leadPhrase(31, [
+                    [0, 75, 2, 0.25],
+                    [2, 72, 1.5, 0.2],
+                    [3.5, 67, 0.5, 0.15],
+                ]);
 
-</div>
+                const PAD = [];
+                const padChords = [
+                    // bars 1-4: Cm → Ab → Fm → G7
+                    [[48, 55, 60, 67], 4],
+                    [[56, 60, 63, 68], 4],
+                    [[53, 60, 65, 72], 4],
+                    [[55, 59, 62, 67], 4],
+                    // bars 5-8: repeat
+                    [[48, 55, 60, 67], 4],
+                    [[56, 60, 63, 68], 4],
+                    [[53, 60, 65, 72], 4],
+                    [[55, 59, 62, 67], 4],
+                    // bars 9-16: Verse
+                    [[48, 55, 60, 67], 4],
+                    [[56, 60, 63, 68], 4],
+                    [[53, 60, 65, 72], 4],
+                    [[55, 59, 62, 67], 4],
+                    [[51, 55, 58, 63], 4],
+                    [[56, 60, 63, 68], 4],
+                    [[53, 60, 65, 72], 4],
+                    [[58, 62, 65, 70], 4],
+                    // bars 17-20: Bridge - sustained, ethereal
+                    [[48, 55, 60, 67], 8],
+                    [[56, 60, 63, 68], 8],
+                    // bars 21-24: Build tension
+                    [[51, 55, 58, 63], 4],
+                    [[56, 60, 63, 68], 4],
+                    [[53, 60, 65, 72], 4],
+                    [[55, 62, 67, 74], 4],
+                    // bars 25-32: Climax
+                    [[48, 55, 60, 67], 4],
+                    [[56, 60, 63, 68], 4],
+                    [[53, 60, 65, 72], 4],
+                    [[55, 59, 62, 67], 4],
+                    [[48, 55, 60, 67], 4],
+                    [[56, 60, 63, 68], 4],
+                    [[48, 51, 55, 60], 4],
+                    [[48, 51, 55, 60], 4],
+                ];
+                let padBar = 0;
+                for (const [notes, dur] of padChords) {
+                    const vel =
+                        padBar < 4
+                            ? 0.12
+                            : padBar < 8
+                              ? 0.18
+                              : padBar < 16
+                                ? 0.22
+                                : padBar < 20
+                                  ? 0.15
+                                  : padBar < 24
+                                    ? 0.2
+                                    : 0.25;
+                    for (const n of notes)
+                        PAD.push({
+                            beat: padBar * 4,
+                            note: n,
+                            duration: dur,
+                            velocity: vel,
+                        });
+                    padBar += dur;
+                }
 
-<script src="../../dist/tinyts.js"></script>
-<script>
-(function() {
+                const PERC = [];
+                for (let b = 0; b < BAR; b++) {
+                    if (b < 8) continue;
 
-const $ = id => document.getElementById(id);
-const NOTE = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-const midiName = n => NOTE[n%12] + Math.floor(n/12-1);
+                    const velScale =
+                        b < 12 ? 0.5 : b < 21 ? 1.0 : b < 25 ? 0.4 : 1.0;
 
-// ─── 32-bar emotional synthwave track (C minor) ────────────────────────
-// Structure: Intro(1-8) → Build(9-12) → Verse(13-20) → Bridge(21-24) → Climax(25-32)
-// C minor scale: C, D, Eb, F, G, Ab, Bb
+                    PERC.push({
+                        beat: b * 4,
+                        note: 40,
+                        duration: 0.15,
+                        velocity: 0.5 * velScale,
+                    });
+                    PERC.push({
+                        beat: b * 4 + 2,
+                        note: 40,
+                        duration: 0.12,
+                        velocity: 0.4 * velScale,
+                    });
 
-const BAR = 32; // total bars
+                    PERC.push({
+                        beat: b * 4 + 1,
+                        note: 60,
+                        duration: 0.1,
+                        velocity: 0.35 * velScale,
+                        slide: -80,
+                    });
+                    PERC.push({
+                        beat: b * 4 + 3,
+                        note: 60,
+                        duration: 0.1,
+                        velocity: 0.3 * velScale,
+                        slide: -60,
+                    });
 
-// ── BASS: simple root-fifth movement, builds over time ─────────────────
-const BASS = [];
-const bassHarmony = [
-  // bars 1-8:  Intro - sparse
-  48, 56, 53, 55,  // C3, Ab3, F3, G3
-  48, 56, 53, 55,
-  // bars 9-16: Verse - full
-  48, 56, 53, 55,
-  51, 56, 53, 58,  // Eb3, Ab3, F3, Bb3
-  // bars 17-24: Bridge - suspended
-  48, 56, 51, 55,  // C3, Ab3, Eb3, G3
-  53, 58, 51, 55,  // F3, Bb3, Eb3, G3
-  // bars 25-32: Climax - driving
-  48, 56, 53, 55,
-  48, 56, 48, 48,
-];
-for (let b = 0; b < BAR; b++) {
-  const root = bassHarmony[b];
-  // Two pulses per bar
-  BASS.push({ beat: b * 4, note: root, duration: 1.5, velocity: 0.35 });
-  BASS.push({ beat: b * 4 + 2, note: root + 12, duration: 1.0, velocity: 0.25 });
-  // Extra pulse on beat 3 in climax section
-  if (b >= 24) {
-    BASS.push({ beat: b * 4 + 3, note: root + 7, duration: 0.5, velocity: 0.2 });
-  }
-}
+                    if (b >= 20 && b < 24) continue;
+                    for (let i = 0; i < 8; i++) {
+                        PERC.push({
+                            beat: b * 4 + i * 0.5,
+                            note: 72,
+                            duration: 0.04,
+                            velocity: (i % 2 === 0 ? 0.12 : 0.06) * velScale,
+                        });
+                    }
+                }
 
-// ── ARP: atmospheric 8th-note arpeggios, fades in ─────────────────────
-const ARP = [];
-const arpChords = [
-  // Cm7: C4, Eb4, G4, Bb4
-  [60, 63, 67, 70],
-  // Abmaj7: Ab3, C4, Eb4, G4
-  [56, 60, 63, 67],
-  // Fm7: F3, Ab3, C4, Eb4
-  [53, 56, 60, 63],
-  // G7: G3, B3, D4, F4
-  [55, 59, 62, 65],
-  // Cm7
-  [60, 63, 67, 70],
-  // Abmaj7
-  [56, 60, 63, 67],
-  // Fm7
-  [53, 56, 60, 63],
-  // G7
-  [55, 59, 62, 65],
-  // Repeat for bars 9-16
-  [60, 63, 67, 70],
-  [56, 60, 63, 67],
-  [53, 56, 60, 63],
-  [55, 59, 62, 65],
-  // Eb: Eb3, G3, Bb3, D4
-  [51, 55, 58, 62],
-  [56, 60, 63, 67],
-  [53, 56, 60, 63],
-  [58, 62, 65, 70],
-  // Bridge (17-24): wider, more space
-  [60, 67, 72, 79],
-  [56, 63, 68, 75],
-  [51, 58, 63, 70],
-  [55, 62, 67, 74],
-  [53, 60, 65, 72],
-  [58, 62, 67, 74],
-  [51, 58, 63, 70],
-  [55, 62, 67, 74],
-  // Climax (25-32): full
-  [60, 63, 67, 70],
-  [56, 60, 63, 67],
-  [53, 56, 60, 63],
-  [55, 59, 62, 65],
-  [60, 63, 67, 70],
-  [56, 60, 63, 67],
-  [48, 51, 55, 60],
-  [48, 51, 55, 60],
-];
-for (let b = 0; b < BAR; b++) {
-  const chord = arpChords[b];
-  const velocity = b < 8 ? 0.08 : b < 12 ? 0.14 : b < 21 ? 0.18 : b < 25 ? 0.10 : 0.20;
-  // 8th notes: two per beat
-  for (let i = 0; i < 8; i++) {
-    ARP.push({
-      beat: b * 4 + i * 0.5,
-      note: chord[i % 4],
-      duration: 0.35,
-      velocity,
-      slide: (i === 0 && b % 4 === 0) ? 20 : 0,
-    });
-  }
-}
+                const TRACK_DEFS = [
+                    {
+                        id: "pad",
+                        name: "Pad",
+                        wave: "sine",
+                        volume: 0.18,
+                        notes: PAD,
+                        bars: BAR,
+                        color: "pad",
+                    },
+                    {
+                        id: "bass",
+                        name: "Bass",
+                        wave: "square",
+                        volume: 0.3,
+                        pitchOffset: -12,
+                        notes: BASS,
+                        bars: BAR,
+                        color: "bass",
+                    },
+                    {
+                        id: "arp",
+                        name: "Arp",
+                        wave: "sawtooth",
+                        volume: 0.15,
+                        notes: ARP,
+                        bars: BAR,
+                        color: "arp",
+                    },
+                    {
+                        id: "lead",
+                        name: "Lead",
+                        wave: "triangle",
+                        volume: 0.22,
+                        notes: LEAD,
+                        bars: BAR,
+                        color: "lead",
+                    },
+                    {
+                        id: "perc",
+                        name: "Perc",
+                        wave: "noise",
+                        volume: 0.16,
+                        notes: PERC,
+                        bars: BAR,
+                        color: "perc",
+                    },
+                ];
 
-// ── LEAD: emotional melody with slides and space ──────────────────────
-const LEAD = [];
-const leadPhrase = (bar, notes) => {
-  for (const n of notes) LEAD.push({ beat: bar * 4 + n[0], note: n[1], duration: n[2], velocity: n[3], slide: n[4] || 0 });
-};
-// Intro (1-8): sparse, rising motif
-for (let b = 0; b < 8; b++) {
-  if (b % 4 === 0) leadPhrase(b, [[0, 72, 2, 0.25, -30], [2, 75, 0.5, 0.2], [2.5, 79, 0.5, 0.2]]);
-  if (b % 4 === 2) leadPhrase(b, [[0, 67, 1.5, 0.2], [1.5, 70, 0.5, 0.15], [2, 72, 2, 0.25, -20]]);
-}
-// Verse (9-16): full melody
-leadPhrase(8,  [[0, 79, 1, 0.3], [1, 75, 0.5, 0.25], [1.5, 72, 0.25, 0.2], [1.75, 75, 0.25, 0.2], [2, 79, 1.5, 0.3], [3.5, 80, 0.5, 0.2]]);
-leadPhrase(9,  [[0, 82, 2, 0.35, 40], [2, 79, 0.5, 0.25], [2.5, 75, 0.5, 0.2], [3, 72, 1, 0.25]]);
-leadPhrase(10, [[0, 75, 1, 0.25], [1, 79, 0.5, 0.3], [1.5, 75, 0.25, 0.2], [1.75, 72, 0.25, 0.2], [2, 70, 1.5, 0.3], [3.5, 72, 0.5, 0.2]]);
-leadPhrase(11, [[0, 75, 1, 0.3], [1, 72, 0.5, 0.2], [1.5, 70, 0.25, 0.2], [1.75, 72, 0.25, 0.2], [2, 75, 2, 0.35, -50]]);
-leadPhrase(12, [[0, 77, 1, 0.3], [1, 75, 0.5, 0.25], [1.5, 72, 0.25, 0.2], [1.75, 70, 0.25, 0.2], [2, 72, 1.5, 0.3], [3.5, 75, 0.5, 0.2]]);
-leadPhrase(13, [[0, 79, 1.5, 0.3], [1.5, 77, 0.5, 0.25], [2, 75, 1, 0.3], [3, 72, 0.5, 0.2], [3.5, 75, 0.5, 0.25]]);
-leadPhrase(14, [[0, 79, 2, 0.35, 30], [2, 82, 1, 0.3], [3, 84, 1, 0.35, -40]]);
-leadPhrase(15, [[0, 87, 2, 0.4, -60], [2, 84, 0.5, 0.25], [2.5, 82, 0.5, 0.2], [3, 79, 1, 0.3]]);
-// Bridge (17-20): quiet, spacious
-for (let b = 16; b < 20; b++) {
-  if (b % 2 === 0) leadPhrase(b, [[0.5, 75, 2, 0.15, -20], [2.5, 79, 1.5, 0.12, 20]]);
-  else leadPhrase(b, [[1, 72, 2, 0.12, -15], [3, 75, 1, 0.1]]);
-}
-// Climax (21-24): space before final
-for (let b = 20; b < 24; b++) {
-  leadPhrase(b, [[0, 79 + (b%2)*3, 1.5, 0.25], [1.5, 75 + (b%2)*2, 0.5, 0.2], [2, 72 + (b%2)*4, 1, 0.25, 30], [3, 79, 1, 0.2]]);
-}
-// Finale (25-32): emotional climax
-leadPhrase(24, [[0, 79, 1, 0.3], [1, 75, 0.5, 0.25], [1.5, 79, 0.25, 0.2], [1.75, 82, 0.25, 0.2], [2, 84, 2, 0.4, -50]]);
-leadPhrase(25, [[0, 82, 1, 0.3], [1, 79, 0.5, 0.25], [1.5, 75, 0.25, 0.2], [1.75, 72, 0.25, 0.2], [2, 75, 2, 0.35, -40]]);
-leadPhrase(26, [[0, 79, 1.5, 0.3], [1.5, 75, 0.5, 0.2], [2, 72, 1.5, 0.3], [3.5, 75, 0.5, 0.2]]);
-leadPhrase(27, [[0, 79, 1, 0.3], [1, 82, 1, 0.35], [2, 84, 2, 0.4, -60]]);
-leadPhrase(28, [[0, 87, 3, 0.45, -80], [3, 84, 1, 0.25]]);
-leadPhrase(29, [[0, 82, 1.5, 0.3], [1.5, 79, 0.5, 0.2], [2, 75, 2, 0.3, -30]]);
-leadPhrase(30, [[0, 72, 1, 0.25], [1, 75, 0.5, 0.2], [1.5, 72, 0.25, 0.15], [1.75, 70, 0.25, 0.15], [2, 72, 2, 0.3, -20]]);
-leadPhrase(31, [[0, 75, 2, 0.25], [2, 72, 1.5, 0.2], [3.5, 67, 0.5, 0.15]]);
+                let seq = null;
+                const SECTION_NAMES = [
+                    "intro",
+                    "build",
+                    "verse",
+                    "bridge",
+                    "climax",
+                ];
 
-// ── PAD: sustained chord wash ──────────────────────────────────────────
-const PAD = [];
-const padChords = [
-  // bars 1-4: Cm → Ab → Fm → G7
-  [[48, 55, 60, 67], 4], [[56, 60, 63, 68], 4],
-  [[53, 60, 65, 72], 4], [[55, 59, 62, 67], 4],
-  // bars 5-8: repeat
-  [[48, 55, 60, 67], 4], [[56, 60, 63, 68], 4],
-  [[53, 60, 65, 72], 4], [[55, 59, 62, 67], 4],
-  // bars 9-16: Verse
-  [[48, 55, 60, 67], 4], [[56, 60, 63, 68], 4],
-  [[53, 60, 65, 72], 4], [[55, 59, 62, 67], 4],
-  [[51, 55, 58, 63], 4], [[56, 60, 63, 68], 4],
-  [[53, 60, 65, 72], 4], [[58, 62, 65, 70], 4],
-  // bars 17-20: Bridge - sustained, ethereal
-  [[48, 55, 60, 67], 8], [[56, 60, 63, 68], 8],
-  // bars 21-24: Build tension
-  [[51, 55, 58, 63], 4], [[56, 60, 63, 68], 4],
-  [[53, 60, 65, 72], 4], [[55, 62, 67, 74], 4],
-  // bars 25-32: Climax
-  [[48, 55, 60, 67], 4], [[56, 60, 63, 68], 4],
-  [[53, 60, 65, 72], 4], [[55, 59, 62, 67], 4],
-  [[48, 55, 60, 67], 4], [[56, 60, 63, 68], 4],
-  [[48, 51, 55, 60], 4], [[48, 51, 55, 60], 4],
-];
-let padBar = 0;
-for (const [notes, dur] of padChords) {
-  const vel = padBar < 4 ? 0.12 : padBar < 8 ? 0.18 : padBar < 16 ? 0.22 : padBar < 20 ? 0.15 : padBar < 24 ? 0.20 : 0.25;
-  for (const n of notes) PAD.push({ beat: padBar * 4, note: n, duration: dur, velocity: vel });
-  padBar += dur;
-}
+                function buildSequencer(bpm) {
+                    if (seq) seq.stop();
+                    seq = new tinyts.Sequencer(bpm);
+                    seq.loop = true;
 
-// ── PERC: kick + snare + hi-hat ────────────────────────────────────────
-const PERC = [];
-for (let b = 0; b < BAR; b++) {
-  // No percussion in intro (bars 1-8)
-  if (b < 8) continue;
+                    for (const td of TRACK_DEFS) {
+                        seq.addPattern(
+                            new tinyts.Pattern(td.id, td.notes, td.bars),
+                        );
+                        seq.addTrack({
+                            pattern: td.id,
+                            wave: td.wave,
+                            volume: td.volume,
+                            pitchOffset: td.pitchOffset,
+                        });
+                    }
 
-  const velScale = b < 12 ? 0.5 : b < 21 ? 1.0 : b < 25 ? 0.4 : 1.0;
+                    seq.onBeat = (beat) => {
+                        updatePosition(beat);
+                        updateNowPlaying(beat);
+                        highlightPlayhead(beat);
+                    };
 
-  // Kick on beats 1 and 3
-  PERC.push({ beat: b * 4, note: 40, duration: 0.15, velocity: 0.5 * velScale });
-  PERC.push({ beat: b * 4 + 2, note: 40, duration: 0.12, velocity: 0.4 * velScale });
+                    return seq;
+                }
 
-  // Snare on beats 2 and 4
-  PERC.push({ beat: b * 4 + 1, note: 60, duration: 0.1, velocity: 0.35 * velScale, slide: -80 });
-  PERC.push({ beat: b * 4 + 3, note: 60, duration: 0.1, velocity: 0.3 * velScale, slide: -60 });
+                function renderTracks() {
+                    $("tracks").innerHTML = "";
+                    for (const td of TRACK_DEFS) {
+                        const card = document.createElement("div");
+                        card.className = "track-card";
+                        card.id = "card-" + td.id;
+                        card.innerHTML =
+                            '<div class="track-head">' +
+                            '<span class="track-name">' +
+                            td.name +
+                            "</span>" +
+                            '<span class="track-wave wave-' +
+                            td.wave +
+                            '">' +
+                            td.wave +
+                            "</span>" +
+                            "</div>" +
+                            '<div class="track-now" id="now-' +
+                            td.id +
+                            '"><span class="idle">&ndash;</span></div>';
+                        $("tracks").appendChild(card);
+                    }
+                }
 
-  // Hi-hat on every 8th note (skip in bridge)
-  if (b >= 20 && b < 24) continue;
-  for (let i = 0; i < 8; i++) {
-    PERC.push({ beat: b * 4 + i * 0.5, note: 72, duration: 0.04, velocity: (i % 2 === 0 ? 0.12 : 0.06) * velScale });
-  }
-}
+                function renderGrid() {
+                    const grid = $("grid");
+                    grid.innerHTML = "";
 
-// ─── Track definitions ─────────────────────────────────────────────────
-const TRACK_DEFS = [
-  { id: 'pad',  name: 'Pad',   wave: 'sine',     volume: 0.18, notes: PAD,  bars: BAR, color: 'pad' },
-  { id: 'bass', name: 'Bass',  wave: 'square',   volume: 0.30, pitchOffset: -12, notes: BASS, bars: BAR, color: 'bass' },
-  { id: 'arp',  name: 'Arp',   wave: 'sawtooth', volume: 0.15, notes: ARP,  bars: BAR, color: 'arp' },
-  { id: 'lead', name: 'Lead',  wave: 'triangle', volume: 0.22, notes: LEAD, bars: BAR, color: 'lead' },
-  { id: 'perc', name: 'Perc',  wave: 'noise',    volume: 0.16, notes: PERC, bars: BAR, color: 'perc' },
-];
+                    const usedNotes = new Set();
+                    for (const td of TRACK_DEFS)
+                        for (const n of td.notes) usedNotes.add(n.note);
+                    const sorted = [...usedNotes].sort((a, b) => b - a);
 
-// ─── Sequencer ─────────────────────────────────────────────────────────
-let seq = null;
-const SECTION_NAMES = ['intro', 'build', 'verse', 'bridge', 'climax'];
+                    const totalCols = BAR * 4;
 
-function buildSequencer(bpm) {
-  if (seq) seq.stop();
-  seq = new tinyts.Sequencer(bpm);
-  seq.loop = true;
+                    const cellMap = {};
+                    for (const td of TRACK_DEFS) {
+                        for (const n of td.notes) {
+                            const col = Math.floor(n.beat * 4);
+                            if (col >= 0 && col < totalCols)
+                                cellMap[td.id + ":" + n.note + ":" + col] =
+                                    td.color;
+                        }
+                    }
 
-  for (const td of TRACK_DEFS) {
-    seq.addPattern(new tinyts.Pattern(td.id, td.notes, td.bars));
-    seq.addTrack({ pattern: td.id, wave: td.wave, volume: td.volume, pitchOffset: td.pitchOffset });
-  }
+                    const hl = document.createElement("div");
+                    hl.className = "grid-label";
+                    grid.appendChild(hl);
+                    for (let c = 0; c < totalCols; c++) {
+                        const d = document.createElement("div");
+                        d.className = "grid-bar";
+                        if (c % 16 === 0) d.textContent = c / 4 + 1;
+                        grid.appendChild(d);
+                    }
 
-  seq.onBeat = (beat) => {
-    updatePosition(beat);
-    updateNowPlaying(beat);
-    highlightPlayhead(beat);
-  };
+                    for (const note of sorted) {
+                        const lbl = document.createElement("div");
+                        lbl.className = "grid-label";
+                        lbl.textContent = midiName(note);
+                        if (note === 48 || note === 60 || note === 72)
+                            lbl.style.color = "#888";
+                        grid.appendChild(lbl);
 
-  return seq;
-}
+                        for (let c = 0; c < totalCols; c++) {
+                            const cell = document.createElement("div");
+                            cell.className = "grid-cell";
+                            cell.dataset.note = note;
+                            cell.dataset.col = c;
+                            for (const td of TRACK_DEFS) {
+                                const key = td.id + ":" + note + ":" + c;
+                                if (cellMap[key]) {
+                                    cell.classList.add(td.color);
+                                    cell.dataset.track = td.id;
+                                    break;
+                                }
+                            }
+                            if (c % 4 === 0) cell.classList.add("beat");
+                            grid.appendChild(cell);
+                        }
+                    }
+                }
 
-// ─── Render Tracks ──────────────────────────────────────────────────────
-function renderTracks() {
-  $('tracks').innerHTML = '';
-  for (const td of TRACK_DEFS) {
-    const card = document.createElement('div');
-    card.className = 'track-card';
-    card.id = 'card-' + td.id;
-    card.innerHTML =
-      '<div class="track-head">' +
-        '<span class="track-name">' + td.name + '</span>' +
-        '<span class="track-wave wave-' + td.wave + '">' + td.wave + '</span>' +
-      '</div>' +
-      '<div class="track-now" id="now-' + td.id + '"><span class="idle">&ndash;</span></div>';
-    $('tracks').appendChild(card);
-  }
-}
+                function updateNowPlaying(beat) {
+                    for (const td of TRACK_DEFS) {
+                        const el = $("now-" + td.id);
+                        const active = td.notes.filter(
+                            (n) => beat >= n.beat && beat < n.beat + n.duration,
+                        );
+                        if (active.length > 0) {
+                            el.innerHTML = active
+                                .map((n) => midiName(n.note))
+                                .join(" + ");
+                            $("card-" + td.id).classList.add("active");
+                        } else {
+                            el.innerHTML = '<span class="idle">&ndash;</span>';
+                            $("card-" + td.id).classList.remove("active");
+                        }
+                    }
+                }
 
-// ─── Piano Roll ────────────────────────────────────────────────────────
-function renderGrid() {
-  const grid = $('grid');
-  grid.innerHTML = '';
+                function updatePosition(beat) {
+                    const bar = Math.floor(beat / 4) + 1;
+                    const b = Math.floor(beat % 4) + 1;
+                    const s = Math.floor((beat % 1) * 4) + 1;
+                    $("position").innerHTML =
+                        String(bar).padStart(2, "0") +
+                        ":" +
+                        String(b).padStart(2, "0") +
+                        ":" +
+                        String(s).padStart(2, "0");
+                    const sectionIdx = Math.min(Math.floor((bar - 1) / 8), 4);
+                    $("section-tag").textContent =
+                        SECTION_NAMES[sectionIdx] || "";
+                }
 
-  const usedNotes = new Set();
-  for (const td of TRACK_DEFS) for (const n of td.notes) usedNotes.add(n.note);
-  const sorted = [...usedNotes].sort((a,b) => b-a);
+                function highlightPlayhead(beat) {
+                    const col = Math.floor(beat * 4) % (BAR * 4);
+                    document
+                        .querySelectorAll(".grid-cell.playhead")
+                        .forEach((el) => el.classList.remove("playhead"));
+                    document
+                        .querySelectorAll('.grid-cell[data-col="' + col + '"]')
+                        .forEach((el) => el.classList.add("playhead"));
+                }
 
-  const totalCols = BAR * 4;
+                $("bpm").addEventListener("input", () => {
+                    const v = parseInt($("bpm").value);
+                    $("bpm-val").textContent = v;
+                    if (seq) seq.bpm = v;
+                });
 
-  // Build cell lookup
-  const cellMap = {};
-  for (const td of TRACK_DEFS) {
-    for (const n of td.notes) {
-      const col = Math.floor(n.beat * 4);
-      if (col >= 0 && col < totalCols) cellMap[td.id + ':' + n.note + ':' + col] = td.color;
-    }
-  }
+                $("play-btn").addEventListener("click", () => {
+                    if (!seq) buildSequencer(parseInt($("bpm").value));
+                    seq.play();
+                });
 
-  // Header
-  const hl = document.createElement('div');
-  hl.className = 'grid-label'; grid.appendChild(hl);
-  for (let c = 0; c < totalCols; c++) {
-    const d = document.createElement('div');
-    d.className = 'grid-bar';
-    if (c % 16 === 0) d.textContent = (c / 4 + 1);
-    grid.appendChild(d);
-  }
+                $("stop-btn").addEventListener("click", () => {
+                    if (seq) seq.stop();
+                    $("position").textContent = "01:01:01";
+                    $("section-tag").textContent = "intro";
+                    document
+                        .querySelectorAll(".track-card")
+                        .forEach((c) => c.classList.remove("active"));
+                    for (const td of TRACK_DEFS) {
+                        const el = $("now-" + td.id);
+                        if (el)
+                            el.innerHTML = '<span class="idle">&ndash;</span>';
+                    }
+                    document
+                        .querySelectorAll(".grid-cell.playhead")
+                        .forEach((el) => el.classList.remove("playhead"));
+                });
 
-  // Rows
-  for (const note of sorted) {
-    const lbl = document.createElement('div');
-    lbl.className = 'grid-label';
-    lbl.textContent = midiName(note);
-    // Highlight important notes
-    if (note === 48 || note === 60 || note === 72) lbl.style.color = '#888';
-    grid.appendChild(lbl);
+                let lastTime = 0,
+                    running = false;
+                function loop(time) {
+                    if (!running) return;
+                    const dt = lastTime ? (time - lastTime) / 1000 : 0;
+                    lastTime = time;
+                    if (seq && seq.playing) seq.update(dt);
+                    requestAnimationFrame(loop);
+                }
 
-    for (let c = 0; c < totalCols; c++) {
-      const cell = document.createElement('div');
-      cell.className = 'grid-cell';
-      cell.dataset.note = note;
-      cell.dataset.col = c;
-      for (const td of TRACK_DEFS) {
-        const key = td.id + ':' + note + ':' + c;
-        if (cellMap[key]) { cell.classList.add(td.color); cell.dataset.track = td.id; break; }
-      }
-      if (c % 4 === 0) cell.classList.add('beat');
-      grid.appendChild(cell);
-    }
-  }
-}
+                document.addEventListener(
+                    "click",
+                    function unlock() {
+                        tinyts.unlockAudio();
+                        document.removeEventListener("click", unlock);
+                    },
+                    { once: true },
+                );
 
-// ─── Now Playing ────────────────────────────────────────────────────────
-function updateNowPlaying(beat) {
-  for (const td of TRACK_DEFS) {
-    const el = $('now-' + td.id);
-    const active = td.notes.filter(n => beat >= n.beat && beat < n.beat + n.duration);
-    if (active.length > 0) {
-      el.innerHTML = active.map(n => midiName(n.note)).join(' + ');
-      $('card-' + td.id).classList.add('active');
-    } else {
-      el.innerHTML = '<span class="idle">&ndash;</span>';
-      $('card-' + td.id).classList.remove('active');
-    }
-  }
-}
+                function generateCode() {
+                    const lines = [];
+                    for (const td of TRACK_DEFS) {
+                        lines.push(
+                            "// " +
+                                td.name +
+                                " (" +
+                                td.wave +
+                                ", " +
+                                td.notes.length +
+                                " notes)",
+                        );
+                        lines.push("const " + td.id + "Notes = [");
+                        for (const n of td.notes) {
+                            let s =
+                                "  { beat: " +
+                                n.beat.toFixed(2) +
+                                ", note: " +
+                                n.note +
+                                ", duration: " +
+                                n.duration.toFixed(2);
+                            if (n.velocity !== undefined)
+                                s += ", velocity: " + n.velocity.toFixed(2);
+                            if (n.slide) s += ", slide: " + n.slide;
+                            s += " }";
+                            lines.push(s);
+                        }
+                        lines.push("];");
+                    }
+                    lines.push("");
+                    lines.push("const seq = new Sequencer(" + seq.bpm + ");");
+                    lines.push("seq.loop = true;");
+                    for (const td of TRACK_DEFS) {
+                        lines.push(
+                            "seq.addPattern(new Pattern('" +
+                                td.id +
+                                "', " +
+                                td.id +
+                                "Notes, " +
+                                td.bars +
+                                "));",
+                        );
+                    }
+                    for (const td of TRACK_DEFS) {
+                        let s =
+                            "seq.addTrack({ pattern: '" +
+                            td.id +
+                            "', wave: '" +
+                            td.wave +
+                            "', volume: " +
+                            td.volume.toFixed(2);
+                        if (td.pitchOffset)
+                            s += ", pitchOffset: " + td.pitchOffset;
+                        s += " });";
+                        lines.push(s);
+                    }
+                    lines.push("seq.play();");
+                    lines.push("// In game loop: seq.update(dt);");
+                    return lines.join("\n");
+                }
 
-function updatePosition(beat) {
-  const bar = Math.floor(beat / 4) + 1;
-  const b = Math.floor(beat % 4) + 1;
-  const s = Math.floor((beat % 1) * 4) + 1;
-  $('position').innerHTML =
-    String(bar).padStart(2,'0') + ':' + String(b).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-  // Section tag
-  const sectionIdx = Math.min(Math.floor((bar - 1) / 8), 4);
-  $('section-tag').textContent = SECTION_NAMES[sectionIdx] || '';
-}
+                buildSequencer(95);
+                renderTracks();
+                renderGrid();
+                $("code-box").textContent = generateCode();
 
-function highlightPlayhead(beat) {
-  const col = Math.floor(beat * 4) % (BAR * 4);
-  document.querySelectorAll('.grid-cell.playhead').forEach(el => el.classList.remove('playhead'));
-  document.querySelectorAll('.grid-cell[data-col="' + col + '"]').forEach(el => el.classList.add('playhead'));
-}
+                $("copy-btn").addEventListener("click", () => {
+                    navigator.clipboard.writeText(generateCode()).then(() => {
+                        $("copy-btn").textContent = "Copied!";
+                        $("copy-btn").classList.add("copied");
+                        setTimeout(() => {
+                            $("copy-btn").textContent = "Copy Code";
+                            $("copy-btn").classList.remove("copied");
+                        }, 1500);
+                    });
+                });
 
-// ─── Transport ─────────────────────────────────────────────────────────
-$('bpm').addEventListener('input', () => {
-  const v = parseInt($('bpm').value);
-  $('bpm-val').textContent = v;
-  if (seq) seq.bpm = v;
-});
-
-$('play-btn').addEventListener('click', () => {
-  if (!seq) buildSequencer(parseInt($('bpm').value));
-  seq.play();
-});
-
-$('stop-btn').addEventListener('click', () => {
-  if (seq) seq.stop();
-  $('position').textContent = '01:01:01';
-  $('section-tag').textContent = 'intro';
-  document.querySelectorAll('.track-card').forEach(c => c.classList.remove('active'));
-  for (const td of TRACK_DEFS) {
-    const el = $('now-' + td.id);
-    if (el) el.innerHTML = '<span class="idle">&ndash;</span>';
-  }
-  document.querySelectorAll('.grid-cell.playhead').forEach(el => el.classList.remove('playhead'));
-});
-
-// ─── Game loop ─────────────────────────────────────────────────────────
-let lastTime = 0, running = false;
-function loop(time) {
-  if (!running) return;
-  const dt = lastTime ? (time - lastTime) / 1000 : 0;
-  lastTime = time;
-  if (seq && seq.playing) seq.update(dt);
-  requestAnimationFrame(loop);
-}
-
-document.addEventListener('click', function unlock() {
-  tinyts.unlockAudio();
-  document.removeEventListener('click', unlock);
-}, { once: true });
-
-// ─── Code Generation ───────────────────────────────────────────────────
-function generateCode() {
-  const lines = [];
-  for (const td of TRACK_DEFS) {
-    lines.push('// ' + td.name + ' (' + td.wave + ', ' + td.notes.length + ' notes)');
-    lines.push('const ' + td.id + 'Notes = [');
-    for (const n of td.notes) {
-      let s = '  { beat: ' + n.beat.toFixed(2) + ', note: ' + n.note + ', duration: ' + n.duration.toFixed(2);
-      if (n.velocity !== undefined) s += ', velocity: ' + n.velocity.toFixed(2);
-      if (n.slide) s += ', slide: ' + n.slide;
-      s += ' }';
-      lines.push(s);
-    }
-    lines.push('];');
-  }
-  lines.push('');
-  lines.push('const seq = new Sequencer(' + seq.bpm + ');');
-  lines.push('seq.loop = true;');
-  for (const td of TRACK_DEFS) {
-    lines.push('seq.addPattern(new Pattern(\'' + td.id + '\', ' + td.id + 'Notes, ' + td.bars + '));');
-  }
-  for (const td of TRACK_DEFS) {
-    let s = 'seq.addTrack({ pattern: \'' + td.id + '\', wave: \'' + td.wave + '\', volume: ' + td.volume.toFixed(2);
-    if (td.pitchOffset) s += ', pitchOffset: ' + td.pitchOffset;
-    s += ' });';
-    lines.push(s);
-  }
-  lines.push('seq.play();');
-  lines.push('// In game loop: seq.update(dt);');
-  return lines.join('\n');
-}
-
-// ─── Init ──────────────────────────────────────────────────────────────
-buildSequencer(95);
-renderTracks();
-renderGrid();
-$('code-box').textContent = generateCode();
-
-$('copy-btn').addEventListener('click', () => {
-  navigator.clipboard.writeText(generateCode()).then(() => {
-    $('copy-btn').textContent = 'Copied!';
-    $('copy-btn').classList.add('copied');
-    setTimeout(() => {
-      $('copy-btn').textContent = 'Copy Code';
-      $('copy-btn').classList.remove('copied');
-    }, 1500);
-  });
-});
-
-running = true;
-requestAnimationFrame(loop);
-
-})();
-</script>
-</body>
+                running = true;
+                requestAnimationFrame(loop);
+            })();
+        </script>
+    </body>
 </html>

@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="Procedural Sprite Sheet demo." />
+        <title>TinyTS - Sprites</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
+
+            const sheetCanvas = document.createElement("canvas");
+            sheetCanvas.width = 64;
+            sheetCanvas.height = 64;
+            const sCtx = sheetCanvas.getContext("2d");
+
+            function drawSheetRect(ctx, x, y, w, h, fill) {
+                ctx.fillStyle = fill;
+                ctx.fillRect(x, y, w, h);
+            }
+
+            function drawSheetCircle(ctx, cx, cy, r, fill) {
+                ctx.fillStyle = fill;
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Animated Sprite Sheet
+            drawSheetRect(sCtx, 3, 2, 10, 12, "#89b4fa");
+            drawSheetRect(sCtx, 4, 3, 8, 3, "#b4befe");
+            drawSheetRect(sCtx, 5, 4, 2, 1, "#11111b");
+            drawSheetRect(sCtx, 9, 4, 2, 1, "#11111b");
+            drawSheetRect(sCtx, 4, 14, 3, 2, "#45475a");
+            drawSheetRect(sCtx, 9, 14, 3, 2, "#45475a");
+            drawSheetRect(sCtx, 16 + 3, 1, 10, 12, "#89b4fa");
+            drawSheetRect(sCtx, 16 + 4, 2, 8, 3, "#b4befe");
+            drawSheetRect(sCtx, 16 + 5, 3, 2, 1, "#11111b");
+            drawSheetRect(sCtx, 16 + 9, 3, 2, 1, "#11111b");
+            drawSheetRect(sCtx, 16 + 2, 13, 3, 2, "#f38ba8");
+            drawSheetRect(sCtx, 16 + 10, 12, 3, 2, "#45475a");
+            drawSheetRect(sCtx, 32 + 3, 2, 10, 12, "#89b4fa");
+            drawSheetRect(sCtx, 32 + 4, 3, 8, 3, "#b4befe");
+            drawSheetRect(sCtx, 32 + 5, 4, 2, 1, "#11111b");
+            drawSheetRect(sCtx, 32 + 9, 4, 2, 1, "#11111b");
+            drawSheetRect(sCtx, 32 + 4, 14, 3, 2, "#45475a");
+            drawSheetRect(sCtx, 32 + 9, 14, 3, 2, "#45475a");
+            drawSheetRect(sCtx, 48 + 3, 1, 10, 12, "#89b4fa");
+            drawSheetRect(sCtx, 48 + 4, 2, 8, 3, "#b4befe");
+            drawSheetRect(sCtx, 48 + 5, 3, 2, 1, "#11111b");
+            drawSheetRect(sCtx, 48 + 9, 3, 2, 1, "#11111b");
+            drawSheetRect(sCtx, 48 + 3, 12, 3, 2, "#45475a");
+            drawSheetRect(sCtx, 48 + 9, 13, 3, 2, "#f38ba8");
+            drawSheetCircle(sCtx, 8, 24, 6, "#f9e2af");
+            drawSheetCircle(sCtx, 8, 24, 4, "#fab387");
+            drawSheetRect(sCtx, 16 + 5, 18, 6, 12, "#f9e2af");
+            drawSheetRect(sCtx, 16 + 6, 19, 4, 10, "#fab387");
+            drawSheetRect(sCtx, 32 + 7, 18, 2, 12, "#f9e2af");
+            drawSheetRect(sCtx, 48 + 5, 18, 6, 12, "#f9e2af");
+            drawSheetRect(sCtx, 48 + 6, 19, 4, 10, "#fab387");
+            drawSheetCircle(sCtx, 5, 38, 3, "#f5c2e7");
+            drawSheetCircle(sCtx, 11, 38, 3, "#f5c2e7");
+            drawSheetRect(sCtx, 8, 43, 1, 1, "#f5c2e7");
+            drawSheetCircle(sCtx, 16 + 5, 38, 4, "#f38ba8");
+            drawSheetCircle(sCtx, 16 + 11, 38, 4, "#f38ba8");
+            drawSheetRect(sCtx, 16 + 8, 44, 1, 1, "#f38ba8");
+            drawSheetCircle(sCtx, 32 + 4, 38, 5, "#e94560");
+            drawSheetCircle(sCtx, 32 + 11, 38, 5, "#e94560");
+            drawSheetRect(sCtx, 32 + 8, 45, 1, 1, "#e94560");
+            drawSheetCircle(sCtx, 48 + 5, 38, 4, "#f38ba8");
+            drawSheetCircle(sCtx, 48 + 11, 38, 4, "#f38ba8");
+            drawSheetRect(sCtx, 48 + 8, 44, 1, 1, "#f38ba8");
+            drawSheetCircle(sCtx, 8, 56, 5, "#a6e3a1");
+            drawSheetCircle(sCtx, 8, 56, 2, "#fff");
+            drawSheetCircle(sCtx, 16 + 8, 56, 5, "#94e2d5");
+            drawSheetCircle(sCtx, 16 + 8, 56, 2, "#fff");
+            drawSheetCircle(sCtx, 32 + 8, 56, 5, "#89dceb");
+            drawSheetCircle(sCtx, 32 + 8, 56, 2, "#fff");
+            drawSheetCircle(sCtx, 48 + 8, 56, 5, "#cba6f7");
+            drawSheetCircle(sCtx, 48 + 8, 56, 2, "#fff");
+
+            bindAction("left", ["KeyA", "ArrowLeft"]);
+            bindAction("right", ["KeyD", "ArrowRight"]);
+            bindAction("up", ["KeyW", "ArrowUp"]);
+            bindAction("down", ["KeyS", "ArrowDown"]);
+
+            const player = {
+                pos: vec2(W / 2 - 16, H - 75),
+                vel: vec2(0, 0),
+                speed: 130,
+                flipX: false,
+                animTime: 0,
+            };
+
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
+
+                update(dt) {
+                    let moving = false;
+                    player.vel.set(0, 0);
+
+                    if (actionDown("left")) {
+                        player.vel.x = -player.speed;
+                        player.flipX = true;
+                        moving = true;
+                    }
+                    if (actionDown("right")) {
+                        player.vel.x = player.speed;
+                        player.flipX = false;
+                        moving = true;
+                    }
+                    if (actionDown("up")) {
+                        player.vel.y = -player.speed;
+                        moving = true;
+                    }
+                    if (actionDown("down")) {
+                        player.vel.y = player.speed;
+                        moving = true;
+                    }
+
+                    player.pos.x += player.vel.x * dt;
+                    player.pos.y += player.vel.y * dt;
+
+                    player.pos.x = clamp(player.pos.x, 25, W - 57);
+                    player.pos.y = clamp(player.pos.y, 225, H - 57);
+
+                    if (moving) {
+                        player.animTime += dt * 10;
+                    } else {
+                        player.animTime = 0;
+                    }
+                },
+
+                render() {
+                    clear("#11111b");
+
+                    const gridSp = 20;
+                    for (let x = 0; x < W; x += gridSp) {
+                        drawLine(
+                            vec2(x, 0),
+                            vec2(x, H),
+                            "rgba(49, 50, 68, 0.12)",
+                        );
+                    }
+                    for (let y = 0; y < H; y += gridSp) {
+                        drawLine(
+                            vec2(0, y),
+                            vec2(W, y),
+                            "rgba(49, 50, 68, 0.12)",
+                        );
+                    }
+
+                    drawText("PROCEDURAL SPRITE SHOWCASE", vec2(30, 25), {
+                        font: "bold 14px 'Monaspace Neon'",
+                        color: "#cba6f7",
+                    });
+                    drawText(
+                        "Render slices dynamically from a compiled offscreen canvas texture sheet",
+                        vec2(30, 42),
+                        { font: "9px 'Monaspace Neon'", color: "#a6adc8" },
+                    );
+
+                    const colY = 75;
+
+                    drawText("TEXTURE SHEET (64x64)", vec2(30, colY), {
+                        font: "bold 9px 'Monaspace Neon'",
+                        color: "#fab387",
+                    });
+                    drawRectOutline(
+                        vec2(29, colY + 14),
+                        vec2(102, 102),
+                        "#313244",
+                        1,
+                    );
+                    drawSprite(
+                        sheetCanvas,
+                        vec2(30, colY + 15),
+                        vec2(100, 100),
+                    ); // Scaled up slightly for retro look
+                    drawText("Row 0: Character", vec2(30, colY + 130), {
+                        font: "7px 'Monaspace Neon'",
+                        color: "#585b70",
+                    });
+                    drawText("Row 1: Coin Spin", vec2(30, colY + 142), {
+                        font: "7px 'Monaspace Neon'",
+                        color: "#585b70",
+                    });
+                    drawText("Row 2: Fire Heart", vec2(30, colY + 154), {
+                        font: "7px 'Monaspace Neon'",
+                        color: "#585b70",
+                    });
+                    drawText("Row 3: Energy Orbs", vec2(30, colY + 166), {
+                        font: "7px 'Monaspace Neon'",
+                        color: "#585b70",
+                    });
+
+                    const col2X = 165;
+                    drawText("SLICES & TINTS", vec2(col2X, colY), {
+                        font: "bold 9px 'Monaspace Neon'",
+                        color: "#a6e3a1",
+                    });
+
+                    const coinFrame = Math.floor(time * 8) % 4;
+                    const heartFrame = Math.floor(time * 6) % 4;
+                    const walkFrameIndex = Math.floor(player.animTime) % 4;
+
+                    for (let i = 0; i < 4; i++) {
+                        const px = col2X + i * 36;
+                        drawSprite(
+                            sheetCanvas,
+                            vec2(px, colY + 20),
+                            vec2(28, 28),
+                            {
+                                sourceX: i * 16,
+                                sourceY: 0,
+                                sourceWidth: 16,
+                                sourceHeight: 16,
+                            },
+                        );
+
+                        const colors = [
+                            "#cba6f7",
+                            "#94e2d5",
+                            "#a6e3a1",
+                            "#b4befe",
+                        ];
+                        drawSprite(
+                            sheetCanvas,
+                            vec2(px, colY + 70),
+                            vec2(28, 28),
+                            {
+                                sourceX: walkFrameIndex * 16,
+                                sourceY: 0,
+                                sourceWidth: 16,
+                                sourceHeight: 16,
+                                color: colors[i],
+                            },
+                        );
+                    }
+                    drawText("RAW WALK CYCLE (Y=0)", vec2(col2X, colY + 54), {
+                        font: "7px 'Monaspace Neon'",
+                        color: "#94e2d5",
+                    });
+                    drawText(
+                        "TINTED ANIMATIONS (A/B)",
+                        vec2(col2X, colY + 104),
+                        { font: "7px 'Monaspace Neon'", color: "#94e2d5" },
+                    );
+
+                    const col3X = 350;
+                    drawText("TRANSFORMS & ROTATIONS", vec2(col3X, colY), {
+                        font: "bold 9px 'Monaspace Neon'",
+                        color: "#89b4fa",
+                    });
+
+                    drawSprite(
+                        sheetCanvas,
+                        vec2(col3X, colY + 20),
+                        vec2(28, 28),
+                        {
+                            sourceX: coinFrame * 16,
+                            sourceY: 16,
+                            sourceWidth: 16,
+                            sourceHeight: 16,
+                        },
+                    );
+                    drawText("COIN SPIN", vec2(col3X, colY + 54), {
+                        font: "7px 'Monaspace Neon'",
+                        color: "#f9e2af",
+                    });
+
+                    drawSprite(
+                        sheetCanvas,
+                        vec2(col3X + 50, colY + 20),
+                        vec2(28, 28),
+                        {
+                            sourceX: 0,
+                            sourceY: 0,
+                            sourceWidth: 16,
+                            sourceHeight: 16,
+                            flipX: true,
+                        },
+                    );
+                    drawText("FLIP_X", vec2(col3X + 50, colY + 54), {
+                        font: "7px 'Monaspace Neon'",
+                        color: "#a6adc8",
+                    });
+
+                    drawSprite(
+                        sheetCanvas,
+                        vec2(col3X + 100, colY + 20),
+                        vec2(28, 28),
+                        {
+                            sourceX: 0,
+                            sourceY: 0,
+                            sourceWidth: 16,
+                            sourceHeight: 16,
+                            flipY: true,
+                        },
+                    );
+                    drawText("FLIP_Y", vec2(col3X + 100, colY + 54), {
+                        font: "7px 'Monaspace Neon'",
+                        color: "#a6adc8",
+                    });
+
+                    drawSprite(
+                        sheetCanvas,
+                        vec2(col3X + 150, colY + 20),
+                        vec2(28, 28),
+                        {
+                            sourceX: 0,
+                            sourceY: 48,
+                            sourceWidth: 16,
+                            sourceHeight: 16,
+                            angle: time * 3,
+                        },
+                    );
+                    drawText("ROT_ANGLE", vec2(col3X + 150, colY + 54), {
+                        font: "7px 'Monaspace Neon'",
+                        color: "#a6e3a1",
+                    });
+
+                    drawSprite(
+                        sheetCanvas,
+                        vec2(col3X, colY + 80),
+                        vec2(28, 28),
+                        {
+                            sourceX: heartFrame * 16,
+                            sourceY: 32,
+                            sourceWidth: 16,
+                            sourceHeight: 16,
+                        },
+                    );
+                    drawText("HEART PULSE", vec2(col3X, colY + 114), {
+                        font: "7px 'Monaspace Neon'",
+                        color: "#f5c2e7",
+                    });
+
+                    for (let o = 0; o < 4; o++) {
+                        drawSprite(
+                            sheetCanvas,
+                            vec2(col3X + 60 + o * 32, colY + 80),
+                            vec2(26, 26),
+                            {
+                                sourceX: o * 16,
+                                sourceY: 48,
+                                sourceWidth: 16,
+                                sourceHeight: 16,
+                            },
+                        );
+                    }
+                    drawText(
+                        "GLOW ORB ROW (Y=48)",
+                        vec2(col3X + 60, colY + 114),
+                        { font: "7px 'Monaspace Neon'", color: "#f5c2e7" },
+                    );
+
+                    const arenaY = 205;
+                    drawRectOutline(
+                        vec2(25, arenaY),
+                        vec2(W - 50, H - arenaY - 15),
+                        "#313244",
+                        1,
+                    );
+                    drawText(
+                        "INTERACTIVE PROVING GROUND (WASD / ARROW KEYS)",
+                        vec2(35, arenaY + 12),
+                        { font: "bold 9px 'Monaspace Neon'", color: "#f9e2af" },
+                    );
+
+                    drawSprite(sheetCanvas, player.pos, vec2(32, 32), {
+                        sourceX: walkFrameIndex * 16,
+                        sourceY: 0,
+                        sourceWidth: 16,
+                        sourceHeight: 16,
+                        flipX: player.flipX,
+                    });
+                },
+            });
+
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
+</html>

@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="Classic grid-based snake game." />
+        <title>TinyTS - Snake</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
+            const GRID_SIZE = 12;
+            const COLS = Math.floor(W / GRID_SIZE);
+            const ROWS = Math.floor(H / GRID_SIZE);
+
+            let snake = [];
+            let dir = vec2(1, 0);
+            let nextDir = vec2(1, 0);
+            let food = vec2(0, 0);
+            let score = 0;
+            let highScore = 0;
+            let gameState = "playing";
+            let moveTimer = 0;
+            const moveInterval = 0.11;
+
+            function spawnFood() {
+                let valid = false;
+                while (!valid) {
+                    food.set(randInt(2, COLS - 3), randInt(3, ROWS - 3));
+                    valid = true;
+                    for (const segment of snake) {
+                        if (segment.x === food.x && segment.y === food.y) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            function resetGame() {
+                snake = [vec2(15, 15), vec2(14, 15), vec2(13, 15)];
+                dir.set(1, 0);
+                nextDir.set(1, 0);
+                score = 0;
+                spawnFood();
+                gameState = "playing";
+            }
+
+            bindAction("up", ["KeyW", "ArrowUp"]);
+            bindAction("down", ["KeyS", "ArrowDown"]);
+            bindAction("left", ["KeyA", "ArrowLeft"]);
+            bindAction("right", ["KeyD", "ArrowRight"]);
+
+            resetGame();
+
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
+
+                update(dt) {
+                    updateParticles(dt);
+
+                    if (gameState === "gameover") {
+                        if (keyPressed("Space")) {
+                            resetGame();
+                        }
+                        return;
+                    }
+
+                    if (actionDown("up") && dir.y === 0) nextDir.set(0, -1);
+                    if (actionDown("down") && dir.y === 0) nextDir.set(0, 1);
+                    if (actionDown("left") && dir.x === 0) nextDir.set(-1, 0);
+                    if (actionDown("right") && dir.x === 0) nextDir.set(1, 0);
+
+                    moveTimer += dt;
+                    if (moveTimer >= moveInterval) {
+                        moveTimer = 0;
+                        dir.set(nextDir.x, nextDir.y);
+
+                        const head = snake[0].clone().add(dir);
+
+                        if (
+                            head.x < 0 ||
+                            head.x >= COLS ||
+                            head.y < 0 ||
+                            head.y >= ROWS
+                        ) {
+                            gameState = "gameover";
+                            playSound(sfx.death());
+                            return;
+                        }
+
+                        for (const segment of snake) {
+                            if (head.x === segment.x && head.y === segment.y) {
+                                gameState = "gameover";
+                                playSound(sfx.death());
+                                return;
+                            }
+                        }
+
+                        snake.unshift(head);
+
+                        if (head.x === food.x && head.y === food.y) {
+                            score += 10;
+                            if (score > highScore) highScore = score;
+                            spawnFood();
+                            playSound(
+                                sfx.coin({ volume: 0.15, frequency: 700 }),
+                            );
+
+                            emitParticles({
+                                pos: vec2(
+                                    head.x * GRID_SIZE + GRID_SIZE / 2,
+                                    head.y * GRID_SIZE + GRID_SIZE / 2,
+                                ),
+                                count: 8,
+                                life: [0.2, 0.4],
+                                speed: [20, 50],
+                                size: [1, 2.5],
+                                color: ["#a6e3a1", "#94e2d5"],
+                            });
+                        } else {
+                            snake.pop();
+                        }
+                    }
+                },
+
+                render() {
+                    clear("#11111b");
+
+                    for (let c = 0; c < COLS; c++) {
+                        drawLine(
+                            vec2(c * GRID_SIZE, 0),
+                            vec2(c * GRID_SIZE, H),
+                            "rgba(49, 50, 68, 0.07)",
+                        );
+                    }
+                    for (let r = 0; r < ROWS; r++) {
+                        drawLine(
+                            vec2(0, r * GRID_SIZE),
+                            vec2(W, r * GRID_SIZE),
+                            "rgba(49, 50, 68, 0.07)",
+                        );
+                    }
+
+                    const foodPulse = 1.0 + Math.sin(time * 6) * 0.15;
+                    const foodX = food.x * GRID_SIZE + GRID_SIZE / 2;
+                    const foodY = food.y * GRID_SIZE + GRID_SIZE / 2;
+                    drawCircle(
+                        vec2(foodX, foodY),
+                        (GRID_SIZE / 2) * foodPulse,
+                        "#f38ba8",
+                    );
+                    drawCircle(
+                        vec2(foodX - 1.5, foodY - 1.5),
+                        1.5,
+                        "rgba(255, 255, 255, 0.35)",
+                    );
+
+                    for (let i = 0; i < snake.length; i++) {
+                        const seg = snake[i];
+                        const px = seg.x * GRID_SIZE;
+                        const py = seg.y * GRID_SIZE;
+
+                        const colorPct = i / snake.length;
+                        const color = Color.fromHex("#a6e3a1").lerp(
+                            Color.fromHex("#89b4fa"),
+                            colorPct,
+                        );
+
+                        if (i === 0) {
+                            drawRect(
+                                vec2(px - 1, py - 1),
+                                vec2(GRID_SIZE + 2, GRID_SIZE + 2),
+                                "#a6e3a1",
+                            );
+                            const eyeColor = "#11111b";
+                            if (dir.x !== 0) {
+                                const ex =
+                                    dir.x > 0 ? px + GRID_SIZE - 4 : px + 2;
+                                drawRect(
+                                    vec2(ex, py + 2),
+                                    vec2(2, 2),
+                                    eyeColor,
+                                );
+                                drawRect(
+                                    vec2(ex, py + GRID_SIZE - 4),
+                                    vec2(2, 2),
+                                    eyeColor,
+                                );
+                            } else {
+                                const ey =
+                                    dir.y > 0 ? py + GRID_SIZE - 4 : py + 2;
+                                drawRect(
+                                    vec2(px + 2, ey),
+                                    vec2(2, 2),
+                                    eyeColor,
+                                );
+                                drawRect(
+                                    vec2(px + GRID_SIZE - 4, ey),
+                                    vec2(2, 2),
+                                    eyeColor,
+                                );
+                            }
+                        } else {
+                            drawRect(
+                                vec2(px + 1, py + 1),
+                                vec2(GRID_SIZE - 2, GRID_SIZE - 2),
+                                color,
+                            );
+                        }
+                    }
+
+                    renderParticles();
+
+                    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.85)");
+                    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+
+                    drawText(`SCORE: ${score}`, vec2(16, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#a6e3a1",
+                    });
+                    drawText(`HIGH: ${highScore}`, vec2(W - 16, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#fab387",
+                        align: "right",
+                    });
+                    drawText("WASD / ARROW KEYS TO SLITHER", vec2(W / 2, 10), {
+                        font: "9px 'Monaspace Neon'",
+                        color: "#a6adc8",
+                        align: "center",
+                    });
+
+                    if (gameState === "gameover") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.8)",
+                        );
+                        drawText(
+                            "SNAKE CORE CRITICAL FAILURE",
+                            vec2(W / 2, H / 2 - 15),
+                            {
+                                font: "bold 16px 'Monaspace Neon'",
+                                color: "#f38ba8",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            `FINAL SCORE: ${score}`,
+                            vec2(W / 2, H / 2 + 10),
+                            {
+                                font: "10px 'Monaspace Neon'",
+                                color: "#a6e3a1",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "PRESS SPACE TO REDEPLOY",
+                            vec2(W / 2, H / 2 + 35),
+                            {
+                                font: "9px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+                    }
+                },
+            });
+
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
+</html>

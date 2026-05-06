@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>TinyTS - WebGL2 Batching Stress Test</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                font-family: "Monaspace Neon", monospace;
+                background: #1e1e2e;
+                color: #cdd6f4;
+                min-height: 100vh;
+                display: flex;
+                overflow: hidden;
+            }
+            #game-container {
+                display: flex;
+                width: 100vw;
+                height: 100vh;
+                flex-direction: row;
+            }
+            #canvas-container {
+                flex: 1;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+            #control-panel {
+                width: 320px;
+                height: 100%;
+                background: #181825;
+                border-left: 1px solid #313244;
+                padding: 20px;
+                display: flex;
+                flex-direction: column;
+                overflow-y: auto;
+                z-index: 10;
+            }
+            #fps-display {
+                font-size: 32px;
+                font-weight: 800;
+                font-family: "Monaspace Neon", monospace;
+                text-align: center;
+                margin-bottom: 4px;
+                letter-spacing: -1px;
+            }
+            #fps-label {
+                text-align: center;
+                font-size: 9px;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                color: #a6adc8;
+                margin-bottom: 14px;
+            }
+            .section-label {
+                font-size: 10px;
+                text-transform: uppercase;
+                letter-spacing: 1.5px;
+                color: #b4befe;
+                margin: 12px 0 8px;
+                border-top: 1px solid #313244;
+                padding-top: 10px;
+            }
+            .section-label:first-of-type {
+                margin-top: 0;
+                border-top: none;
+                padding-top: 0;
+            }
+            .control-row {
+                margin-bottom: 8px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 12px;
+                color: #cdd6f4;
+            }
+            .btn-group {
+                display: flex;
+                gap: 4px;
+            }
+            .btn {
+                background: #313244;
+                border: 1px solid #45475a;
+                color: #cdd6f4;
+                padding: 4px 10px;
+                cursor: pointer;
+                border-radius: 0 !important;
+                font-size: 11px;
+                font-family: "Monaspace Neon", monospace;
+                transition: all 0.15s;
+            }
+            .btn:hover {
+                background: #45475a;
+                border-color: #89b4fa;
+            }
+            .btn:active {
+                background: #45475a;
+            }
+            #entity-counter {
+                font-weight: 700;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                font-size: 13px;
+            }
+            .stat-row {
+                display: flex;
+                justify-content: space-between;
+                font-size: 11px;
+                color: #a6adc8;
+                margin-bottom: 4px;
+            }
+            .stat-val {
+                color: #89b4fa;
+                font-family: "Monaspace Neon", monospace;
+            }
+            select {
+                background: #313244;
+                border: 1px solid #45475a;
+                color: #cdd6f4;
+                padding: 3px 6px;
+                border-radius: 0 !important;
+                font-size: 11px;
+                font-family: "Monaspace Neon", monospace;
+                cursor: pointer;
+                outline: none;
+            }
+            select option {
+                background: #181825;
+                color: #cdd6f4;
+            }
+            input[type="checkbox"] {
+                accent-color: #cba6f7;
+            }
+            .info-box {
+                font-size: 10px;
+                color: #a6adc8;
+                margin-top: 15px;
+                border-top: 1px solid #313244;
+                padding-top: 10px;
+                line-height: 1.5;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="game-container">
+            <div id="canvas-container"></div>
+            <div id="control-panel">
+                <div id="fps-display">60</div>
+                <div id="fps-label">frames per second</div>
+                <div class="section-label">Entities</div>
+                <div class="control-row">
+                    <span>Count:</span>
+                    <span id="entity-counter">2000</span>
+                </div>
+                <div class="control-row">
+                    <div class="btn-group">
+                        <button class="btn" onclick="adjustCount(-500)">
+                            −500
+                        </button>
+                        <button class="btn" onclick="adjustCount(-2000)">
+                            −2k
+                        </button>
+                        <button class="btn" onclick="adjustCount(2000)">
+                            +2k
+                        </button>
+                        <button class="btn" onclick="adjustCount(5000)">
+                            +5k
+                        </button>
+                        <button class="btn" onclick="adjustCount(10000)">
+                            +10k
+                        </button>
+                    </div>
+                </div>
+                <div class="section-label">Sprite Mode</div>
+                <div class="control-row">
+                    <span>Type:</span>
+                    <select id="sprite-mode" onchange="onModeChange()">
+                        <option value="quads">Colored Quads</option>
+                        <option value="circles">Colored Circles</option>
+                        <option value="sprites-sorted" selected>
+                            Sprites (sorted)
+                        </option>
+                        <option value="sprites-mixed">
+                            Sprites (unsorted)
+                        </option>
+                        <option value="assets-all">All Asset Types</option>
+                    </select>
+                </div>
+                <div class="section-label">Options</div>
+                <div class="control-row">
+                    <span>Rotation:</span>
+                    <input type="checkbox" id="chk-rotate" checked />
+                </div>
+                <div class="control-row">
+                    <span>Animate Colors:</span>
+                    <input type="checkbox" id="chk-color" />
+                </div>
+                <div class="control-row">
+                    <span>Boundary Collisions:</span>
+                    <input type="checkbox" id="chk-collide" checked />
+                </div>
+
+                <div class="section-label">Stats</div>
+                <div class="stat-row">
+                    <span>Frame Time:</span>
+                    <span class="stat-val" id="stat-framems">0ms</span>
+                </div>
+                <div class="stat-row">
+                    <span>Draw Calls:</span>
+                    <span class="stat-val" id="stat-draws">0</span>
+                </div>
+                <div class="stat-row">
+                    <span>Mode:</span>
+                    <span class="stat-val" id="stat-mode">sprites</span>
+                </div>
+
+                <div class="info-box">
+                    WebGL2 batched sprite renderer stress test.<br />
+                    "Sorted" groups entities by texture to minimize batch
+                    flushes.<br />
+                    Press <strong>[F1]</strong> for engine debug overlay.
+                </div>
+            </div>
+        </div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 1280;
+            const H = 720;
+            let initialized = false;
+
+            let texPlayer,
+                texEnemy,
+                texCoin,
+                texWall,
+                texGround,
+                texSpike,
+                texCheckpoint,
+                texHeart;
+            const texList = [];
+            const entities = [];
+            let activeCount = 2000;
+            let spriteMode = "sprites-sorted";
+
+            let elFps, elCounter, elFrameMs, elDraws, elStatMode;
+            let chkRotate, chkColor, chkCollide;
+
+            class StressEntity {
+                constructor() {
+                    this.reset();
+                }
+
+                reset() {
+                    this.pos = vec2(rand(0, W), rand(0, H));
+                    this.vel = vec2(rand(-120, 120), rand(-120, 120));
+                    this.w = rand(12, 28);
+                    this.h = this.w;
+                    this.size = vec2(this.w, this.h);
+                    this.angle = rand(0, Math.PI * 2);
+                    this.rotSpeed = rand(-4, 4);
+                    this.hue = rand(0, 360);
+                    this.color = Color.fromHSL(this.hue, 0.75, 0.55);
+                    this.flipX = Math.random() > 0.5;
+                    this.flipY = Math.random() > 0.5;
+                    this.radius = this.w * 0.5;
+                    this.texIndex = randInt(0, texList.length - 1);
+                }
+
+                update(dt) {
+                    this.pos.x += this.vel.x * dt;
+                    this.pos.y += this.vel.y * dt;
+
+                    if (chkCollide.checked) {
+                        if (this.pos.x < 0) {
+                            this.pos.x = 0;
+                            this.vel.x = Math.abs(this.vel.x);
+                        }
+                        if (this.pos.x > W - this.w) {
+                            this.pos.x = W - this.w;
+                            this.vel.x = -Math.abs(this.vel.x);
+                        }
+                        if (this.pos.y < 0) {
+                            this.pos.y = 0;
+                            this.vel.y = Math.abs(this.vel.y);
+                        }
+                        if (this.pos.y > H - this.h) {
+                            this.pos.y = H - this.h;
+                            this.vel.y = -Math.abs(this.vel.y);
+                        }
+                    } else {
+                        if (this.pos.x < -this.w) this.pos.x = W;
+                        if (this.pos.x > W) this.pos.x = -this.w;
+                        if (this.pos.y < -this.h) this.pos.y = H;
+                        if (this.pos.y > H) this.pos.y = -this.h;
+                    }
+
+                    if (chkRotate.checked) {
+                        this.angle += this.rotSpeed * dt;
+                    }
+
+                    if (chkColor.checked) {
+                        this.hue = (this.hue + dt * 60) % 360;
+                        this.color = Color.fromHSL(this.hue, 0.75, 0.55);
+                    }
+                }
+
+                renderQuad() {
+                    drawRect(this.pos, this.size, this.color);
+                }
+
+                renderCircle() {
+                    drawCircle(this.pos, this.radius, this.color);
+                }
+
+                renderSprite(tex) {
+                    drawSprite(tex, this.pos, this.size, {
+                        angle: this.angle,
+                        flipX: this.flipX,
+                        flipY: this.flipY,
+                    });
+                }
+            }
+
+            function sortByTexIndex() {
+                entities.sort((a, b) => a.texIndex - b.texIndex);
+            }
+
+            function adjustCount(amount) {
+                activeCount = Math.max(10, activeCount + amount);
+                elCounter.innerText = activeCount;
+
+                while (entities.length < activeCount) {
+                    entities.push(new StressEntity());
+                }
+                entities.length = Math.min(entities.length, activeCount);
+
+                if (
+                    spriteMode === "sprites-sorted" ||
+                    spriteMode === "assets-all"
+                ) {
+                    sortByTexIndex();
+                }
+            }
+
+            function onModeChange() {
+                spriteMode = document.getElementById("sprite-mode").value;
+                if (
+                    spriteMode === "sprites-sorted" ||
+                    spriteMode === "assets-all"
+                ) {
+                    sortByTexIndex();
+                }
+            }
+
+            function fpsColor(fps) {
+                if (fps >= 55) return "#a6e3a1";
+                if (fps >= 30) return "#f9e2af";
+                return "#f38ba8";
+            }
+
+            let uiFrame = 0;
+
+            const engine = engineStart({
+                size: { width: W, height: H },
+                webgl: true,
+                update(dt) {
+                    if (!initialized) {
+                        initialized = true;
+
+                        elFps = document.getElementById("fps-display");
+                        elCounter = document.getElementById("entity-counter");
+                        elFrameMs = document.getElementById("stat-framems");
+                        elDraws = document.getElementById("stat-draws");
+                        elStatMode = document.getElementById("stat-mode");
+                        chkRotate = document.getElementById("chk-rotate");
+                        chkColor = document.getElementById("chk-color");
+                        chkCollide = document.getElementById("chk-collide");
+
+                        const debugPlugin = new DebugOverlayPlugin();
+                        getActiveEngine().registerPlugin(debugPlugin);
+
+                        texPlayer = assets.makePlayerTexture();
+                        texEnemy = assets.makeEnemyTexture();
+                        texCoin = assets.makeCoinTexture();
+                        texWall = assets.makeWallTexture();
+                        texGround = assets.makeGroundTexture();
+                        texSpike = assets.makeSpikeTexture();
+                        texCheckpoint = assets.makeCheckpointTexture();
+                        texHeart = assets.makeHeartTexture();
+                        texList.push(
+                            texPlayer,
+                            texEnemy,
+                            texCoin,
+                            texWall,
+                            texGround,
+                            texSpike,
+                            texCheckpoint,
+                            texHeart,
+                        );
+
+                        adjustCount(0);
+                    }
+
+                    for (let i = 0, n = entities.length; i < n; i++) {
+                        entities[i].update(dt);
+                    }
+                },
+                render(_alpha) {
+                    clear("#11111b");
+
+                    const mode = spriteMode;
+                    let drawCalls = 0;
+
+                    if (mode === "quads") {
+                        for (let i = 0, n = entities.length; i < n; i++) {
+                            entities[i].renderQuad();
+                        }
+                        drawCalls = Math.ceil(entities.length / 2000);
+                    } else if (mode === "circles") {
+                        for (let i = 0, n = entities.length; i < n; i++) {
+                            entities[i].renderCircle();
+                        }
+                        drawCalls = Math.ceil(entities.length / 2000);
+                    } else if (mode === "sprites-sorted") {
+                        const n = entities.length;
+                        for (let i = 0; i < n; i++) {
+                            const e = entities[i];
+                            e.renderSprite(texList[e.texIndex]);
+                        }
+                        drawCalls =
+                            Math.ceil(entities.length / 2000) + texList.length;
+                    } else if (mode === "sprites-mixed") {
+                        for (let i = 0, n = entities.length; i < n; i++) {
+                            const e = entities[i];
+                            e.renderSprite(texList[e.texIndex]);
+                        }
+                        drawCalls = entities.length;
+                    } else if (mode === "assets-all") {
+                        const n = entities.length;
+                        for (let i = 0; i < n; i++) {
+                            const e = entities[i];
+                            e.renderSprite(texList[e.texIndex]);
+                        }
+                        drawCalls =
+                            Math.ceil(entities.length / 2000) + texList.length;
+                    }
+
+                    uiFrame++;
+                    if (uiFrame % 10 === 0) {
+                        const fps = stats.fps;
+                        elFps.innerText = fps;
+                        elFps.style.color = fpsColor(fps);
+                        elFrameMs.innerText = stats.frameMs.toFixed(1) + "ms";
+                        elDraws.innerText = "~" + drawCalls;
+                        elStatMode.innerText = mode;
+                    }
+                },
+            });
+
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
+</html>

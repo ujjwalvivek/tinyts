@@ -1,384 +1,497 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="2D vector-style asteroids space game.">
-  <title>TinyTS - Asteroids</title>
-  <style>
-    @font-face {
-      font-family: 'Monaspace Neon';
-      src: url('https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2') format('woff2');
-      font-weight: 100 900;
-      font-style: normal;
-      font-display: block;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #1e1e2e;
-      color: #cdd6f4;
-      font-family: 'Monaspace Neon', monospace;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100vw;
-      height: 100vh;
-    }
-    #canvas-container {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      background: #11111b;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #canvas-container canvas {
-      position: absolute !important;
-      left: 50% !important;
-      top: 50% !important;
-      transform: translate(-50%, -50%) !important;
-      max-width: 95% !important;
-      max-height: 95% !important;
-      width: auto !important;
-      height: auto !important;
-      aspect-ratio: 16/9 !important;
-      border: 2px dashed #cba6f7;
-    }
-  </style>
-</head>
-<body>
-<div id="canvas-container"></div>
-<script src="../../dist/tinyts.js"></script>
-<script>
-// Asteroids Vector-Style Space Game (640x360 Canvas)
-// Demonstrates: Velocity inertia, rotational matrices, wrapping world coordinates,
-// array pooling, polygon outlines, and dynamic splitting mechanics.
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="2D vector-style asteroids space game."
+        />
+        <title>TinyTS - Asteroids</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
 
-const W = 640, H = 360;
+            const ship = {
+                pos: vec2(W / 2, H / 2),
+                vel: vec2(0, 0),
+                angle: -Math.PI / 2,
+                rotSpeed: 4.2,
+                thrust: 145,
+                drag: 0.985,
+                radius: 8,
+                dead: false,
+                lives: 3,
+            };
 
-const ship = {
-  pos: vec2(W / 2, H / 2),
-  vel: vec2(0, 0),
-  angle: -Math.PI / 2,
-  rotSpeed: 4.2,
-  thrust: 145,
-  drag: 0.985,
-  radius: 8,
-  dead: false,
-  lives: 3,
-};
+            let bullets = [];
+            let asteroids = [];
+            let score = 0;
+            let highScore = 0;
+            let gameState = "playing";
+            let shootCooldown = 0;
+            let respawnTimer = 0;
 
-let bullets = [];
-let asteroids = [];
-let score = 0;
-let highScore = 0;
-let gameState = "playing";
-let shootCooldown = 0;
-let respawnTimer = 0;
+            bindAction("rotateLeft", ["KeyA", "ArrowLeft"]);
+            bindAction("rotateRight", ["KeyD", "ArrowRight"]);
+            bindAction("thrust", ["KeyW", "ArrowUp"]);
+            bindAction("shoot", ["Space"]);
 
-// Setup input actions
-bindAction("rotateLeft", ["KeyA", "ArrowLeft"]);
-bindAction("rotateRight", ["KeyD", "ArrowRight"]);
-bindAction("thrust", ["KeyW", "ArrowUp"]);
-bindAction("shoot", ["Space"]);
+            function createAsteroidPoints(radius, numPoints = 8) {
+                const points = [];
+                for (let i = 0; i < numPoints; i++) {
+                    const angle = (i / numPoints) * Math.PI * 2;
+                    const offset = rand(radius * 0.75, radius * 1.25);
+                    points.push(
+                        vec2(
+                            Math.cos(angle) * offset,
+                            Math.sin(angle) * offset,
+                        ),
+                    );
+                }
+                return points;
+            }
 
-function createAsteroidPoints(radius, numPoints = 8) {
-  const points = [];
-  for (let i = 0; i < numPoints; i++) {
-    const angle = (i / numPoints) * Math.PI * 2;
-    const offset = rand(radius * 0.75, radius * 1.25);
-    points.push(vec2(Math.cos(angle) * offset, Math.sin(angle) * offset));
-  }
-  return points;
-}
+            function spawnAsteroid(x, y, size = 3) {
+                const radius = size === 3 ? 24 : size === 2 ? 14 : 7;
+                const angle = rand(0, Math.PI * 2);
+                const speed = rand(25, 55) * (4 - size);
 
-function spawnAsteroid(x, y, size = 3) {
-  const radius = size === 3 ? 24 : size === 2 ? 14 : 7;
-  const angle = rand(0, Math.PI * 2);
-  const speed = rand(25, 55) * (4 - size);
+                asteroids.push({
+                    pos: vec2(x, y),
+                    vel: vec2(Math.cos(angle) * speed, Math.sin(angle) * speed),
+                    radius: radius,
+                    size: size,
+                    points: createAsteroidPoints(radius, size === 3 ? 10 : 8),
+                    angle: rand(0, Math.PI * 2),
+                    rotSpeed: rand(-1, 1),
+                });
+            }
 
-  asteroids.push({
-    pos: vec2(x, y),
-    vel: vec2(Math.cos(angle) * speed, Math.sin(angle) * speed),
-    radius: radius,
-    size: size, // 3 = L, 2 = M, 1 = S
-    points: createAsteroidPoints(radius, size === 3 ? 10 : 8),
-    angle: rand(0, Math.PI * 2),
-    rotSpeed: rand(-1, 1),
-  });
-}
+            function initAsteroids() {
+                asteroids = [];
+                for (let i = 0; i < 5; i++) {
+                    let ax = rand(0, W);
+                    let ay = rand(0, H);
+                    while (vec2(ax, ay).distanceTo(ship.pos) < 70) {
+                        ax = rand(0, W);
+                        ay = rand(0, H);
+                    }
+                    spawnAsteroid(ax, ay, 3);
+                }
+            }
 
-function initAsteroids() {
-  asteroids = [];
-  // Spawn 5 large ones far from player
-  for (let i = 0; i < 5; i++) {
-    let ax = rand(0, W);
-    let ay = rand(0, H);
-    while (vec2(ax, ay).distanceTo(ship.pos) < 70) {
-      ax = rand(0, W);
-      ay = rand(0, H);
-    }
-    spawnAsteroid(ax, ay, 3);
-  }
-}
+            function resetGame() {
+                ship.pos.set(W / 2, H / 2);
+                ship.vel.set(0, 0);
+                ship.angle = -Math.PI / 2;
+                ship.dead = false;
+                ship.lives = 3;
+                score = 0;
+                bullets = [];
+                initAsteroids();
+                gameState = "playing";
+            }
 
-function resetGame() {
-  ship.pos.set(W / 2, H / 2);
-  ship.vel.set(0, 0);
-  ship.angle = -Math.PI / 2;
-  ship.dead = false;
-  ship.lives = 3;
-  score = 0;
-  bullets = [];
-  initAsteroids();
-  gameState = "playing";
-}
+            function wrap(pos, r) {
+                if (pos.x < -r) pos.x = W + r;
+                if (pos.x > W + r) pos.x = -r;
+                if (pos.y < -r) pos.y = H + r;
+                if (pos.y > H + r) pos.y = -r;
+            }
 
-function wrap(pos, r) {
-  if (pos.x < -r) pos.x = W + r;
-  if (pos.x > W + r) pos.x = -r;
-  if (pos.y < -r) pos.y = H + r;
-  if (pos.y > H + r) pos.y = -r;
-}
+            resetGame();
 
-resetGame();
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
 
-const engine = engineStart({
-  size: { width: W, height: H },
-  pixelated: true,
+                update(dt) {
+                    updateParticles(dt);
 
-  update(dt) {
-    updateParticles(dt);
+                    if (gameState === "gameover") {
+                        if (keyPressed("Space")) {
+                            resetGame();
+                        }
+                        return;
+                    }
 
-    if (gameState === "gameover") {
-      if (keyPressed("Space")) {
-        resetGame();
-      }
-      return;
-    }
+                    if (ship.dead) {
+                        respawnTimer -= dt;
+                        if (respawnTimer <= 0) {
+                            ship.dead = false;
+                            ship.pos.set(W / 2, H / 2);
+                            ship.vel.set(0, 0);
+                            ship.angle = -Math.PI / 2;
+                            asteroids.forEach((ast) => {
+                                if (ast.pos.distanceTo(ship.pos) < 50) {
+                                    const dir = ast.pos
+                                        .clone()
+                                        .subtract(ship.pos)
+                                        .normalize();
+                                    ast.pos.add(dir.scale(50));
+                                }
+                            });
+                        }
+                    }
 
-    if (ship.dead) {
-      respawnTimer -= dt;
-      if (respawnTimer <= 0) {
-        ship.dead = false;
-        ship.pos.set(W / 2, H / 2);
-        ship.vel.set(0, 0);
-        ship.angle = -Math.PI / 2;
-        // Move asteroids clear of spawn point
-        asteroids.forEach(ast => {
-          if (ast.pos.distanceTo(ship.pos) < 50) {
-            const dir = ast.pos.clone().subtract(ship.pos).normalize();
-            ast.pos.add(dir.scale(50));
-          }
-        });
-      }
-    }
+                    if (!ship.dead) {
+                        if (actionDown("rotateLeft"))
+                            ship.angle -= ship.rotSpeed * dt;
+                        if (actionDown("rotateRight"))
+                            ship.angle += ship.rotSpeed * dt;
 
-    // Ship rotation
-    if (!ship.dead) {
-      if (actionDown("rotateLeft")) ship.angle -= ship.rotSpeed * dt;
-      if (actionDown("rotateRight")) ship.angle += ship.rotSpeed * dt;
+                        if (actionDown("thrust")) {
+                            ship.vel.x +=
+                                Math.cos(ship.angle) * ship.thrust * dt;
+                            ship.vel.y +=
+                                Math.sin(ship.angle) * ship.thrust * dt;
 
-      // Thrust acceleration
-      if (actionDown("thrust")) {
-        ship.vel.x += Math.cos(ship.angle) * ship.thrust * dt;
-        ship.vel.y += Math.sin(ship.angle) * ship.thrust * dt;
+                            if (rand(0, 1) < 0.35) {
+                                const tailAngle =
+                                    ship.angle + Math.PI + rand(-0.3, 0.3);
+                                const tailPos = ship.pos
+                                    .clone()
+                                    .add(
+                                        vec2(
+                                            Math.cos(tailAngle) * ship.radius,
+                                            Math.sin(tailAngle) * ship.radius,
+                                        ),
+                                    );
+                                emitParticles({
+                                    pos: tailPos,
+                                    count: 1,
+                                    life: [0.1, 0.25],
+                                    speed: [60, 110],
+                                    angle: [tailAngle - 0.1, tailAngle + 0.1],
+                                    size: [1, 2],
+                                    color: ["#fab387", "#f38ba8"],
+                                });
+                            }
+                        }
+                    }
 
-        if (rand(0, 1) < 0.35) {
-          const tailAngle = ship.angle + Math.PI + rand(-0.3, 0.3);
-          const tailPos = ship.pos.clone().add(vec2(Math.cos(tailAngle) * ship.radius, Math.sin(tailAngle) * ship.radius));
-          emitParticles({
-            pos: tailPos, count: 1, life: [0.1, 0.25], speed: [60, 110],
-            angle: [tailAngle - 0.1, tailAngle + 0.1], size: [1, 2],
-            color: ["#fab387", "#f38ba8"]
-          });
-        }
-      }
-    }
+                    ship.vel.scale(Math.pow(ship.drag, dt * 60));
+                    ship.pos.add(ship.vel.clone().scale(dt));
+                    wrap(ship.pos, ship.radius);
 
-    // Apply drag damping
-    ship.vel.scale(Math.pow(ship.drag, dt * 60));
-    ship.pos.add(ship.vel.clone().scale(dt));
-    wrap(ship.pos, ship.radius);
+                    if (shootCooldown > 0) {
+                        shootCooldown -= dt;
+                    }
 
-    // Shooting
-    if (shootCooldown > 0) {
-      shootCooldown -= dt;
-    }
+                    if (
+                        actionDown("shoot") &&
+                        shootCooldown <= 0 &&
+                        !ship.dead
+                    ) {
+                        const bSpeed = 320;
+                        bullets.push({
+                            pos: ship.pos
+                                .clone()
+                                .add(
+                                    vec2(
+                                        Math.cos(ship.angle) * ship.radius,
+                                        Math.sin(ship.angle) * ship.radius,
+                                    ),
+                                ),
+                            vel: vec2(
+                                Math.cos(ship.angle) * bSpeed,
+                                Math.sin(ship.angle) * bSpeed,
+                            ),
+                            life: 1.3,
+                        });
+                        shootCooldown = 0.22;
+                        playSound(sfx.laser({ volume: 0.15, pitch: 1.1 }));
+                    }
 
-    if (actionDown("shoot") && shootCooldown <= 0 && !ship.dead) {
-      const bSpeed = 320;
-      bullets.push({
-        pos: ship.pos.clone().add(vec2(Math.cos(ship.angle) * ship.radius, Math.sin(ship.angle) * ship.radius)),
-        vel: vec2(Math.cos(ship.angle) * bSpeed, Math.sin(ship.angle) * bSpeed),
-        life: 1.3
-      });
-      shootCooldown = 0.22;
-      playSound(sfx.laser({ volume: 0.15, pitch: 1.1 }));
-    }
+                    for (let i = bullets.length - 1; i >= 0; i--) {
+                        const b = bullets[i];
+                        b.pos.add(b.vel.clone().scale(dt));
+                        wrap(b.pos, 2);
+                        b.life -= dt;
+                        if (b.life <= 0) {
+                            bullets.splice(i, 1);
+                        }
+                    }
 
-    for (let i = bullets.length - 1; i >= 0; i--) {
-      const b = bullets[i];
-      b.pos.add(b.vel.clone().scale(dt));
-      wrap(b.pos, 2);
-      b.life -= dt;
-      if (b.life <= 0) {
-        bullets.splice(i, 1);
-      }
-    }
+                    for (const ast of asteroids) {
+                        ast.pos.add(ast.vel.clone().scale(dt));
+                        ast.angle += ast.rotSpeed * dt;
+                        wrap(ast.pos, ast.radius);
+                    }
 
-    // Update Asteroids
-    for (const ast of asteroids) {
-      ast.pos.add(ast.vel.clone().scale(dt));
-      ast.angle += ast.rotSpeed * dt;
-      wrap(ast.pos, ast.radius);
-    }
+                    for (let bIdx = bullets.length - 1; bIdx >= 0; bIdx--) {
+                        const bullet = bullets[bIdx];
+                        let bHit = false;
 
-    // Bullet vs Asteroid Collision
-    for (let bIdx = bullets.length - 1; bIdx >= 0; bIdx--) {
-      const bullet = bullets[bIdx];
-      let bHit = false;
+                        for (
+                            let aIdx = asteroids.length - 1;
+                            aIdx >= 0;
+                            aIdx--
+                        ) {
+                            const ast = asteroids[aIdx];
+                            if (bullet.pos.distanceTo(ast.pos) < ast.radius) {
+                                bHit = true;
+                                playSound(sfx.enemyDeath({ volume: 0.2 }));
 
-      for (let aIdx = asteroids.length - 1; aIdx >= 0; aIdx--) {
-        const ast = asteroids[aIdx];
-        if (bullet.pos.distanceTo(ast.pos) < ast.radius) {
-          bHit = true;
-          playSound(sfx.enemyDeath({ volume: 0.2 }));
-          
-          emitParticles({
-            pos: ast.pos.clone(),
-            count: ast.size * 5, life: [0.2, 0.55], speed: [30, 90], size: [1, 2.5],
-            color: ["#cdd6f4", "#585b70"]
-          });
+                                emitParticles({
+                                    pos: ast.pos.clone(),
+                                    count: ast.size * 5,
+                                    life: [0.2, 0.55],
+                                    speed: [30, 90],
+                                    size: [1, 2.5],
+                                    color: ["#cdd6f4", "#585b70"],
+                                });
 
-          if (ast.size > 1) {
-            const nextSz = ast.size - 1;
-            spawnAsteroid(ast.pos.x, ast.pos.y, nextSz);
-            spawnAsteroid(ast.pos.x, ast.pos.y, nextSz);
-          }
+                                if (ast.size > 1) {
+                                    const nextSz = ast.size - 1;
+                                    spawnAsteroid(ast.pos.x, ast.pos.y, nextSz);
+                                    spawnAsteroid(ast.pos.x, ast.pos.y, nextSz);
+                                }
 
-          score += ast.size === 3 ? 20 : ast.size === 2 ? 50 : 100;
-          if (score > highScore) highScore = score;
+                                score +=
+                                    ast.size === 3
+                                        ? 20
+                                        : ast.size === 2
+                                          ? 50
+                                          : 100;
+                                if (score > highScore) highScore = score;
 
-          asteroids.splice(aIdx, 1);
-          break;
-        }
-      }
-      if (bHit) {
-        bullets.splice(bIdx, 1);
-      }
-    }
+                                asteroids.splice(aIdx, 1);
+                                break;
+                            }
+                        }
+                        if (bHit) {
+                            bullets.splice(bIdx, 1);
+                        }
+                    }
 
-    // Ship vs Asteroid Collision
-    if (!ship.dead) {
-      for (const ast of asteroids) {
-        if (ship.pos.distanceTo(ast.pos) < ship.radius + ast.radius) {
-          ship.dead = true;
-          ship.lives--;
-          playSound(sfx.explosion({ volume: 0.35 }));
-          
-          emitParticles({
-            pos: ship.pos.clone(),
-            count: 24, life: [0.4, 0.9], speed: [50, 150], size: [2, 5],
-            color: ["#f38ba8", "#fab387", "#313244"]
-          });
+                    if (!ship.dead) {
+                        for (const ast of asteroids) {
+                            if (
+                                ship.pos.distanceTo(ast.pos) <
+                                ship.radius + ast.radius
+                            ) {
+                                ship.dead = true;
+                                ship.lives--;
+                                playSound(sfx.explosion({ volume: 0.35 }));
 
-          if (ship.lives <= 0) {
-            gameState = "gameover";
-          } else {
-            respawnTimer = 1.5;
-          }
-          break;
-        }
-      }
-    }
+                                emitParticles({
+                                    pos: ship.pos.clone(),
+                                    count: 24,
+                                    life: [0.4, 0.9],
+                                    speed: [50, 150],
+                                    size: [2, 5],
+                                    color: ["#f38ba8", "#fab387", "#313244"],
+                                });
 
-    if (asteroids.length === 0 && gameState === "playing") {
-      initAsteroids();
-      score += 500;
-    }
-  },
+                                if (ship.lives <= 0) {
+                                    gameState = "gameover";
+                                } else {
+                                    respawnTimer = 1.5;
+                                }
+                                break;
+                            }
+                        }
+                    }
 
-  render() {
-    clear("#11111b");
+                    if (asteroids.length === 0 && gameState === "playing") {
+                        initAsteroids();
+                        score += 500;
+                    }
+                },
 
-    // Parallax stars
-    for (let i = 0; i < 40; i++) {
-      const sx = (i * 97 + time * 3) % W;
-      const sy = (i * 123 + time * 2) % H;
-      drawCircle(vec2(sx, sy), 0.7, "rgba(88, 91, 112, 0.4)");
-    }
+                render() {
+                    clear("#11111b");
 
-    // Draw Asteroids
-    for (const ast of asteroids) {
-      const screenPoints = ast.points.map(pt => {
-        const rx = pt.x * Math.cos(ast.angle) - pt.y * Math.sin(ast.angle);
-        const ry = pt.x * Math.sin(ast.angle) + pt.y * Math.cos(ast.angle);
-        return vec2(ast.pos.x + rx, ast.pos.y + ry);
-      });
+                    for (let i = 0; i < 40; i++) {
+                        const sx = (i * 97 + time * 3) % W;
+                        const sy = (i * 123 + time * 2) % H;
+                        drawCircle(vec2(sx, sy), 0.7, "rgba(88, 91, 112, 0.4)");
+                    }
 
-      for (let i = 0; i < screenPoints.length; i++) {
-        const p1 = screenPoints[i];
-        const p2 = screenPoints[(i + 1) % screenPoints.length];
-        drawLine(p1, p2, "#cdd6f4", 1);
-      }
-    }
+                    for (const ast of asteroids) {
+                        const screenPoints = ast.points.map((pt) => {
+                            const rx =
+                                pt.x * Math.cos(ast.angle) -
+                                pt.y * Math.sin(ast.angle);
+                            const ry =
+                                pt.x * Math.sin(ast.angle) +
+                                pt.y * Math.cos(ast.angle);
+                            return vec2(ast.pos.x + rx, ast.pos.y + ry);
+                        });
 
-    // Draw Bullets
-    for (const b of bullets) {
-      drawCircle(b.pos, 1.5, "#cba6f7");
-    }
+                        for (let i = 0; i < screenPoints.length; i++) {
+                            const p1 = screenPoints[i];
+                            const p2 =
+                                screenPoints[(i + 1) % screenPoints.length];
+                            drawLine(p1, p2, "#cdd6f4", 1);
+                        }
+                    }
 
-    // Draw Ship
-    if (!ship.dead) {
-      const front = vec2(ship.pos.x + Math.cos(ship.angle) * ship.radius * 1.3, ship.pos.y + Math.sin(ship.angle) * ship.radius * 1.3);
-      const backLeftAngle = ship.angle + Math.PI - 0.7;
-      const backRightAngle = ship.angle + Math.PI + 0.7;
-      const backL = vec2(ship.pos.x + Math.cos(backLeftAngle) * ship.radius, ship.pos.y + Math.sin(backLeftAngle) * ship.radius);
-      const backR = vec2(ship.pos.x + Math.cos(backRightAngle) * ship.radius, ship.pos.y + Math.sin(backRightAngle) * ship.radius);
+                    for (const b of bullets) {
+                        drawCircle(b.pos, 1.5, "#cba6f7");
+                    }
 
-      drawLine(front, backL, "#89b4fa", 1);
-      drawLine(backL, backR, "#89b4fa", 1);
-      drawLine(backR, front, "#89b4fa", 1);
+                    if (!ship.dead) {
+                        const front = vec2(
+                            ship.pos.x +
+                                Math.cos(ship.angle) * ship.radius * 1.3,
+                            ship.pos.y +
+                                Math.sin(ship.angle) * ship.radius * 1.3,
+                        );
+                        const backLeftAngle = ship.angle + Math.PI - 0.7;
+                        const backRightAngle = ship.angle + Math.PI + 0.7;
+                        const backL = vec2(
+                            ship.pos.x + Math.cos(backLeftAngle) * ship.radius,
+                            ship.pos.y + Math.sin(backLeftAngle) * ship.radius,
+                        );
+                        const backR = vec2(
+                            ship.pos.x + Math.cos(backRightAngle) * ship.radius,
+                            ship.pos.y + Math.sin(backRightAngle) * ship.radius,
+                        );
 
-      if (actionDown("thrust") && Math.floor(time * 15) % 2 === 0) {
-        const flameBack = ship.angle + Math.PI;
-        const flameTip = vec2(ship.pos.x + Math.cos(flameBack) * ship.radius * 1.6, ship.pos.y + Math.sin(flameBack) * ship.radius * 1.6);
-        drawLine(backL, flameTip, "#fab387", 1);
-        drawLine(backR, flameTip, "#fab387", 1);
-      }
-    }
+                        drawLine(front, backL, "#89b4fa", 1);
+                        drawLine(backL, backR, "#89b4fa", 1);
+                        drawLine(backR, front, "#89b4fa", 1);
 
-    renderParticles();
+                        if (
+                            actionDown("thrust") &&
+                            Math.floor(time * 15) % 2 === 0
+                        ) {
+                            const flameBack = ship.angle + Math.PI;
+                            const flameTip = vec2(
+                                ship.pos.x +
+                                    Math.cos(flameBack) * ship.radius * 1.6,
+                                ship.pos.y +
+                                    Math.sin(flameBack) * ship.radius * 1.6,
+                            );
+                            drawLine(backL, flameTip, "#fab387", 1);
+                            drawLine(backR, flameTip, "#fab387", 1);
+                        }
+                    }
 
-    resetRenderTransform();
+                    renderParticles();
 
-    // HUD Header
-    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.85)");
-    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+                    resetRenderTransform();
 
-    drawText(`SCORE: ${score}`, vec2(16, 10), { font: "bold 10px 'Monaspace Neon'", color: "#89b4fa" });
-    drawText(`HIGH: ${highScore}`, vec2(W - 16, 10), { font: "bold 10px 'Monaspace Neon'", color: "#fab387", align: "right" });
+                    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.85)");
+                    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
 
-    let livesStr = "";
-    for (let i = 0; i < ship.lives; i++) livesStr += "▲ ";
-    drawText(`LIVES: ${livesStr}`, vec2(W / 2, 10), { font: "10px 'Monaspace Neon'", color: "#f38ba8", align: "center" });
+                    drawText(`SCORE: ${score}`, vec2(16, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#89b4fa",
+                    });
+                    drawText(`HIGH: ${highScore}`, vec2(W - 16, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#fab387",
+                        align: "right",
+                    });
 
-    if (gameState === "gameover") {
-      drawRect(vec2(0, 0), vec2(W, H), "rgba(17, 17, 27, 0.8)");
-      drawText("SPACE ARMOR FAILURE // DEFEATED", vec2(W / 2, H / 2 - 15), { font: "bold 14px 'Monaspace Neon'", color: "#f38ba8", align: "center" });
-      drawText(`FINAL SCORE: ${score}`, vec2(W / 2, H / 2 + 10), { font: "10px 'Monaspace Neon'", color: "#89b4fa", align: "center" });
-      drawText("PRESS SPACE TO REDEPLOY", vec2(W / 2, H / 2 + 35), { font: "9px 'Monaspace Neon'", color: "#a6adc8", align: "center" });
-    }
-  }
-});
+                    let livesStr = "";
+                    for (let i = 0; i < ship.lives; i++) livesStr += "▲ ";
+                    drawText(`LIVES: ${livesStr}`, vec2(W / 2, 10), {
+                        font: "10px 'Monaspace Neon'",
+                        color: "#f38ba8",
+                        align: "center",
+                    });
 
-document.getElementById('canvas-container').appendChild(engine.canvasManager.canvas);
-if (engine.overlayCanvas) {
-  document.getElementById('canvas-container').appendChild(engine.overlayCanvas);
-}
-</script>
-</body>
+                    if (gameState === "gameover") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.8)",
+                        );
+                        drawText(
+                            "SPACE ARMOR FAILURE // DEFEATED",
+                            vec2(W / 2, H / 2 - 15),
+                            {
+                                font: "bold 14px 'Monaspace Neon'",
+                                color: "#f38ba8",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            `FINAL SCORE: ${score}`,
+                            vec2(W / 2, H / 2 + 10),
+                            {
+                                font: "10px 'Monaspace Neon'",
+                                color: "#89b4fa",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "PRESS SPACE TO REDEPLOY",
+                            vec2(W / 2, H / 2 + 35),
+                            {
+                                font: "9px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+                    }
+                },
+            });
+
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
 </html>

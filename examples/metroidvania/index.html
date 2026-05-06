@@ -1,84 +1,88 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Horizontal scrolling action adventure game.">
-  <title>TinyTS - Action Metroidvania</title>
-  <style>
-    @font-face {
-      font-family: 'Monaspace Neon';
-      src: url('https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2') format('woff2');
-      font-weight: 100 900;
-      font-style: normal;
-      font-display: block;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #1e1e2e;
-      color: #cdd6f4;
-      font-family: 'Monaspace Neon', monospace;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100vw;
-      height: 100vh;
-    }
-    #canvas-container {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      background: #11111b;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #canvas-container canvas {
-      position: absolute !important;
-      left: 50% !important;
-      top: 50% !important;
-      transform: translate(-50%, -50%) !important;
-      max-width: 95% !important;
-      max-height: 95% !important;
-      width: auto !important;
-      height: auto !important;
-      aspect-ratio: 16/9 !important;
-      border: 2px dashed #cba6f7;
-    }
-  </style>
-</head>
-<body>
-<div id="canvas-container"></div>
-<script src="../../dist/tinyts.js"></script>
-<script>
-// Action Metroidvania (640x360 Canvas)
-// Demonstrates: Horizontal room panning transitions, locked security gates,
-// inventory key collections, blaster projectile combat, and patrolling enemy AI.
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="Horizontal scrolling action adventure game."
+        />
+        <title>TinyTS - Action Metroidvania</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
+            const TILE_SIZE = 16;
 
-const W = 640, H = 360;
-const TILE_SIZE = 16;
+            const wallTex = assets.makeWallTexture();
+            const groundTex = assets.makeGroundTexture();
+            const spikeTex = assets.makeSpikeTexture();
+            const checkpointTex = assets.makeCheckpointTexture();
 
-// Textures
-const wallTex = assets.makeWallTexture();
-const groundTex = assets.makeGroundTexture();
-const spikeTex = assets.makeSpikeTexture();
-const checkpointTex = assets.makeCheckpointTexture();
+            const legend = {
+                ".": { solid: false },
+                "#": { solid: true, color: "#313244", texture: wallTex },
+                "=": { solid: true, color: "#45475a", texture: groundTex },
+                "-": { solid: true, oneWay: true, color: "#cba6f7" },
+                X: { spawn: "spike" },
+                C: { spawn: "key" },
+                D: { solid: true, color: "#f38ba8" },
+                T: { spawn: "trophy" },
+                P: { spawn: "player" },
+            };
 
-const legend = {
-  ".": { solid: false },
-  "#": { solid: true, color: "#313244", texture: wallTex }, // Outer walls
-  "=": { solid: true, color: "#45475a", texture: groundTex }, // Interior ground
-  "-": { solid: true, oneWay: true, color: "#cba6f7" }, // Platforms
-  "X": { spawn: "spike" }, // Spikes
-  "C": { spawn: "key" }, // Key
-  "D": { solid: true, color: "#f38ba8" }, // Locked Gate
-  "T": { spawn: "trophy" }, // Victory Trophy
-  "P": { spawn: "player" }
-};
-
-// 80x22 Grid (1280x352 World Space)
-const mapStr = `
+            // 80x22 Grid (1280x352 World Space)
+            const mapStr = `
 ################################################################################
 #                                      ##                                      #
 #                                      ##                                      #
@@ -103,431 +107,588 @@ const mapStr = `
 ################################################################################
 `;
 
-const map = tilemapFromString(mapStr, legend, TILE_SIZE);
-const startPos = map.getSpawn("player") || vec2(64, 180);
+            const map = tilemapFromString(mapStr, legend, TILE_SIZE);
+            const startPos = map.getSpawn("player") || vec2(64, 180);
 
-const player = {
-  pos: startPos.clone(),
-  size: vec2(10, 14),
-  vel: vec2(0, 0),
-  speed: 130,
-  gravity: 580,
-  jumpImpulse: -230,
-  grounded: false,
-  doubleJumped: false,
-  jumpReleased: true,
-  flipX: false,
-  dead: false,
-};
+            const player = {
+                pos: startPos.clone(),
+                size: vec2(10, 14),
+                vel: vec2(0, 0),
+                speed: 130,
+                gravity: 580,
+                jumpImpulse: -230,
+                grounded: false,
+                doubleJumped: false,
+                jumpReleased: true,
+                flipX: false,
+                dead: false,
+            };
 
-let hasKey = false;
-let gateUnlocked = false;
-let messageText = "MISSION BRIEF > COLLECT PASSKEY // REACH Trophy";
-let messageTimer = 4.0;
-let gameState = "playing";
-const doorTileId = map.tiles[12][39]; // Cached gate tile ID
+            let hasKey = false;
+            let gateUnlocked = false;
+            let messageText = "MISSION BRIEF > COLLECT PASSKEY // REACH Trophy";
+            let messageTimer = 4.0;
+            let gameState = "playing";
+            const doorTileId = map.tiles[12][39];
 
-// Interactive items
-let keyPos = map.getSpawn("key")?.subtract(vec2(8, 8)) || null;
-let trophyPos = map.getSpawn("trophy")?.subtract(vec2(8, 8)) || null;
-const spikes = [];
+            let keyPos = map.getSpawn("key")?.subtract(vec2(8, 8)) || null;
+            let trophyPos =
+                map.getSpawn("trophy")?.subtract(vec2(8, 8)) || null;
+            const spikes = [];
 
-let spikeIdx = 0;
-while (true) {
-  const sCenter = map.getSpawn("spike", spikeIdx++);
-  if (!sCenter) break;
-  spikes.push({ pos: sCenter.subtract(vec2(8, 8)) });
-}
+            let spikeIdx = 0;
+            while (true) {
+                const sCenter = map.getSpawn("spike", spikeIdx++);
+                if (!sCenter) break;
+                spikes.push({ pos: sCenter.subtract(vec2(8, 8)) });
+            }
 
-// Blaster Projectiles
-const bullets = [];
+            const bullets = [];
 
-// Patrolling enemies
-const enemies = [
-  { pos: vec2(220, 292), size: vec2(12, 12), speed: 50, dir: 1, limitL: 130, limitR: 280, dead: false },
-  { pos: vec2(480, 292), size: vec2(12, 12), speed: 45, dir: -1, limitL: 380, limitR: 540, dead: false },
-  { pos: vec2(840, 292), size: vec2(12, 12), speed: 55, dir: 1, limitL: 700, limitR: 960, dead: false }
-];
+            const enemies = [
+                {
+                    pos: vec2(220, 292),
+                    size: vec2(12, 12),
+                    speed: 50,
+                    dir: 1,
+                    limitL: 130,
+                    limitR: 280,
+                    dead: false,
+                },
+                {
+                    pos: vec2(480, 292),
+                    size: vec2(12, 12),
+                    speed: 45,
+                    dir: -1,
+                    limitL: 380,
+                    limitR: 540,
+                    dead: false,
+                },
+                {
+                    pos: vec2(840, 292),
+                    size: vec2(12, 12),
+                    speed: 55,
+                    dir: 1,
+                    limitL: 700,
+                    limitR: 960,
+                    dead: false,
+                },
+            ];
 
-// Room view panning setup
-let currentRoomX = 0;
-const camera = createCamera({
-  size: vec2(W, H),
-  bounds: { pos: vec2(0, 0), size: vec2(640, 352) }
-});
+            let currentRoomX = 0;
+            const camera = createCamera({
+                size: vec2(W, H),
+                bounds: { pos: vec2(0, 0), size: vec2(640, 352) },
+            });
 
-camera.follow(player.pos, {
-  deadZone: vec2(60, 40),
-  speed: 7
-});
+            camera.follow(player.pos, {
+                deadZone: vec2(60, 40),
+                speed: 7,
+            });
 
-// Setup actions
-bindAction("left", ["KeyA", "ArrowLeft"]);
-bindAction("right", ["KeyD", "ArrowRight"]);
-bindAction("jump", ["Space", "KeyW", "ArrowUp"]);
-bindAction("shoot", ["KeyJ", "Mouse0"]);
+            bindAction("left", ["KeyA", "ArrowLeft"]);
+            bindAction("right", ["KeyD", "ArrowRight"]);
+            bindAction("jump", ["Space", "KeyW", "ArrowUp"]);
+            bindAction("shoot", ["KeyJ", "Mouse0"]);
 
-function triggerMessage(text) {
-  messageText = text;
-  messageTimer = 3.5;
-}
+            function triggerMessage(text) {
+                messageText = text;
+                messageTimer = 3.5;
+            }
 
-function die() {
-  if (player.dead) return;
-  player.dead = true;
-  playSound(sfx.death());
-  camera.shake(6);
+            function die() {
+                if (player.dead) return;
+                player.dead = true;
+                playSound(sfx.death());
+                camera.shake(6);
 
-  emitParticles({
-    pos: player.pos.clone().add(vec2(5, 7)), count: 20, life: [0.3, 0.7],
-    speed: [40, 120], color: ["#f38ba8", "#fab387", "#313244"]
-  });
+                emitParticles({
+                    pos: player.pos.clone().add(vec2(5, 7)),
+                    count: 20,
+                    life: [0.3, 0.7],
+                    speed: [40, 120],
+                    color: ["#f38ba8", "#fab387", "#313244"],
+                });
 
-  setTimeout(() => {
-    player.pos.copy(startPos);
-    player.vel.set(0, 0);
-    player.dead = false;
-    player.doubleJumped = false;
-    player.jumpReleased = true;
-    hasKey = false;
-    gateUnlocked = false;
-    keyPos = map.getSpawn("key")?.subtract(vec2(8, 8)) || null;
-    trophyPos = map.getSpawn("trophy")?.subtract(vec2(8, 8)) || null;
-    
-    // Restore door tiles in map
-    for (let y = 12; y <= 14; y++) {
-      map.tiles[y][39] = doorTileId;
-      map.tiles[y][40] = doorTileId;
-    }
-    
-    for (const enemy of enemies) {
-      enemy.dead = false;
-    }
-    bullets.length = 0;
-    
-    playSound(sfx.teleport({ pitch: 0.8 }));
-    triggerMessage("REDEPLOYED // SECTOR ENEMY REBOUNDED");
-  }, 1000);
-}
+                setTimeout(() => {
+                    player.pos.copy(startPos);
+                    player.vel.set(0, 0);
+                    player.dead = false;
+                    player.doubleJumped = false;
+                    player.jumpReleased = true;
+                    hasKey = false;
+                    gateUnlocked = false;
+                    keyPos = map.getSpawn("key")?.subtract(vec2(8, 8)) || null;
+                    trophyPos =
+                        map.getSpawn("trophy")?.subtract(vec2(8, 8)) || null;
 
-const engine = engineStart({
-  size: { width: W, height: H },
-  pixelated: true,
+                    for (let y = 12; y <= 14; y++) {
+                        map.tiles[y][39] = doorTileId;
+                        map.tiles[y][40] = doorTileId;
+                    }
 
-  update(dt) {
-    updateParticles(dt);
+                    for (const enemy of enemies) {
+                        enemy.dead = false;
+                    }
+                    bullets.length = 0;
 
-    if (gameState === "victory") {
-      if (mousePressed(0) || keyPressed("Space")) {
-        player.pos.copy(startPos);
-        player.vel.set(0, 0);
-        player.dead = false;
-        player.doubleJumped = false;
-        player.jumpReleased = true;
-        hasKey = false;
-        gateUnlocked = false;
-        keyPos = map.getSpawn("key")?.subtract(vec2(8, 8)) || null;
-        trophyPos = map.getSpawn("trophy")?.subtract(vec2(8, 8)) || null;
-        
-        for (let y = 12; y <= 14; y++) {
-          map.tiles[y][39] = doorTileId;
-          map.tiles[y][40] = doorTileId;
-        }
-        
-        for (const enemy of enemies) {
-          enemy.dead = false;
-        }
-        bullets.length = 0;
-        
-        gameState = "playing";
-        playSound(sfx.teleport({ pitch: 0.8 }));
-        triggerMessage("SYSTEM RESET // MISSION INITIATED");
-      }
-      return;
-    }
+                    playSound(sfx.teleport({ pitch: 0.8 }));
+                    triggerMessage("REDEPLOYED // SECTOR ENEMY REBOUNDED");
+                }, 1000);
+            }
 
-    if (player.dead) return;
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
 
-    if (messageTimer > 0) {
-      messageTimer -= dt;
-    }
+                update(dt) {
+                    updateParticles(dt);
 
-    // Horizontal Screen panning transition checks (640-pixel bounds)
-    const newRoomX = Math.floor(player.pos.x / 640);
-    if (newRoomX !== currentRoomX) {
-      currentRoomX = newRoomX;
-      camera.bounds = {
-        pos: vec2(currentRoomX * 640, 0),
-        size: vec2(640, 352)
-      };
-      playSound(sfx.blip({ volume: 0.1, pitch: 1.5 }));
-      triggerMessage(`ROOM TRANSITION // SECTOR ${currentRoomX === 0 ? "A" : "B"}`);
-    }
+                    if (gameState === "victory") {
+                        if (mousePressed(0) || keyPressed("Space")) {
+                            player.pos.copy(startPos);
+                            player.vel.set(0, 0);
+                            player.dead = false;
+                            player.doubleJumped = false;
+                            player.jumpReleased = true;
+                            hasKey = false;
+                            gateUnlocked = false;
+                            keyPos =
+                                map.getSpawn("key")?.subtract(vec2(8, 8)) ||
+                                null;
+                            trophyPos =
+                                map.getSpawn("trophy")?.subtract(vec2(8, 8)) ||
+                                null;
 
-    // Input Movement
-    let moveDir = 0;
-    if (actionDown("left")) {
-      moveDir = -1;
-      player.flipX = true;
-    }
-    if (actionDown("right")) {
-      moveDir = 1;
-      player.flipX = false;
-    }
+                            for (let y = 12; y <= 14; y++) {
+                                map.tiles[y][39] = doorTileId;
+                                map.tiles[y][40] = doorTileId;
+                            }
 
-    player.vel.x = moveDir * player.speed;
-    player.vel.y += player.gravity * dt;
+                            for (const enemy of enemies) {
+                                enemy.dead = false;
+                            }
+                            bullets.length = 0;
 
-    // Jump logic requiring key releases
-    const jumpDown = actionDown("jump");
-    if (!jumpDown) {
-      player.jumpReleased = true;
-    }
+                            gameState = "playing";
+                            playSound(sfx.teleport({ pitch: 0.8 }));
+                            triggerMessage("SYSTEM RESET // MISSION INITIATED");
+                        }
+                        return;
+                    }
 
-    if (actionPressed("jump") && player.jumpReleased) {
-      if (player.grounded) {
-        player.vel.y = player.jumpImpulse;
-        player.grounded = false;
-        player.jumpReleased = false;
-        playSound(sfx.jump({ volume: 0.16 }));
-      } else if (!player.doubleJumped) {
-        player.vel.y = player.jumpImpulse * 0.9;
-        player.doubleJumped = true;
-        player.jumpReleased = false;
-        playSound(sfx.jump({ volume: 0.12, pitch: 1.4 }));
-      }
-    }
+                    if (player.dead) return;
 
-    // Blaster shoot trigger
-    if (actionPressed("shoot")) {
-      const bSpeed = 240;
-      const bDir = player.flipX ? -1 : 1;
-      bullets.push({
-        pos: player.pos.clone().add(vec2(player.flipX ? -4 : player.size.x, 6)),
-        vel: vec2(bDir * bSpeed, 0),
-        size: vec2(6, 3),
-        active: true
-      });
-      playSound(sfx.laser({ volume: 0.12, pitch: 1.2 }));
-    }
+                    if (messageTimer > 0) {
+                        messageTimer -= dt;
+                    }
 
-    // Bullet updates and collisions
-    for (let i = bullets.length - 1; i >= 0; i--) {
-      const b = bullets[i];
-      b.pos.x += b.vel.x * dt;
+                    const newRoomX = Math.floor(player.pos.x / 640);
+                    if (newRoomX !== currentRoomX) {
+                        currentRoomX = newRoomX;
+                        camera.bounds = {
+                            pos: vec2(currentRoomX * 640, 0),
+                            size: vec2(640, 352),
+                        };
+                        playSound(sfx.blip({ volume: 0.1, pitch: 1.5 }));
+                        triggerMessage(
+                            `ROOM TRANSITION // SECTOR ${currentRoomX === 0 ? "A" : "B"}`,
+                        );
+                    }
 
-      // Wall hit check
-      const tile = map.worldToTile(b.pos.x + (b.vel.x > 0 ? b.size.x : 0), b.pos.y + 1);
-      if (map.isSolid(tile.x, tile.y)) {
-        b.active = false;
-        emitParticles({
-          pos: b.pos.clone(), count: 3, life: [0.1, 0.2],
-          speed: [10, 40], color: ["#cdd6f4"]
-        });
-      }
+                    let moveDir = 0;
+                    if (actionDown("left")) {
+                        moveDir = -1;
+                        player.flipX = true;
+                    }
+                    if (actionDown("right")) {
+                        moveDir = 1;
+                        player.flipX = false;
+                    }
 
-      // Enemy hit check
-      for (const enemy of enemies) {
-        if (!enemy.dead && aabbOverlap({ pos: b.pos, size: b.size }, { pos: enemy.pos, size: enemy.size })) {
-          enemy.dead = true;
-          b.active = false;
-          playSound(sfx.explosion({ volume: 0.18, pitch: 1.5 }));
-          emitParticles({
-            pos: enemy.pos.clone().add(vec2(6, 6)), count: 12, life: [0.2, 0.45],
-            speed: [30, 80], color: ["#f38ba8", "#fab387"]
-          });
-          break;
-        }
-      }
+                    player.vel.x = moveDir * player.speed;
+                    player.vel.y += player.gravity * dt;
 
-      if (!b.active || b.pos.x < 0 || b.pos.x > map.width * TILE_SIZE) {
-        bullets.splice(i, 1);
-      }
-    }
+                    const jumpDown = actionDown("jump");
+                    if (!jumpDown) {
+                        player.jumpReleased = true;
+                    }
 
-    // Run physics
-    const moveRes = moveTilemap(player, player.vel, map, dt);
-    player.pos.copy(moveRes.pos);
-    player.vel.copy(moveRes.velocity);
-    player.grounded = moveRes.touching.bottom;
+                    if (actionPressed("jump") && player.jumpReleased) {
+                        if (player.grounded) {
+                            player.vel.y = player.jumpImpulse;
+                            player.grounded = false;
+                            player.jumpReleased = false;
+                            playSound(sfx.jump({ volume: 0.16 }));
+                        } else if (!player.doubleJumped) {
+                            player.vel.y = player.jumpImpulse * 0.9;
+                            player.doubleJumped = true;
+                            player.jumpReleased = false;
+                            playSound(sfx.jump({ volume: 0.12, pitch: 1.4 }));
+                        }
+                    }
 
-    if (player.grounded) {
-      player.doubleJumped = false;
-    }
+                    if (actionPressed("shoot")) {
+                        const bSpeed = 240;
+                        const bDir = player.flipX ? -1 : 1;
+                        bullets.push({
+                            pos: player.pos
+                                .clone()
+                                .add(
+                                    vec2(player.flipX ? -4 : player.size.x, 6),
+                                ),
+                            vel: vec2(bDir * bSpeed, 0),
+                            size: vec2(6, 3),
+                            active: true,
+                        });
+                        playSound(sfx.laser({ volume: 0.12, pitch: 1.2 }));
+                    }
 
-    // Gate collision checking
-    if (!gateUnlocked && player.pos.x >= 612 && player.pos.x <= 630) {
-      if (hasKey) {
-        gateUnlocked = true;
-        playSound(sfx.powerup());
-        triggerMessage("SECURITY LOCK ACCESSED // GATE OPEN");
-        for (let y = 12; y <= 14; y++) {
-          map.tiles[y][39] = 0;
-          map.tiles[y][40] = 0;
-        }
-      } else {
-        player.pos.x = 610;
-        player.vel.x = -50;
-        playSound(sfx.blip({ volume: 0.15, pitch: 0.8 }));
-        triggerMessage("LOCKED // CHIP-KEY IN SECTOR A REQUIRED");
-      }
-    }
+                    for (let i = bullets.length - 1; i >= 0; i--) {
+                        const b = bullets[i];
+                        b.pos.x += b.vel.x * dt;
 
-    // Overlaps
-    const pBox = { pos: player.pos, size: player.size };
+                        const tile = map.worldToTile(
+                            b.pos.x + (b.vel.x > 0 ? b.size.x : 0),
+                            b.pos.y + 1,
+                        );
+                        if (map.isSolid(tile.x, tile.y)) {
+                            b.active = false;
+                            emitParticles({
+                                pos: b.pos.clone(),
+                                count: 3,
+                                life: [0.1, 0.2],
+                                speed: [10, 40],
+                                color: ["#cdd6f4"],
+                            });
+                        }
 
-    // Key Collection
-    if (keyPos && aabbOverlap(pBox, { pos: keyPos, size: vec2(16, 16) })) {
-      hasKey = true;
-      keyPos = null;
-      playSound(sfx.coin({ volume: 0.2 }));
-      triggerMessage("CHIP-KEY LOADED // ACCESS AUTHORIZED");
-      emitParticles({
-        pos: player.pos.clone(), count: 12, life: [0.3, 0.6],
-        speed: [30, 90], color: ["#fab387", "#fff"]
-      });
-    }
+                        for (const enemy of enemies) {
+                            if (
+                                !enemy.dead &&
+                                aabbOverlap(
+                                    { pos: b.pos, size: b.size },
+                                    { pos: enemy.pos, size: enemy.size },
+                                )
+                            ) {
+                                enemy.dead = true;
+                                b.active = false;
+                                playSound(
+                                    sfx.explosion({ volume: 0.18, pitch: 1.5 }),
+                                );
+                                emitParticles({
+                                    pos: enemy.pos.clone().add(vec2(6, 6)),
+                                    count: 12,
+                                    life: [0.2, 0.45],
+                                    speed: [30, 80],
+                                    color: ["#f38ba8", "#fab387"],
+                                });
+                                break;
+                            }
+                        }
 
-    // Trophy Victory
-    if (trophyPos && aabbOverlap(pBox, { pos: trophyPos, size: vec2(16, 16) })) {
-      gameState = "victory";
-      trophyPos = null;
-      playSound(sfx.teleport());
-    }
+                        if (
+                            !b.active ||
+                            b.pos.x < 0 ||
+                            b.pos.x > map.width * TILE_SIZE
+                        ) {
+                            bullets.splice(i, 1);
+                        }
+                    }
 
-    // Spikes
-    for (const s of spikes) {
-      if (aabbOverlap(pBox, { pos: s.pos, size: vec2(16, 16) })) {
-        die();
-      }
-    }
+                    const moveRes = moveTilemap(player, player.vel, map, dt);
+                    player.pos.copy(moveRes.pos);
+                    player.vel.copy(moveRes.velocity);
+                    player.grounded = moveRes.touching.bottom;
 
-    // Update patrolling enemies
-    for (const enemy of enemies) {
-      if (enemy.dead) continue;
-      enemy.pos.x += enemy.speed * enemy.dir * dt;
-      if (enemy.pos.x < enemy.limitL) {
-        enemy.pos.x = enemy.limitL;
-        enemy.dir = 1;
-      } else if (enemy.pos.x > enemy.limitR) {
-        enemy.pos.x = enemy.limitR;
-        enemy.dir = -1;
-      }
+                    if (player.grounded) {
+                        player.doubleJumped = false;
+                    }
 
-      if (aabbOverlap(pBox, { pos: enemy.pos, size: enemy.size })) {
-        die();
-      }
-    }
+                    if (
+                        !gateUnlocked &&
+                        player.pos.x >= 612 &&
+                        player.pos.x <= 630
+                    ) {
+                        if (hasKey) {
+                            gateUnlocked = true;
+                            playSound(sfx.powerup());
+                            triggerMessage(
+                                "SECURITY LOCK ACCESSED // GATE OPEN",
+                            );
+                            for (let y = 12; y <= 14; y++) {
+                                map.tiles[y][39] = 0;
+                                map.tiles[y][40] = 0;
+                            }
+                        } else {
+                            player.pos.x = 610;
+                            player.vel.x = -50;
+                            playSound(sfx.blip({ volume: 0.15, pitch: 0.8 }));
+                            triggerMessage(
+                                "LOCKED // CHIP-KEY IN SECTOR A REQUIRED",
+                            );
+                        }
+                    }
 
-    // Fall death boundary
-    if (player.pos.y > map.height * TILE_SIZE) {
-      die();
-    }
+                    const pBox = { pos: player.pos, size: player.size };
 
-    camera.update(dt);
-  },
+                    if (
+                        keyPos &&
+                        aabbOverlap(pBox, { pos: keyPos, size: vec2(16, 16) })
+                    ) {
+                        hasKey = true;
+                        keyPos = null;
+                        playSound(sfx.coin({ volume: 0.2 }));
+                        triggerMessage("CHIP-KEY LOADED // ACCESS AUTHORIZED");
+                        emitParticles({
+                            pos: player.pos.clone(),
+                            count: 12,
+                            life: [0.3, 0.6],
+                            speed: [30, 90],
+                            color: ["#fab387", "#fff"],
+                        });
+                    }
 
-  render() {
-    clear("#11111b");
+                    if (
+                        trophyPos &&
+                        aabbOverlap(pBox, {
+                            pos: trophyPos,
+                            size: vec2(16, 16),
+                        })
+                    ) {
+                        gameState = "victory";
+                        trophyPos = null;
+                        playSound(sfx.teleport());
+                    }
 
-    // Camera space viewport
-    camera.apply();
+                    for (const s of spikes) {
+                        if (
+                            aabbOverlap(pBox, {
+                                pos: s.pos,
+                                size: vec2(16, 16),
+                            })
+                        ) {
+                            die();
+                        }
+                    }
 
-    // Map columns grid background
-    const gridSp = 16;
-    for (let x = 0; x < map.width * TILE_SIZE; x += gridSp) {
-      drawLine(vec2(x, 0), vec2(x, map.height * TILE_SIZE), "rgba(49, 50, 68, 0.06)");
-    }
+                    for (const enemy of enemies) {
+                        if (enemy.dead) continue;
+                        enemy.pos.x += enemy.speed * enemy.dir * dt;
+                        if (enemy.pos.x < enemy.limitL) {
+                            enemy.pos.x = enemy.limitL;
+                            enemy.dir = 1;
+                        } else if (enemy.pos.x > enemy.limitR) {
+                            enemy.pos.x = enemy.limitR;
+                            enemy.dir = -1;
+                        }
 
-    // Map structures
-    for (let y = 0; y < map.height; y++) {
-      for (let x = 0; x < map.width; x++) {
-        const def = map.getTileDef(x, y);
-        if (def) {
-          const px = x * TILE_SIZE;
-          const py = y * TILE_SIZE;
+                        if (
+                            aabbOverlap(pBox, {
+                                pos: enemy.pos,
+                                size: enemy.size,
+                            })
+                        ) {
+                            die();
+                        }
+                    }
 
-          if (!gateUnlocked && (x === 39 || x === 40) && y >= 12 && y <= 14) {
-            drawRect(vec2(px, py), vec2(TILE_SIZE, TILE_SIZE), "#f38ba8");
-            drawRectOutline(vec2(px, py), vec2(TILE_SIZE, TILE_SIZE), "#11111b", 1);
-            drawText("D", vec2(px + 8, py + 8), { font: "bold 8px 'Monaspace Neon'", color: "#11111b", align: "center", baseline: "middle" });
-          } else if (def.texture) {
-            drawSprite(def.texture, vec2(px, py), vec2(TILE_SIZE, TILE_SIZE));
-          } else if (def.oneWay) {
-            drawRect(vec2(px, py), vec2(TILE_SIZE, 4), def.color);
-          } else if (def.color) {
-            drawRect(vec2(px, py), vec2(TILE_SIZE, TILE_SIZE), def.color);
-          }
-        }
-      }
-    }
+                    if (player.pos.y > map.height * TILE_SIZE) {
+                        die();
+                    }
 
-    // Spikes
-    for (const s of spikes) {
-      drawSprite(spikeTex, s.pos, vec2(16, 16));
-    }
+                    camera.update(dt);
+                },
 
-    // Patrolling Enemies
-    for (const enemy of enemies) {
-      if (enemy.dead) continue;
-      drawRect(enemy.pos, enemy.size, "#f38ba8");
-      const fx = enemy.dir > 0 ? enemy.pos.x + 8 : enemy.pos.x + 2;
-      drawRect(vec2(fx, enemy.pos.y + 3), vec2(2, 2), "#fff");
-    }
+                render() {
+                    clear("#11111b");
 
-    // Bullets
-    for (const b of bullets) {
-      drawRect(b.pos, b.size, "#fab387");
-    }
+                    camera.apply();
 
-    // Key
-    if (keyPos) {
-      drawCircle(keyPos.clone().add(vec2(8, 8)), 5, "#fab387");
-      drawText("K", keyPos.clone().add(vec2(8, 8)), { font: "bold 8px 'Monaspace Neon'", color: "#11111b", align: "center", baseline: "middle" });
-    }
+                    const gridSp = 16;
+                    for (let x = 0; x < map.width * TILE_SIZE; x += gridSp) {
+                        drawLine(
+                            vec2(x, 0),
+                            vec2(x, map.height * TILE_SIZE),
+                            "rgba(49, 50, 68, 0.06)",
+                        );
+                    }
 
-    // Trophy Goal
-    if (trophyPos) {
-      drawSprite(checkpointTex, trophyPos, vec2(16, 16));
-    }
+                    for (let y = 0; y < map.height; y++) {
+                        for (let x = 0; x < map.width; x++) {
+                            const def = map.getTileDef(x, y);
+                            if (def) {
+                                const px = x * TILE_SIZE;
+                                const py = y * TILE_SIZE;
 
-    // Player
-    if (!player.dead) {
-      drawRect(player.pos, player.size, "#89b4fa");
-      const visorX = player.flipX ? player.pos.x + 1 : player.pos.x + player.size.x - 5;
-      drawRect(vec2(visorX, player.pos.y + 3), vec2(4, 3), "#fff");
-    }
+                                if (
+                                    !gateUnlocked &&
+                                    (x === 39 || x === 40) &&
+                                    y >= 12 &&
+                                    y <= 14
+                                ) {
+                                    drawRect(
+                                        vec2(px, py),
+                                        vec2(TILE_SIZE, TILE_SIZE),
+                                        "#f38ba8",
+                                    );
+                                    drawRectOutline(
+                                        vec2(px, py),
+                                        vec2(TILE_SIZE, TILE_SIZE),
+                                        "#11111b",
+                                        1,
+                                    );
+                                    drawText("D", vec2(px + 8, py + 8), {
+                                        font: "bold 8px 'Monaspace Neon'",
+                                        color: "#11111b",
+                                        align: "center",
+                                        baseline: "middle",
+                                    });
+                                } else if (def.texture) {
+                                    drawSprite(
+                                        def.texture,
+                                        vec2(px, py),
+                                        vec2(TILE_SIZE, TILE_SIZE),
+                                    );
+                                } else if (def.oneWay) {
+                                    drawRect(
+                                        vec2(px, py),
+                                        vec2(TILE_SIZE, 4),
+                                        def.color,
+                                    );
+                                } else if (def.color) {
+                                    drawRect(
+                                        vec2(px, py),
+                                        vec2(TILE_SIZE, TILE_SIZE),
+                                        def.color,
+                                    );
+                                }
+                            }
+                        }
+                    }
 
-    renderParticles();
-    camera.end();
+                    for (const s of spikes) {
+                        drawSprite(spikeTex, s.pos, vec2(16, 16));
+                    }
 
-    // Stats bar overlays (screen-space)
-    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
-    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+                    for (const enemy of enemies) {
+                        if (enemy.dead) continue;
+                        drawRect(enemy.pos, enemy.size, "#f38ba8");
+                        const fx =
+                            enemy.dir > 0 ? enemy.pos.x + 8 : enemy.pos.x + 2;
+                        drawRect(vec2(fx, enemy.pos.y + 3), vec2(2, 2), "#fff");
+                    }
 
-    const keysStr = hasKey ? "PASSKEY LOADED" : "NONE";
-    drawText(`SECTOR: ${currentRoomX === 0 ? "A" : "B"}`, vec2(16, 10), { font: "bold 10px 'Monaspace Neon'", color: "#cba6f7" });
-    drawText(`INVENTORY: ${keysStr}`, vec2(W - 16, 10), { font: "bold 10px 'Monaspace Neon'", color: "#fab387", align: "right" });
+                    for (const b of bullets) {
+                        drawRect(b.pos, b.size, "#fab387");
+                    }
 
-    // Scrolling logs at the bottom
-    if (messageTimer > 0 && gameState === "playing") {
-      drawRect(vec2(20, H - 38), vec2(W - 40, 24), "rgba(17, 17, 27, 0.9)");
-      drawRectOutline(vec2(20, H - 38), vec2(W - 40, 24), "#313244", 1);
-      drawText(messageText, vec2(30, H - 26), { font: "bold 8px 'Monaspace Neon'", color: "#a6e3a1", baseline: "middle" });
-    }
+                    if (keyPos) {
+                        drawCircle(
+                            keyPos.clone().add(vec2(8, 8)),
+                            5,
+                            "#fab387",
+                        );
+                        drawText("K", keyPos.clone().add(vec2(8, 8)), {
+                            font: "bold 8px 'Monaspace Neon'",
+                            color: "#11111b",
+                            align: "center",
+                            baseline: "middle",
+                        });
+                    }
 
-    if (gameState === "victory") {
-      drawRect(vec2(0, 0), vec2(W, H), "rgba(17, 17, 27, 0.95)");
-      drawText("MISSION COMPLETED // SECTOR ESCAPED // VICTORY", vec2(W / 2, H / 2 - 10), { font: "bold 14px 'Monaspace Neon'", color: "#a6e3a1", align: "center" });
-      drawText("TAP ANYWHERE TO DIVE DEEPER AGAIN", vec2(W / 2, H / 2 + 15), { font: "9px 'Monaspace Neon'", color: "#a6adc8", align: "center" });
-    }
-  }
-});
+                    if (trophyPos) {
+                        drawSprite(checkpointTex, trophyPos, vec2(16, 16));
+                    }
 
-document.getElementById('canvas-container').appendChild(engine.canvasManager.canvas);
-if (engine.overlayCanvas) {
-  document.getElementById('canvas-container').appendChild(engine.overlayCanvas);
-}
-</script>
-</body>
+                    if (!player.dead) {
+                        drawRect(player.pos, player.size, "#89b4fa");
+                        const visorX = player.flipX
+                            ? player.pos.x + 1
+                            : player.pos.x + player.size.x - 5;
+                        drawRect(
+                            vec2(visorX, player.pos.y + 3),
+                            vec2(4, 3),
+                            "#fff",
+                        );
+                    }
+
+                    renderParticles();
+                    camera.end();
+
+                    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
+                    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+
+                    const keysStr = hasKey ? "PASSKEY LOADED" : "NONE";
+                    drawText(
+                        `SECTOR: ${currentRoomX === 0 ? "A" : "B"}`,
+                        vec2(16, 10),
+                        {
+                            font: "bold 10px 'Monaspace Neon'",
+                            color: "#cba6f7",
+                        },
+                    );
+                    drawText(`INVENTORY: ${keysStr}`, vec2(W - 16, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#fab387",
+                        align: "right",
+                    });
+
+                    if (messageTimer > 0 && gameState === "playing") {
+                        drawRect(
+                            vec2(20, H - 38),
+                            vec2(W - 40, 24),
+                            "rgba(17, 17, 27, 0.9)",
+                        );
+                        drawRectOutline(
+                            vec2(20, H - 38),
+                            vec2(W - 40, 24),
+                            "#313244",
+                            1,
+                        );
+                        drawText(messageText, vec2(30, H - 26), {
+                            font: "bold 8px 'Monaspace Neon'",
+                            color: "#a6e3a1",
+                            baseline: "middle",
+                        });
+                    }
+
+                    if (gameState === "victory") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.95)",
+                        );
+                        drawText(
+                            "MISSION COMPLETED // SECTOR ESCAPED // VICTORY",
+                            vec2(W / 2, H / 2 - 10),
+                            {
+                                font: "bold 14px 'Monaspace Neon'",
+                                color: "#a6e3a1",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "TAP ANYWHERE TO DIVE DEEPER AGAIN",
+                            vec2(W / 2, H / 2 + 15),
+                            {
+                                font: "9px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+                    }
+                },
+            });
+
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
 </html>

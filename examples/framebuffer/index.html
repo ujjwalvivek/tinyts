@@ -1,118 +1,269 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="TinyTS framebuffer demo showing render-to-texture minimap.">
-  <meta name="theme-color" content="#1e1e2e">
-  <title>TinyTS - Framebuffer</title>
-  <link rel="icon" href="../public/favicon.svg" type="image/svg+xml">
-  <style>
-  @font-face {
-  font-family: 'Monaspace Neon';
-  src: url('https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2') format('woff2');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: block;
-}
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #1e1e2e; color: #cdd6f4; font-family: 'Monaspace Neon', monospace; overflow: hidden; display: flex; align-items: center; justify-content: center; width: 100vw; height: 100vh; }
-    #canvas-container { width: 100%; height: 100%; position: relative; background: #11111b; display: flex; align-items: center; justify-content: center; }
-    #canvas-container canvas { position: absolute !important; left: 50% !important; top: 50% !important; transform: translate(-50%, -50%) !important; max-width: 95% !important; max-height: 95% !important; width: auto !important; height: auto !important; aspect-ratio: 16/9 !important; border: 2px dashed #cba6f7; }
-  </style>
-</head>
-<body>
-<div id="canvas-container"></div>
-<script src="../../dist/tinyts.js"></script>
-<script>
-const W = 640, H = 360;
-const WORLD_W = 800, WORLD_H = 600;
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="TinyTS framebuffer demo showing render-to-texture minimap."
+        />
+        <meta name="theme-color" content="#1e1e2e" />
+        <title>TinyTS - Framebuffer</title>
+        <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
+            const WORLD_W = 800,
+                WORLD_H = 600;
 
-const camera = createCamera({
-  pos: vec2(W / 2, H / 2),
-  size: vec2(W, H),
-  zoom: 1,
-  bounds: { pos: vec2(0, 0), size: vec2(WORLD_W, WORLD_H) },
-});
+            const camera = createCamera({
+                pos: vec2(W / 2, H / 2),
+                size: vec2(W, H),
+                zoom: 1,
+                bounds: { pos: vec2(0, 0), size: vec2(WORLD_W, WORLD_H) },
+            });
 
-const player = { x: WORLD_W / 2, y: WORLD_H / 2, size: 16, speed: 200 };
-camera.follow(player, { deadZone: vec2(40, 30), speed: 5 });
+            const player = {
+                x: WORLD_W / 2,
+                y: WORLD_H / 2,
+                size: 16,
+                speed: 200,
+            };
+            camera.follow(player, { deadZone: vec2(40, 30), speed: 5 });
 
-bindAction("up", ["ArrowUp", "KeyW"]);
-bindAction("down", ["ArrowDown", "KeyS"]);
-bindAction("left", ["ArrowLeft", "KeyA"]);
-bindAction("right", ["ArrowRight", "KeyD"]);
+            bindAction("up", ["ArrowUp", "KeyW"]);
+            bindAction("down", ["ArrowDown", "KeyS"]);
+            bindAction("left", ["ArrowLeft", "KeyA"]);
+            bindAction("right", ["ArrowRight", "KeyD"]);
 
-const trees = [];
-for (let i = 0; i < 40; i++) trees.push({ x: rand(20, WORLD_W - 20), y: rand(20, WORLD_H - 20), r: rand(8, 20), shade: choose(["#a6e3a1","#94e2d5","#89dceb"]) });
-const rocks = [];
-for (let i = 0; i < 15; i++) rocks.push({ x: rand(20, WORLD_W - 20), y: rand(20, WORLD_H - 20), w: rand(10, 25), h: rand(8, 16), color: "#585b70" });
-const dots = [];
-for (let i = 0; i < 8; i++) dots.push({ x: rand(0, WORLD_W), y: rand(0, WORLD_H), vx: rand(-60, 60), vy: rand(-60, 60), color: choose(["#f38ba8","#fab387","#f9e2af","#89b4fa"]) });
+            const trees = [];
+            for (let i = 0; i < 40; i++)
+                trees.push({
+                    x: rand(20, WORLD_W - 20),
+                    y: rand(20, WORLD_H - 20),
+                    r: rand(8, 20),
+                    shade: choose(["#a6e3a1", "#94e2d5", "#89dceb"]),
+                });
+            const rocks = [];
+            for (let i = 0; i < 15; i++)
+                rocks.push({
+                    x: rand(20, WORLD_W - 20),
+                    y: rand(20, WORLD_H - 20),
+                    w: rand(10, 25),
+                    h: rand(8, 16),
+                    color: "#585b70",
+                });
+            const dots = [];
+            for (let i = 0; i < 8; i++)
+                dots.push({
+                    x: rand(0, WORLD_W),
+                    y: rand(0, WORLD_H),
+                    vx: rand(-60, 60),
+                    vy: rand(-60, 60),
+                    color: choose(["#f38ba8", "#fab387", "#f9e2af", "#89b4fa"]),
+                });
 
-const engine = engineStart({
-  size: { width: W, height: H },
-  pixelated: true,
-  update(dt) {
-    if (actionDown("up"))    player.y -= player.speed * dt;
-    if (actionDown("down"))  player.y += player.speed * dt;
-    if (actionDown("left"))  player.x -= player.speed * dt;
-    if (actionDown("right")) player.x += player.speed * dt;
-    player.x = clamp(player.x, player.size, WORLD_W - player.size);
-    player.y = clamp(player.y, player.size, WORLD_H - player.size);
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
+                update(dt) {
+                    if (actionDown("up")) player.y -= player.speed * dt;
+                    if (actionDown("down")) player.y += player.speed * dt;
+                    if (actionDown("left")) player.x -= player.speed * dt;
+                    if (actionDown("right")) player.x += player.speed * dt;
+                    player.x = clamp(
+                        player.x,
+                        player.size,
+                        WORLD_W - player.size,
+                    );
+                    player.y = clamp(
+                        player.y,
+                        player.size,
+                        WORLD_H - player.size,
+                    );
 
-    for (const d of dots) { d.x += d.vx * dt; d.y += d.vy * dt; if (d.x < 0 || d.x > WORLD_W) d.vx = -d.vx; if (d.y < 0 || d.y > WORLD_H) d.vy = -d.vy; }
-    camera.update(dt);
-  },
+                    for (const d of dots) {
+                        d.x += d.vx * dt;
+                        d.y += d.vy * dt;
+                        if (d.x < 0 || d.x > WORLD_W) d.vx = -d.vx;
+                        if (d.y < 0 || d.y > WORLD_H) d.vy = -d.vy;
+                    }
+                    camera.update(dt);
+                },
 
-  render() {
-    clear("#11111b");
+                render() {
+                    clear("#11111b");
 
-    // ---- Render main scene to screen ----
-    camera.apply();
-    for (let x = 0; x < WORLD_W; x += 40) drawLine(vec2(x, 0), vec2(x, WORLD_H), "rgba(49,50,68,0.2)");
-    for (let y = 0; y < WORLD_H; y += 40) drawLine(vec2(0, y), vec2(WORLD_W, y), "rgba(49,50,68,0.2)");
-    for (const r of rocks) drawRect(vec2(r.x, r.y), vec2(r.w, r.h), r.color);
-    for (const t of trees) drawCircle(vec2(t.x, t.y), t.r, t.shade);
-    for (const d of dots) drawCircle(vec2(d.x, d.y), 5, d.color);
-    drawRect(vec2(player.x - player.size / 2, player.y - player.size / 2), vec2(player.size, player.size), "#cdd6f4");
-    drawRect(vec2(player.x - 3, player.y - 3), vec2(6, 6), "#11111b");
-    camera.end();
+                    camera.apply();
+                    for (let x = 0; x < WORLD_W; x += 40)
+                        drawLine(
+                            vec2(x, 0),
+                            vec2(x, WORLD_H),
+                            "rgba(49,50,68,0.2)",
+                        );
+                    for (let y = 0; y < WORLD_H; y += 40)
+                        drawLine(
+                            vec2(0, y),
+                            vec2(WORLD_W, y),
+                            "rgba(49,50,68,0.2)",
+                        );
+                    for (const r of rocks)
+                        drawRect(vec2(r.x, r.y), vec2(r.w, r.h), r.color);
+                    for (const t of trees)
+                        drawCircle(vec2(t.x, t.y), t.r, t.shade);
+                    for (const d of dots)
+                        drawCircle(vec2(d.x, d.y), 5, d.color);
+                    drawRect(
+                        vec2(
+                            player.x - player.size / 2,
+                            player.y - player.size / 2,
+                        ),
+                        vec2(player.size, player.size),
+                        "#cdd6f4",
+                    );
+                    drawRect(
+                        vec2(player.x - 3, player.y - 3),
+                        vec2(6, 6),
+                        "#11111b",
+                    );
+                    camera.end();
 
-    // ---- Capture framebuffer once (lazy init after engineStart) ----
-    if (!window._fb) {
-      window._fb = createFrameBuffer(W, H);
-      bindFrameBuffer(window._fb);
-      clear("#11111b");
-      camera.apply();
-      for (let x = 0; x < WORLD_W; x += 40) drawLine(vec2(x, 0), vec2(x, WORLD_H), "rgba(49,50,68,0.15)");
-      for (let y = 0; y < WORLD_H; y += 40) drawLine(vec2(0, y), vec2(WORLD_W, y), "rgba(49,50,68,0.15)");
-      for (const r of rocks) drawRect(vec2(r.x, r.y), vec2(r.w, r.h), r.color);
-      for (const t of trees) drawCircle(vec2(t.x, t.y), t.r, t.shade);
-      for (const d of dots) drawCircle(vec2(d.x, d.y), 4, d.color);
-      drawRect(vec2(player.x - player.size / 2, player.y - player.size / 2), vec2(player.size, player.size), "#cdd6f4");
-      camera.end();
-      bindFrameBuffer(null);
-    }
+                    if (!window._fb) {
+                        window._fb = createFrameBuffer(W, H);
+                        bindFrameBuffer(window._fb);
+                        clear("#11111b");
+                        camera.apply();
+                        for (let x = 0; x < WORLD_W; x += 40)
+                            drawLine(
+                                vec2(x, 0),
+                                vec2(x, WORLD_H),
+                                "rgba(49,50,68,0.15)",
+                            );
+                        for (let y = 0; y < WORLD_H; y += 40)
+                            drawLine(
+                                vec2(0, y),
+                                vec2(WORLD_W, y),
+                                "rgba(49,50,68,0.15)",
+                            );
+                        for (const r of rocks)
+                            drawRect(vec2(r.x, r.y), vec2(r.w, r.h), r.color);
+                        for (const t of trees)
+                            drawCircle(vec2(t.x, t.y), t.r, t.shade);
+                        for (const d of dots)
+                            drawCircle(vec2(d.x, d.y), 4, d.color);
+                        drawRect(
+                            vec2(
+                                player.x - player.size / 2,
+                                player.y - player.size / 2,
+                            ),
+                            vec2(player.size, player.size),
+                            "#cdd6f4",
+                        );
+                        camera.end();
+                        bindFrameBuffer(null);
+                    }
 
-    // ---- Draw minimap overlay ----
-    const mmW = 130;
-    const mmH = Math.round(mmW * (H / W)); // maintain aspect ratio
-    drawFrameBuffer(window._fb, W - mmW - 10, H - mmH - 10, mmW, mmH);
-    drawRectOutline(vec2(W - mmW - 10, H - mmH - 10), vec2(mmW, mmH), "#cba6f7", 1);
-    drawText("MINIMAP", vec2(W - mmW / 2 - 10, H - mmH - 8), { color: "#cba6f7", size: 7, align: "center" });
+                    const mmW = 130;
+                    const mmH = Math.round(mmW * (H / W)); // maintain aspect ratio
+                    drawFrameBuffer(
+                        window._fb,
+                        W - mmW - 10,
+                        H - mmH - 10,
+                        mmW,
+                        mmH,
+                    );
+                    drawRectOutline(
+                        vec2(W - mmW - 10, H - mmH - 10),
+                        vec2(mmW, mmH),
+                        "#cba6f7",
+                        1,
+                    );
+                    drawText("MINIMAP", vec2(W - mmW / 2 - 10, H - mmH - 8), {
+                        color: "#cba6f7",
+                        size: 7,
+                        align: "center",
+                    });
 
-    const mx = W - mmW - 10 + (player.x / WORLD_W) * mmW;
-    const my = H - mmH - 10 + (player.y / WORLD_H) * mmH;
-    drawRect(vec2(mx - 3, my - 3), vec2(6, 6), "#f9e2af");
+                    const mx = W - mmW - 10 + (player.x / WORLD_W) * mmW;
+                    const my = H - mmH - 10 + (player.y / WORLD_H) * mmH;
+                    drawRect(vec2(mx - 3, my - 3), vec2(6, 6), "#f9e2af");
 
-    drawText("FRAMEBUFFER", vec2(W / 2, 14), { color: "#cba6f7", size: 10, weight: "bold", align: "center" });
-    drawText("Scene captured once to off-screen buffer → drawn as minimap", vec2(W / 2, 28), { color: "#a6adc8", size: 7, align: "center" });
-    drawText("ARROWS / WASD to explore", vec2(W / 2, 42), { color: "#585b70", size: 7, align: "center" });
-  },
-});
-document.getElementById('canvas-container').appendChild(engine.canvasManager.canvas);
-if (engine.overlayCanvas) document.getElementById('canvas-container').appendChild(engine.overlayCanvas);
-</script>
-</body>
+                    drawText("FRAMEBUFFER", vec2(W / 2, 14), {
+                        color: "#cba6f7",
+                        size: 10,
+                        weight: "bold",
+                        align: "center",
+                    });
+                    drawText(
+                        "Scene captured once to off-screen buffer → drawn as minimap",
+                        vec2(W / 2, 28),
+                        { color: "#a6adc8", size: 7, align: "center" },
+                    );
+                    drawText("ARROWS / WASD to explore", vec2(W / 2, 42), {
+                        color: "#585b70",
+                        size: 7,
+                        align: "center",
+                    });
+                },
+            });
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas)
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+        </script>
+    </body>
 </html>

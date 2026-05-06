@@ -5,13 +5,14 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>TinyTS - Procedural Tile Designer</title>
         <style>
-  @font-face {
-  font-family: 'Monaspace Neon';
-  src: url('https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2') format('woff2');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: block;
-}
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
             * {
                 margin: 0;
                 padding: 0;
@@ -20,7 +21,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: 'Monaspace Neon', monospace;
+                font-family: "Monaspace Neon", monospace;
                 min-height: 100vh;
                 display: flex;
                 flex-direction: column;
@@ -41,7 +42,6 @@
                 width: 100%;
             }
 
-            /* Preview panel */
             .preview-panel {
                 width: 40%;
                 flex-shrink: 0;
@@ -71,7 +71,6 @@
                 margin-top: 2px;
             }
 
-            /* Code panel */
             .code-panel {
                 flex: 1;
                 min-width: 0;
@@ -90,7 +89,7 @@
                 margin-bottom: 12px;
             }
             .code-panel pre {
-                font-family: 'Monaspace Neon', monospace;
+                font-family: "Monaspace Neon", monospace;
                 font-size: 12px;
                 line-height: 1.5;
                 color: #cdd6f4;
@@ -103,7 +102,6 @@
                 border: 1px solid #313244;
             }
 
-            /* Shape picks */
             .shape-bar {
                 display: flex;
                 gap: 6px;
@@ -116,7 +114,7 @@
                 border: 1px solid #313244;
                 color: #a6adc8;
                 padding: 6px 12px;
-                font-family: 'Monaspace Neon', monospace;
+                font-family: "Monaspace Neon", monospace;
                 font-size: 11px;
                 cursor: pointer;
                 border-radius: 0 !important;
@@ -132,7 +130,6 @@
                 background: rgba(137, 180, 250, 0.1);
             }
 
-            /* Controls */
             .controls {
                 display: flex;
                 gap: 12px;
@@ -166,7 +163,7 @@
                 border: 1px solid #45475a;
                 color: #cdd6f4;
                 padding: 2px 4px;
-                font-family: 'Monaspace Neon', monospace;
+                font-family: "Monaspace Neon", monospace;
                 font-size: 11px;
                 border-radius: 0 !important;
             }
@@ -175,12 +172,11 @@
                 border: 1px solid #45475a;
                 color: #cdd6f4;
                 padding: 4px 8px;
-                font-family: 'Monaspace Neon', monospace;
+                font-family: "Monaspace Neon", monospace;
                 font-size: 11px;
                 border-radius: 0 !important;
             }
 
-            /* Action buttons */
             .actions {
                 display: flex;
                 gap: 8px;
@@ -193,7 +189,7 @@
                 border: 1px solid #45475a;
                 color: #cdd6f4;
                 padding: 6px 18px;
-                font-family: 'Monaspace Neon', monospace;
+                font-family: "Monaspace Neon", monospace;
                 font-size: 12px;
                 cursor: pointer;
                 border-radius: 0 !important;
@@ -211,7 +207,6 @@
                 background: rgba(166, 227, 161, 0.1);
             }
 
-            /* Layer display */
             .layers {
                 margin-top: 12px;
                 padding: 12px;
@@ -279,20 +274,11 @@
 
         <script src="../../dist/tinyts.js"></script>
         <script>
-            // ═════════════════════════════════════════════════════════════════════════════
-            //  PROCEDURAL TILE DESIGNER
-            //  Design individual tile textures by layering procedural shapes.
-            //  Each shape shows its code. Click "Build World" to stamp the tile into
-            //  a random tilemap pattern.
-            // ═════════════════════════════════════════════════════════════════════════════
-
             const TILE = 16;
             const SCALE = 6;
-            const PREVIEW = TILE * SCALE; // 96px
+            const PREVIEW = TILE * SCALE;
             const W = 10,
-                H = 10; // world preview size
-
-            // ─── Shape definitions ──────────────────────────────────────────────────────
+                H = 10;
 
             const shapes = [
                 {
@@ -600,10 +586,8 @@
                 },
             ];
 
-            // ─── State ──────────────────────────────────────────────────────────────────
-
             let currentShape = shapes[0];
-            const layers = []; // { shape, params }
+            const layers = [];
 
             function getDefaultParams(shape) {
                 const p = {};
@@ -611,14 +595,11 @@
                 return p;
             }
 
-            // ─── Rendering ──────────────────────────────────────────────────────────────
-
             function renderTile() {
                 const canvas = document.getElementById("tile-preview");
                 const ctx = canvas.getContext("2d");
                 ctx.clearRect(0, 0, PREVIEW, PREVIEW);
 
-                // Draw a subtle checkerboard background
                 for (let y = 0; y < TILE; y++)
                     for (let x = 0; x < TILE; x++) {
                         ctx.fillStyle =
@@ -626,7 +607,6 @@
                         ctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE);
                     }
 
-                // Draw grid lines
                 ctx.strokeStyle = "rgba(255,255,255,0.04)";
                 ctx.lineWidth = 1;
                 for (let i = 0; i <= TILE; i++) {
@@ -641,18 +621,15 @@
                     ctx.stroke();
                 }
 
-                // Scale context so procedural functions work in tile-coordinates
                 ctx.save();
                 ctx.scale(SCALE, SCALE);
 
-                // Draw each layer
                 for (const layer of layers) {
                     layer.shape.draw(ctx, layer.params);
                 }
 
                 ctx.restore();
 
-                // Update code display
                 updateCode();
             }
 
@@ -670,8 +647,6 @@
                 document.getElementById("code-display").textContent =
                     lines.join("\n");
             }
-
-            // ─── Layer management ───────────────────────────────────────────────────────
 
             function addLayer() {
                 layers.push({
@@ -725,8 +700,6 @@
                 el.innerHTML = html;
             }
 
-            // ─── Shape / param controls ─────────────────────────────────────────────────
-
             function selectShape(shape) {
                 currentShape = shape;
                 document
@@ -763,9 +736,7 @@
             }
 
             function updateParam(key, value) {
-                // Update the preview layer if one exists, otherwise just the code
                 if (layers.length === 0) {
-                    // Show code for current shape without adding a layer
                     const tempParams = getDefaultParams(currentShape);
                     tempParams[key] = value;
                     const lines = [];
@@ -780,11 +751,9 @@
                     return;
                 }
 
-                // Update the LAST layer's params
                 const last = layers[layers.length - 1];
                 last.params[key] = value;
 
-                // Sync number inputs with sliders
                 document
                     .querySelectorAll(`input[data-key="${key}"]`)
                     .forEach((el) => {
@@ -795,17 +764,13 @@
                 renderTile();
             }
 
-            // ─── Build world from tile ──────────────────────────────────────────────────
-
             function buildWorld() {
                 if (layers.length === 0) return;
 
-                // Generate a random tilemap pattern using the current tile design
                 const worldCanvas = document.getElementById("world-preview");
                 const wctx = worldCanvas.getContext("2d");
                 wctx.clearRect(0, 0, worldCanvas.width, worldCanvas.height);
 
-                // Build legend mapping: sprite index → TileDef with our first layer's fill color
                 const firstFill = layers[0].params.fill || "#666";
                 const secondFill =
                     layers.length > 1
@@ -819,7 +784,6 @@
                     { color: "#89b4fa" },
                 ];
 
-                // Generate a simple pattern via seeded RNG
                 const seed = (Math.random() * 100000) | 0;
                 function rng() {
                     let s = seed;
@@ -832,7 +796,6 @@
 
                 const tiles = Array.from({ length: H }, () => Array(W).fill(0));
 
-                // Simple terrain: cellular noise
                 for (let y = 0; y < H; y++) {
                     for (let x = 0; x < W; x++) {
                         const v = fractalNoise2D(
@@ -840,18 +803,14 @@
                             (y + seed) / 4,
                             3,
                         );
-                        if (v < 0.3)
-                            tiles[y][x] = 3; // water
-                        else if (v < 0.45)
-                            tiles[y][x] = 2; // secondary
-                        else tiles[y][x] = 1; // primary tile
+                        if (v < 0.3) tiles[y][x] = 3;
+                        else if (v < 0.45) tiles[y][x] = 2;
+                        else tiles[y][x] = 1;
                     }
                 }
-                // Walls around
                 for (let x = 0; x < W; x++) tiles[0][x] = tiles[H - 1][x] = 1;
                 for (let y = 0; y < H; y++) tiles[y][0] = tiles[y][W - 1] = 1;
 
-                // Render the world preview at 16px per tile
                 const TS = 16;
                 for (let y = 0; y < H; y++)
                     for (let x = 0; x < W; x++) {
@@ -860,7 +819,6 @@
                         wctx.fillRect(x * TS, y * TS, TS, TS);
                     }
 
-                // Show world code
                 const codeLines = [
                     "// Tile definitions (using your designed tile colors)",
                     `const TILE_DEFS = [`,
@@ -881,33 +839,35 @@
                     codeLines.join("\n");
             }
 
-            // ─── Random generation ────────────────────────────────────────────────────
-
-function generateRandom() {
-    clearLayers();
-    const count = 1 + ((Math.random() * 3) | 0); // 1-4 layers
-    for (let i = 0; i < count; i++) {
-        const shape = shapes[(Math.random() * shapes.length) | 0];
-        const params = {};
-        for (const def of shape.params) {
-            if (def.type === 'color') {
-                const hue = (Math.random() * 360) | 0;
-                const sat = 40 + ((Math.random() * 50) | 0);
-                const lit = 30 + ((Math.random() * 40) | 0);
-                params[def.key] = 'hsl(' + hue + ',' + sat + '%,' + lit + '%)';
-            } else if (def.options) {
-                params[def.key] = def.options[(Math.random() * def.options.length) | 0];
-            } else {
-                params[def.key] = def.min + ((Math.random() * (def.max - def.min)) | 0);
+            function generateRandom() {
+                clearLayers();
+                const count = 1 + ((Math.random() * 3) | 0);
+                for (let i = 0; i < count; i++) {
+                    const shape = shapes[(Math.random() * shapes.length) | 0];
+                    const params = {};
+                    for (const def of shape.params) {
+                        if (def.type === "color") {
+                            const hue = (Math.random() * 360) | 0;
+                            const sat = 40 + ((Math.random() * 50) | 0);
+                            const lit = 30 + ((Math.random() * 40) | 0);
+                            params[def.key] =
+                                "hsl(" + hue + "," + sat + "%," + lit + "%)";
+                        } else if (def.options) {
+                            params[def.key] =
+                                def.options[
+                                    (Math.random() * def.options.length) | 0
+                                ];
+                        } else {
+                            params[def.key] =
+                                def.min +
+                                ((Math.random() * (def.max - def.min)) | 0);
+                        }
+                    }
+                    layers.push({ shape, params });
+                }
+                renderTile();
+                renderLayers();
             }
-        }
-        layers.push({ shape, params });
-    }
-    renderTile();
-    renderLayers();
-}
-
-// ─── Utils ──────────────────────────────────────────────────────────────────
 
             function selectCode() {
                 const el = document.getElementById("code-display");
@@ -918,14 +878,10 @@ function generateRandom() {
                 sel.addRange(range);
             }
 
-            // ─── Keyboard shortcuts ─────────────────────────────────────────────────────
-
             document.addEventListener("keydown", (e) => {
                 if (e.key === "Enter" && e.ctrlKey) addLayer();
                 if (e.key === "b" && e.ctrlKey) buildWorld();
             });
-
-            // ─── Init ───────────────────────────────────────────────────────────────────
 
             buildShapeBar();
             buildParamControls();

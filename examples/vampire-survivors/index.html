@@ -1,676 +1,971 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Top-down horde survival rogue-lite game.">
-  <title>TinyTS - Vampire Survivors Arcade</title>
-  <style>
-    @font-face {
-      font-family: 'Monaspace Neon';
-      src: url('https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2') format('woff2');
-      font-weight: 100 900;
-      font-style: normal;
-      font-display: block;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #1e1e2e;
-      color: #cdd6f4;
-      font-family: 'Monaspace Neon', monospace;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100vw;
-      height: 100vh;
-    }
-    #canvas-container {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      background: #11111b;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #canvas-container canvas {
-      position: absolute !important;
-      left: 50% !important;
-      top: 50% !important;
-      transform: translate(-50%, -50%) !important;
-      max-width: 95% !important;
-      max-height: 95% !important;
-      width: auto !important;
-      height: auto !important;
-      aspect-ratio: 16/9 !important;
-      border: 2px dashed #cba6f7;
-    }
-  </style>
-</head>
-<body>
-<div id="canvas-container"></div>
-<script src="../../dist/tinyts.js"></script>
-<script>
-// Vampire Survivors Arcade (640x360 Canvas)
-// Demonstrates: Infinite camera follow grids, auto-weapons targeting, XP gem collection,
-// upgrade card level-up pauses, particle damage indicators, and heavy horde AI.
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="Top-down horde survival rogue-lite game."
+        />
+        <title>TinyTS - Vampire Survivors Arcade</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
 
-const W = 640, H = 360;
+            const player = {
+                pos: vec2(0, 0),
+                hp: 100,
+                maxHp: 100,
+                speed: 110,
+                level: 1,
+                xp: 0,
+                xpNeeded: 10,
+                kills: 0,
 
-// Player data
-const player = {
-  pos: vec2(0, 0),
-  hp: 100,
-  maxHp: 100,
-  speed: 110,
-  level: 1,
-  xp: 0,
-  xpNeeded: 10,
-  kills: 0,
-  
-  // Weapons state
-  missileTimer: 0,
-  missileRate: 1.0, // seconds
-  missileDmg: 15,
-  
-  shieldCount: 0,
-  shieldAngle: 0,
-  shieldDmg: 8,
-  
-  fireRingTimer: 0,
-  fireRingRate: 2.2,
-  fireRingDmg: 20
-};
+                missileTimer: 0,
+                missileRate: 1.0,
+                missileDmg: 15,
 
-// Lists
-const enemies = [];
-const bullets = [];
-const gems = [];
-const floatingTexts = []; // { text, pos, color, timer }
+                shieldCount: 0,
+                shieldAngle: 0,
+                shieldDmg: 8,
 
-let gameState = "playing"; // playing | levelup | gameover
-let levelUpCards = []; // array of { title, desc, upgradeFn }
-let selectedCardIdx = 0;
-let timeElapsed = 0;
-let enemySpawnTimer = 0;
+                fireRingTimer: 0,
+                fireRingRate: 2.2,
+                fireRingDmg: 20,
+            };
 
-// Setup Inputs
-bindAction("left", ["KeyA", "ArrowLeft"]);
-bindAction("right", ["KeyD", "ArrowRight"]);
-bindAction("up", ["KeyW", "ArrowUp"]);
-bindAction("down", ["KeyS", "ArrowDown"]);
-bindAction("action", ["Space", "Enter"]);
+            const enemies = [];
+            const bullets = [];
+            const gems = [];
+            const floatingTexts = [];
 
-function triggerUpgrade(card) {
-  card.upgradeFn();
-  gameState = "playing";
-  playSound(sfx.powerup({ volume: 0.2 }));
-}
+            let gameState = "playing";
+            let levelUpCards = [];
+            let selectedCardIdx = 0;
+            let timeElapsed = 0;
+            let enemySpawnTimer = 0;
 
-// Generate level up options
-function showLevelUp() {
-  gameState = "levelup";
-  selectedCardIdx = 0;
-  playSound(sfx.coin({ volume: 0.25, frequency: 800 }));
+            bindAction("left", ["KeyA", "ArrowLeft"]);
+            bindAction("right", ["KeyD", "ArrowRight"]);
+            bindAction("up", ["KeyW", "ArrowUp"]);
+            bindAction("down", ["KeyS", "ArrowDown"]);
+            bindAction("action", ["Space", "Enter"]);
 
-  const pool = [
-    {
-      title: "MAGIC MISSILE",
-      desc: "Speed up firing rate of target seek missiles (+25% rate)",
-      upgradeFn: () => { player.missileRate = Math.max(0.2, player.missileRate - 0.2); }
-    },
-    {
-      title: "MISSILE FORCE",
-      desc: "Increase magic missile impact force and damage (+10 DMG)",
-      upgradeFn: () => { player.missileDmg += 10; }
-    },
-    {
-      title: "ORBIT SHIELD",
-      desc: "Add an orbiting shield or expand current shield orb count (+1 ORB)",
-      upgradeFn: () => { player.shieldCount++; }
-    },
-    {
-      title: "VITAL HEAL",
-      desc: "Reconstitute nanites and restore primary core (+40 HP)",
-      upgradeFn: () => { player.hp = Math.min(player.maxHp, player.hp + 40); }
-    },
-    {
-      title: "SPEED BOOST",
-      desc: "Enhance thruster efficiency (+15% movement speed)",
-      upgradeFn: () => { player.speed += 15; }
-    }
-  ];
+            function triggerUpgrade(card) {
+                card.upgradeFn();
+                gameState = "playing";
+                playSound(sfx.powerup({ volume: 0.2 }));
+            }
 
-  // Pick 3 random options
-  levelUpCards = [];
-  while (levelUpCards.length < 3) {
-    const item = choose(pool);
-    if (!levelUpCards.includes(item)) {
-      levelUpCards.push(item);
-    }
-  }
-}
+            function showLevelUp() {
+                gameState = "levelup";
+                selectedCardIdx = 0;
+                playSound(sfx.coin({ volume: 0.25, frequency: 800 }));
 
-function resetGame() {
-  player.pos.set(0, 0);
-  player.hp = 100;
-  player.maxHp = 100;
-  player.speed = 110;
-  player.level = 1;
-  player.xp = 0;
-  player.xpNeeded = 10;
-  player.kills = 0;
-  player.missileTimer = 0;
-  player.missileRate = 1.0;
-  player.missileDmg = 15;
-  player.shieldCount = 1;
-  player.shieldAngle = 0;
-  player.fireRingTimer = 0;
-  
-  enemies.length = 0;
-  bullets.length = 0;
-  gems.length = 0;
-  floatingTexts.length = 0;
-  
-  timeElapsed = 0;
-  enemySpawnTimer = 0;
-  gameState = "playing";
-  playSound(sfx.powerup({ volume: 0.25 }));
-}
+                const pool = [
+                    {
+                        title: "MAGIC MISSILE",
+                        desc: "Speed up firing rate of target seek missiles (+25% rate)",
+                        upgradeFn: () => {
+                            player.missileRate = Math.max(
+                                0.2,
+                                player.missileRate - 0.2,
+                            );
+                        },
+                    },
+                    {
+                        title: "MISSILE FORCE",
+                        desc: "Increase magic missile impact force and damage (+10 DMG)",
+                        upgradeFn: () => {
+                            player.missileDmg += 10;
+                        },
+                    },
+                    {
+                        title: "ORBIT SHIELD",
+                        desc: "Add an orbiting shield or expand current shield orb count (+1 ORB)",
+                        upgradeFn: () => {
+                            player.shieldCount++;
+                        },
+                    },
+                    {
+                        title: "VITAL HEAL",
+                        desc: "Reconstitute nanites and restore primary core (+40 HP)",
+                        upgradeFn: () => {
+                            player.hp = Math.min(player.maxHp, player.hp + 40);
+                        },
+                    },
+                    {
+                        title: "SPEED BOOST",
+                        desc: "Enhance thruster efficiency (+15% movement speed)",
+                        upgradeFn: () => {
+                            player.speed += 15;
+                        },
+                    },
+                ];
 
-const camera = createCamera({ size: vec2(W, H) });
+                levelUpCards = [];
+                while (levelUpCards.length < 3) {
+                    const item = choose(pool);
+                    if (!levelUpCards.includes(item)) {
+                        levelUpCards.push(item);
+                    }
+                }
+            }
 
-const engine = engineStart({
-  size: { width: W, height: H },
-  pixelated: true,
+            function resetGame() {
+                player.pos.set(0, 0);
+                player.hp = 100;
+                player.maxHp = 100;
+                player.speed = 110;
+                player.level = 1;
+                player.xp = 0;
+                player.xpNeeded = 10;
+                player.kills = 0;
+                player.missileTimer = 0;
+                player.missileRate = 1.0;
+                player.missileDmg = 15;
+                player.shieldCount = 1;
+                player.shieldAngle = 0;
+                player.fireRingTimer = 0;
+                enemies.length = 0;
+                bullets.length = 0;
+                gems.length = 0;
+                floatingTexts.length = 0;
+                timeElapsed = 0;
+                enemySpawnTimer = 0;
+                gameState = "playing";
+                playSound(sfx.powerup({ volume: 0.25 }));
+            }
 
-  update(dt) {
-    updateParticles(dt);
+            const camera = createCamera({ size: vec2(W, H) });
 
-    if (gameState === "gameover") {
-      if (actionPressed("action") || mousePressed(0)) {
-        resetGame();
-      }
-      return;
-    }
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
 
-    if (gameState === "levelup") {
-      // Menu interactions
-      if (actionPressed("left")) {
-        selectedCardIdx = (selectedCardIdx - 1 + 3) % 3;
-        playSound(sfx.menuSelect({ volume: 0.1 }));
-      }
-      if (actionPressed("right")) {
-        selectedCardIdx = (selectedCardIdx + 1) % 3;
-        playSound(sfx.menuSelect({ volume: 0.1 }));
-      }
-      if (actionPressed("action")) {
-        triggerUpgrade(levelUpCards[selectedCardIdx]);
-      }
+                update(dt) {
+                    updateParticles(dt);
 
-      // Mouse select checking
-      if (mousePressed(0)) {
-        const mp = mousePos();
-        for (let i = 0; i < 3; i++) {
-          const cardW = 160;
-          const cardH = 120;
-          const cardX = W / 2 - 250 + i * 170;
-          const cardY = H / 2 - 40;
-          if (mp.x >= cardX && mp.x <= cardX + cardW && mp.y >= cardY && mp.y <= cardY + cardH) {
-            triggerUpgrade(levelUpCards[i]);
-            break;
-          }
-        }
-      }
-      return;
-    }
+                    if (gameState === "gameover") {
+                        if (actionPressed("action") || mousePressed(0)) {
+                            resetGame();
+                        }
+                        return;
+                    }
 
-    timeElapsed += dt;
+                    if (gameState === "levelup") {
+                        if (actionPressed("left")) {
+                            selectedCardIdx = (selectedCardIdx - 1 + 3) % 3;
+                            playSound(sfx.menuSelect({ volume: 0.1 }));
+                        }
+                        if (actionPressed("right")) {
+                            selectedCardIdx = (selectedCardIdx + 1) % 3;
+                            playSound(sfx.menuSelect({ volume: 0.1 }));
+                        }
+                        if (actionPressed("action")) {
+                            triggerUpgrade(levelUpCards[selectedCardIdx]);
+                        }
 
-    // ── 1. Player Movement ──
-    let moveDir = vec2(0, 0);
-    if (actionDown("left")) moveDir.x = -1;
-    if (actionDown("right")) moveDir.x = 1;
-    if (actionDown("up")) moveDir.y = -1;
-    if (actionDown("down")) moveDir.y = 1;
+                        if (mousePressed(0)) {
+                            const mp = mousePos();
+                            for (let i = 0; i < 3; i++) {
+                                const cardW = 160;
+                                const cardH = 120;
+                                const cardX = W / 2 - 250 + i * 170;
+                                const cardY = H / 2 - 40;
+                                if (
+                                    mp.x >= cardX &&
+                                    mp.x <= cardX + cardW &&
+                                    mp.y >= cardY &&
+                                    mp.y <= cardY + cardH
+                                ) {
+                                    triggerUpgrade(levelUpCards[i]);
+                                    break;
+                                }
+                            }
+                        }
+                        return;
+                    }
 
-    if (moveDir.x !== 0 || moveDir.y !== 0) {
-      moveDir.normalize();
-      player.pos.add(moveDir.scale(player.speed * dt));
-    }
+                    timeElapsed += dt;
 
-    // Camera tracks player smoothly
-    camera.follow(player.pos, { speed: 8 });
-    camera.update(dt);
+                    let moveDir = vec2(0, 0);
+                    if (actionDown("left")) moveDir.x = -1;
+                    if (actionDown("right")) moveDir.x = 1;
+                    if (actionDown("up")) moveDir.y = -1;
+                    if (actionDown("down")) moveDir.y = 1;
 
-    // Update shield rotations
-    player.shieldAngle += 2.5 * dt;
+                    if (moveDir.x !== 0 || moveDir.y !== 0) {
+                        moveDir.normalize();
+                        player.pos.add(moveDir.scale(player.speed * dt));
+                    }
 
-    // ── 2. Automatic Weapons ──
-    // Weapon A: Magic Missile (nearest target)
-    player.missileTimer += dt;
-    if (player.missileTimer >= player.missileRate && enemies.length > 0) {
-      player.missileTimer = 0;
-      
-      // Find nearest enemy
-      let nearest = null;
-      let minDist = 9999;
-      for (const e of enemies) {
-        const d = player.pos.distanceTo(e.pos);
-        if (d < minDist) {
-          minDist = d;
-          nearest = e;
-        }
-      }
+                    camera.follow(player.pos, { speed: 8 });
+                    camera.update(dt);
 
-      if (nearest) {
-        const targetDir = nearest.pos.clone().subtract(player.pos).normalize();
-        bullets.push({
-          pos: player.pos.clone(),
-          vel: targetDir.scale(220),
-          dmg: player.missileDmg,
-          size: 6,
-          life: 2.2,
-          isShield: false
-        });
-        playSound(sfx.laser({ volume: 0.08, pitch: 1.6 }));
-      }
-    }
+                    player.shieldAngle += 2.5 * dt;
 
-    // ── 3. Enemy Spawner ──
-    enemySpawnTimer += dt;
-    // Spawn rate scale up over time
-    const spawnInterval = Math.max(0.35, 1.6 - (timeElapsed / 100));
-    if (enemySpawnTimer >= spawnInterval) {
-      enemySpawnTimer = 0;
-      
-      // Spawn just outside viewport boundary
-      const angle = Math.random() * Math.PI * 2;
-      const dist = rand(240, 280);
-      const spawnPos = player.pos.clone().add(vec2(Math.cos(angle) * dist, Math.sin(angle) * dist));
-      
-      const levelFactor = 1 + Math.floor(timeElapsed / 60) * 0.5;
-      const type = Math.random() < 0.25 ? "orc" : "spider";
-      
-      enemies.push({
-        pos: spawnPos,
-        hp: Math.floor(20 * levelFactor),
-        maxHp: Math.floor(20 * levelFactor),
-        speed: type === "orc" ? 45 : 65,
-        size: type === "orc" ? 14 : 10,
-        damage: 10,
-        type: type,
-        hitTimer: 0
-      });
-    }
+                    player.missileTimer += dt;
+                    if (
+                        player.missileTimer >= player.missileRate &&
+                        enemies.length > 0
+                    ) {
+                        player.missileTimer = 0;
 
-    // ── 4. Update Bullets ──
-    for (let i = bullets.length - 1; i >= 0; i--) {
-      const b = bullets[i];
-      b.pos.add(b.vel.clone().scale(dt));
-      b.life -= dt;
-      if (b.life <= 0) {
-        bullets.splice(i, 1);
-      }
-    }
+                        let nearest = null;
+                        let minDist = 9999;
+                        for (const e of enemies) {
+                            const d = player.pos.distanceTo(e.pos);
+                            if (d < minDist) {
+                                minDist = d;
+                                nearest = e;
+                            }
+                        }
 
-    // ── 5. Update Orbiting Shield Orbs ──
-    const activeShields = [];
-    if (player.shieldCount > 0) {
-      for (let i = 0; i < player.shieldCount; i++) {
-        const angle = player.shieldAngle + (i * Math.PI * 2 / player.shieldCount);
-        const radius = 34 + Math.sin(time * 3) * 3;
-        const sPos = player.pos.clone().add(vec2(Math.cos(angle) * radius, Math.sin(angle) * radius));
-        activeShields.push({ pos: sPos, size: 8 });
-      }
-    }
+                        if (nearest) {
+                            const targetDir = nearest.pos
+                                .clone()
+                                .subtract(player.pos)
+                                .normalize();
+                            bullets.push({
+                                pos: player.pos.clone(),
+                                vel: targetDir.scale(220),
+                                dmg: player.missileDmg,
+                                size: 6,
+                                life: 2.2,
+                                isShield: false,
+                            });
+                            playSound(sfx.laser({ volume: 0.08, pitch: 1.6 }));
+                        }
+                    }
 
-    // ── 6. Update Enemies ──
-    for (let i = enemies.length - 1; i >= 0; i--) {
-      const e = enemies[i];
-      
-      // Step toward player
-      const dir = player.pos.clone().subtract(e.pos).normalize();
-      e.pos.add(dir.scale(e.speed * dt));
+                    enemySpawnTimer += dt;
+                    const spawnInterval = Math.max(
+                        0.35,
+                        1.6 - timeElapsed / 100,
+                    );
+                    if (enemySpawnTimer >= spawnInterval) {
+                        enemySpawnTimer = 0;
 
-      // Hit animation timer decay
-      if (e.hitTimer > 0) e.hitTimer -= dt;
+                        const angle = Math.random() * Math.PI * 2;
+                        const dist = rand(240, 280);
+                        const spawnPos = player.pos
+                            .clone()
+                            .add(
+                                vec2(
+                                    Math.cos(angle) * dist,
+                                    Math.sin(angle) * dist,
+                                ),
+                            );
 
-      // Bullet hits checks
-      for (let j = bullets.length - 1; j >= 0; j--) {
-        const b = bullets[j];
-        if (e.pos.distanceTo(b.pos) < e.size + b.size) {
-          e.hp -= b.dmg;
-          e.hitTimer = 0.12;
-          bullets.splice(j, 1);
-          
-          floatingTexts.push({ text: `-${b.dmg}`, pos: e.pos.clone().add(vec2(rand(-10, 10), -10)), color: "#fab387", timer: 0.6 });
-          playSound(sfx.hit({ volume: 0.08, pitch: 1.3 }));
+                        const levelFactor =
+                            1 + Math.floor(timeElapsed / 60) * 0.5;
+                        const type = Math.random() < 0.25 ? "orc" : "spider";
 
-          if (e.hp <= 0) break;
-        }
-      }
+                        enemies.push({
+                            pos: spawnPos,
+                            hp: Math.floor(20 * levelFactor),
+                            maxHp: Math.floor(20 * levelFactor),
+                            speed: type === "orc" ? 45 : 65,
+                            size: type === "orc" ? 14 : 10,
+                            damage: 10,
+                            type: type,
+                            hitTimer: 0,
+                        });
+                    }
 
-      // Shield hit checks
-      for (const s of activeShields) {
-        if (e.pos.distanceTo(s.pos) < e.size + s.size) {
-          // Continuous damage with pushback
-          e.hp -= player.shieldDmg * dt * 4;
-          e.hitTimer = 0.08;
-          const pushDir = e.pos.clone().subtract(player.pos).normalize();
-          e.pos.add(pushDir.scale(40 * dt)); // pushback
-          
-          if (Math.random() < 0.08) {
-            floatingTexts.push({ text: `-${player.shieldDmg}`, pos: e.pos.clone().add(vec2(rand(-8, 8), -10)), color: "#89dceb", timer: 0.5 });
-            playSound(sfx.hit({ volume: 0.05, pitch: 1.8 }));
-          }
-        }
-      }
+                    for (let i = bullets.length - 1; i >= 0; i--) {
+                        const b = bullets[i];
+                        b.pos.add(b.vel.clone().scale(dt));
+                        b.life -= dt;
+                        if (b.life <= 0) {
+                            bullets.splice(i, 1);
+                        }
+                    }
 
-      // Check death
-      if (e.hp <= 0) {
-        // Spawn XP gem
-        gems.push({ pos: e.pos.clone(), xp: 1 + (e.type === "orc" ? 2 : 0) });
-        
-        // Spawn death particles
-        emitParticles({
-          pos: e.pos, count: 6, life: [0.15, 0.3], speed: [30, 70],
-          color: [e.type === "orc" ? "#a6e3a1" : "#f38ba8", "#fff"]
-        });
-        
-        enemies.splice(i, 1);
-        player.kills++;
-        continue;
-      }
+                    const activeShields = [];
+                    if (player.shieldCount > 0) {
+                        for (let i = 0; i < player.shieldCount; i++) {
+                            const angle =
+                                player.shieldAngle +
+                                (i * Math.PI * 2) / player.shieldCount;
+                            const radius = 34 + Math.sin(time * 3) * 3;
+                            const sPos = player.pos
+                                .clone()
+                                .add(
+                                    vec2(
+                                        Math.cos(angle) * radius,
+                                        Math.sin(angle) * radius,
+                                    ),
+                                );
+                            activeShields.push({ pos: sPos, size: 8 });
+                        }
+                    }
 
-      // Damage player collision
-      if (e.pos.distanceTo(player.pos) < e.size + 10) {
-        player.hp -= e.damage * dt;
-        camera.shake(1.5);
-        
-        if (Math.random() < 0.05) {
-          playSound(sfx.hit({ volume: 0.15, pitch: 0.7 }));
-        }
+                    for (let i = enemies.length - 1; i >= 0; i--) {
+                        const e = enemies[i];
 
-        if (player.hp <= 0) {
-          gameState = "gameover";
-          playSound(sfx.death());
-        }
-      }
-    }
+                        const dir = player.pos
+                            .clone()
+                            .subtract(e.pos)
+                            .normalize();
+                        e.pos.add(dir.scale(e.speed * dt));
 
-    // ── 7. Gems Collection ──
-    for (let i = gems.length - 1; i >= 0; i--) {
-      const g = gems[i];
-      const dist = player.pos.distanceTo(g.pos);
-      
-      // Pull gem toward player if close
-      if (dist < 60) {
-        const pullDir = player.pos.clone().subtract(g.pos).normalize();
-        g.pos.add(pullDir.scale(160 * dt));
-      }
-      
-      if (dist < 12) {
-        // Add XP
-        player.xp += g.xp;
-        playSound(sfx.blip({ volume: 0.1, frequency: 1000 + player.xp * 20, attack: 0.005 }));
-        gems.splice(i, 1);
+                        if (e.hitTimer > 0) e.hitTimer -= dt;
 
-        // Check Level Up
-        if (player.xp >= player.xpNeeded) {
-          player.xp -= player.xpNeeded;
-          player.level++;
-          player.xpNeeded = Math.floor(player.xpNeeded * 1.5);
-          showLevelUp();
-        }
-      }
-    }
+                        for (let j = bullets.length - 1; j >= 0; j--) {
+                            const b = bullets[j];
+                            if (e.pos.distanceTo(b.pos) < e.size + b.size) {
+                                e.hp -= b.dmg;
+                                e.hitTimer = 0.12;
+                                bullets.splice(j, 1);
 
-    // ── 8. Floating Texts decay ──
-    for (let i = floatingTexts.length - 1; i >= 0; i--) {
-      const ft = floatingTexts[i];
-      ft.pos.y -= 15 * dt;
-      ft.timer -= dt;
-      if (ft.timer <= 0) {
-        floatingTexts.splice(i, 1);
-      }
-    }
-  },
+                                floatingTexts.push({
+                                    text: `-${b.dmg}`,
+                                    pos: e.pos
+                                        .clone()
+                                        .add(vec2(rand(-10, 10), -10)),
+                                    color: "#fab387",
+                                    timer: 0.6,
+                                });
+                                playSound(
+                                    sfx.hit({ volume: 0.08, pitch: 1.3 }),
+                                );
 
-  render() {
-    clear("#11111b");
+                                if (e.hp <= 0) break;
+                            }
+                        }
 
-    // Enforce camera matrix bounds
-    camera.apply();
+                        for (const s of activeShields) {
+                            if (e.pos.distanceTo(s.pos) < e.size + s.size) {
+                                e.hp -= player.shieldDmg * dt * 4;
+                                e.hitTimer = 0.08;
+                                const pushDir = e.pos
+                                    .clone()
+                                    .subtract(player.pos)
+                                    .normalize();
+                                e.pos.add(pushDir.scale(40 * dt));
 
-    // ── Render infinite looping terrain grid ──
-    const gridSpace = 40;
-    const startX = Math.floor((camera.pos.x - W / 2) / gridSpace) * gridSpace;
-    const endX = Math.ceil((camera.pos.x + W / 2) / gridSpace) * gridSpace;
-    const startY = Math.floor((camera.pos.y - H / 2) / gridSpace) * gridSpace;
-    const endY = Math.ceil((camera.pos.y + H / 2) / gridSpace) * gridSpace;
+                                if (Math.random() < 0.08) {
+                                    floatingTexts.push({
+                                        text: `-${player.shieldDmg}`,
+                                        pos: e.pos
+                                            .clone()
+                                            .add(vec2(rand(-8, 8), -10)),
+                                        color: "#89dceb",
+                                        timer: 0.5,
+                                    });
+                                    playSound(
+                                        sfx.hit({ volume: 0.05, pitch: 1.8 }),
+                                    );
+                                }
+                            }
+                        }
 
-    for (let x = startX; x <= endX; x += gridSpace) {
-      drawLine(vec2(x, startY), vec2(x, endY), "rgba(49, 50, 68, 0.15)");
-    }
-    for (let y = startY; y <= endY; y += gridSpace) {
-      drawLine(vec2(startX, y), vec2(endX, y), "rgba(49, 50, 68, 0.15)");
-    }
+                        if (e.hp <= 0) {
+                            gems.push({
+                                pos: e.pos.clone(),
+                                xp: 1 + (e.type === "orc" ? 2 : 0),
+                            });
 
-    // Procedural grass tufts using grid hash
-    for (let gx = Math.floor(startX / gridSpace); gx <= Math.ceil(endX / gridSpace); gx++) {
-      for (let gy = Math.floor(startY / gridSpace); gy <= Math.ceil(endY / gridSpace); gy++) {
-        const val = (Math.sin(gx * 12.9898 + gy * 78.233) * 43758.5453) % 1;
-        const absVal = Math.abs(val);
-        if (absVal < 0.14) {
-          const px = gx * gridSpace + absVal * 12;
-          const py = gy * gridSpace + (absVal * 120) % gridSpace;
-          drawLine(vec2(px, py), vec2(px - 2, py - 3), "#313244", 1);
-          drawLine(vec2(px, py), vec2(px + 2, py - 3), "#313244", 1);
-        }
-      }
-    }
+                            emitParticles({
+                                pos: e.pos,
+                                count: 6,
+                                life: [0.15, 0.3],
+                                speed: [30, 70],
+                                color: [
+                                    e.type === "orc" ? "#a6e3a1" : "#f38ba8",
+                                    "#fff",
+                                ],
+                            });
 
-    // ── Render Gems ──
-    for (const g of gems) {
-      drawCircle(g.pos, 3, "#94e2d5");
-      drawCircleOutline(g.pos, 3, "#11111b", 1);
-    }
+                            enemies.splice(i, 1);
+                            player.kills++;
+                            continue;
+                        }
 
-    // ── Render Bullets ──
-    for (const b of bullets) {
-      drawCircle(b.pos, b.size / 2, "#fab387");
-      drawCircleOutline(b.pos, b.size / 2, "#11111b", 1);
-    }
+                        if (e.pos.distanceTo(player.pos) < e.size + 10) {
+                            player.hp -= e.damage * dt;
+                            camera.shake(1.5);
 
-    // ── Render Enemies ──
-    for (const e of enemies) {
-      const col = e.hitTimer > 0 ? "#fff" : (e.type === "orc" ? "#a6e3a1" : "#f38ba8");
-      
-      if (e.type === "orc") {
-        drawRect(e.pos.clone().subtract(vec2(7, 7)), vec2(14, 14), col);
-        drawRectOutline(e.pos.clone().subtract(vec2(7, 7)), vec2(14, 14), "#11111b", 1.5);
-        // Red glowing visor
-        drawRect(vec2(e.pos.x - 4, e.pos.y - 3), vec2(8, 2), "#f38ba8");
-      } else {
-        // Spider
-        drawCircle(e.pos, 5, col);
-        drawCircleOutline(e.pos, 5, "#11111b", 1.5);
-        // Crawling legs
-        const legSweep = Math.sin(time * 16 + e.pos.x) * 4;
-        drawLine(e.pos, e.pos.clone().add(vec2(-8, -4 + legSweep)), "#11111b", 1.5);
-        drawLine(e.pos, e.pos.clone().add(vec2(8, -4 - legSweep)), "#11111b", 1.5);
-        drawLine(e.pos, e.pos.clone().add(vec2(-8, 4 - legSweep)), "#11111b", 1.5);
-        drawLine(e.pos, e.pos.clone().add(vec2(8, 4 + legSweep)), "#11111b", 1.5);
-      }
-    }
+                            if (Math.random() < 0.05) {
+                                playSound(
+                                    sfx.hit({ volume: 0.15, pitch: 0.7 }),
+                                );
+                            }
 
-    // ── Render Player Wizard ──
-    const wizardColor = "#cba6f7";
-    // ── Render Hover-Mech Player ──
-    const px = player.pos.x;
-    const py = player.pos.y;
-    
-    // Thruster flames at the bottom
-    if (Math.floor(time * 20) % 2 === 0) {
-      drawCircle(vec2(px - 4, py + 8), 3, "#fab387");
-      drawCircle(vec2(px + 4, py + 8), 3, "#fab387");
-      drawLine(vec2(px - 4, py + 8), vec2(px - 4, py + 13), "#f38ba8", 1.5);
-      drawLine(vec2(px + 4, py + 8), vec2(px + 4, py + 13), "#f38ba8", 1.5);
-    }
-    
-    // Stabilizer wings
-    drawLine(vec2(px - 11, py), vec2(px + 11, py), "#585b70", 2.5);
-    drawLine(vec2(px - 11, py), vec2(px - 14, py + 3), "#f38ba8", 1.5);
-    drawLine(vec2(px + 11, py), vec2(px + 14, py + 3), "#f38ba8", 1.5);
-    
-    // Main mech armor body
-    drawRect(vec2(px - 6, py - 6), vec2(12, 12), "#89b4fa");
-    drawRectOutline(vec2(px - 6, py - 6), vec2(12, 12), "#11111b", 1.5);
-    
-    // Glowing visor
-    drawRect(vec2(px - 4, py - 3), vec2(8, 2.5), "#f9e2af");
-    
-    // Central energy core (glowing pulse)
-    const corePulse = 2 + Math.sin(time * 10) * 0.8;
-    drawCircle(vec2(px, py + 3), corePulse, "#94e2d5");
-    
-    // Hovering Shoulder Pods
-    const podYOffset = Math.sin(time * 6) * 2;
-    const leftPod = vec2(px - 13, py - 4 + podYOffset);
-    const rightPod = vec2(px + 13, py - 4 + podYOffset);
-    
-    drawCircle(leftPod, 2.5, "#cba6f7");
-    drawCircleOutline(leftPod, 2.5, "#11111b", 1);
-    drawCircle(rightPod, 2.5, "#cba6f7");
-    drawCircleOutline(rightPod, 2.5, "#11111b", 1);
-    
-    // Small connecting laser wires to shoulder pods
-    drawLine(vec2(px - 6, py - 2), leftPod, "rgba(203, 166, 247, 0.25)", 1);
-    drawLine(vec2(px + 6, py - 2), rightPod, "rgba(203, 166, 247, 0.25)", 1);
+                            if (player.hp <= 0) {
+                                gameState = "gameover";
+                                playSound(sfx.death());
+                            }
+                        }
+                    }
 
-    // ── Render Orbiting Shield ──
-    if (player.shieldCount > 0) {
-      for (let i = 0; i < player.shieldCount; i++) {
-        const angle = player.shieldAngle + (i * Math.PI * 2 / player.shieldCount);
-        const radius = 34 + Math.sin(time * 3) * 3;
-        const sPos = player.pos.clone().add(vec2(Math.cos(angle) * radius, Math.sin(angle) * radius));
-        
-        drawCircle(sPos, 4, "#89dceb");
-        drawCircleOutline(sPos, 4, "#11111b", 1.5);
-        // Connect light energy lines to player
-        drawLine(player.pos, sPos, "rgba(137, 220, 235, 0.08)", 1);
-      }
-    }
+                    for (let i = gems.length - 1; i >= 0; i--) {
+                        const g = gems[i];
+                        const dist = player.pos.distanceTo(g.pos);
 
-    // Sparks particles
-    renderParticles();
+                        if (dist < 60) {
+                            const pullDir = player.pos
+                                .clone()
+                                .subtract(g.pos)
+                                .normalize();
+                            g.pos.add(pullDir.scale(160 * dt));
+                        }
 
-    // Floating text counters
-    for (const ft of floatingTexts) {
-      drawText(ft.text, ft.pos, { font: "bold 8px 'Monaspace Neon'", color: ft.color, align: "center" });
-    }
+                        if (dist < 12) {
+                            player.xp += g.xp;
+                            playSound(
+                                sfx.blip({
+                                    volume: 0.1,
+                                    frequency: 1000 + player.xp * 20,
+                                    attack: 0.005,
+                                }),
+                            );
+                            gems.splice(i, 1);
 
-    // Restore camera matrix
-    camera.end();
+                            if (player.xp >= player.xpNeeded) {
+                                player.xp -= player.xpNeeded;
+                                player.level++;
+                                player.xpNeeded = Math.floor(
+                                    player.xpNeeded * 1.5,
+                                );
+                                showLevelUp();
+                            }
+                        }
+                    }
 
-    // ── HUD Screenspace Overlay ──
-    // HP bar
-    const hpW = 140;
-    drawRect(vec2(20, 46), vec2(hpW, 12), "#181825");
-    drawRect(vec2(20, 46), vec2(hpW * Math.max(0, player.hp / player.maxHp), 12), "#f38ba8");
-    drawRectOutline(vec2(20, 46), vec2(hpW, 12), "#313244", 1.5);
-    drawText("NANITE SHIELD CORE", vec2(20, 39), { font: "bold 7px 'Monaspace Neon'", color: "#f38ba8" });
+                    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                        const ft = floatingTexts[i];
+                        ft.pos.y -= 15 * dt;
+                        ft.timer -= dt;
+                        if (ft.timer <= 0) {
+                            floatingTexts.splice(i, 1);
+                        }
+                    }
+                },
 
-    // XP Bar (across center top)
-    const xpW = 200;
-    const xpX = W / 2 - xpW / 2;
-    drawRect(vec2(xpX, 46), vec2(xpW, 8), "#181825");
-    drawRect(vec2(xpX, 46), vec2(xpW * (player.xp / player.xpNeeded), 8), "#cba6f7");
-    drawRectOutline(vec2(xpX, 46), vec2(xpW, 8), "#313244", 1.5);
-    drawText(`LEVEL ${player.level}`, vec2(xpX, 39), { font: "bold 7.5px 'Monaspace Neon'", color: "#cba6f7" });
+                render() {
+                    clear("#11111b");
 
-    // Kill stats
-    drawText(`VAPORIZED: ${player.kills}`, vec2(W - 120, 48), { font: "bold 8px 'Monaspace Neon'", color: "#fab387" });
-    
-    // Time metrics
-    const minutes = Math.floor(timeElapsed / 60);
-    const seconds = Math.floor(timeElapsed % 60).toString().padStart(2, "0");
-    drawText(`TIME: ${minutes}:${seconds}`, vec2(W - 120, 38), { font: "bold 8px 'Monaspace Neon'", color: "#a6adc8" });
+                    camera.apply();
 
-    // ── Level Up Card Overlay ──
-    if (gameState === "levelup") {
-      drawRect(vec2(0, 0), vec2(W, H), "rgba(17, 17, 27, 0.75)");
-      drawText("SYNAPSE UPGRADE BUFFER DETECTED", vec2(W / 2, H / 2 - 75), { font: "bold 13px 'Monaspace Neon'", color: "#cba6f7", align: "center" });
-      drawText("SELECT PROTOCOL CARD FOR INJECTION", vec2(W / 2, H / 2 - 58), { font: "8.5px 'Monaspace Neon'", color: "#a6adc8", align: "center" });
+                    const gridSpace = 40;
+                    const startX =
+                        Math.floor((camera.pos.x - W / 2) / gridSpace) *
+                        gridSpace;
+                    const endX =
+                        Math.ceil((camera.pos.x + W / 2) / gridSpace) *
+                        gridSpace;
+                    const startY =
+                        Math.floor((camera.pos.y - H / 2) / gridSpace) *
+                        gridSpace;
+                    const endY =
+                        Math.ceil((camera.pos.y + H / 2) / gridSpace) *
+                        gridSpace;
 
-      for (let i = 0; i < 3; i++) {
-        const card = levelUpCards[i];
-        const cardW = 160;
-        const cardH = 120;
-        const cardX = W / 2 - 250 + i * 170;
-        const cardY = H / 2 - 40;
+                    for (let x = startX; x <= endX; x += gridSpace) {
+                        drawLine(
+                            vec2(x, startY),
+                            vec2(x, endY),
+                            "rgba(49, 50, 68, 0.15)",
+                        );
+                    }
+                    for (let y = startY; y <= endY; y += gridSpace) {
+                        drawLine(
+                            vec2(startX, y),
+                            vec2(endX, y),
+                            "rgba(49, 50, 68, 0.15)",
+                        );
+                    }
 
-        const isSelected = i === selectedCardIdx;
-        const bgCol = isSelected ? "#313244" : "#181825";
-        const borderCol = isSelected ? "#cba6f7" : "#45475a";
-        const titleCol = isSelected ? "#f9e2af" : "#cdd6f4";
+                    for (
+                        let gx = Math.floor(startX / gridSpace);
+                        gx <= Math.ceil(endX / gridSpace);
+                        gx++
+                    ) {
+                        for (
+                            let gy = Math.floor(startY / gridSpace);
+                            gy <= Math.ceil(endY / gridSpace);
+                            gy++
+                        ) {
+                            const val =
+                                (Math.sin(gx * 12.9898 + gy * 78.233) *
+                                    43758.5453) %
+                                1;
+                            const absVal = Math.abs(val);
+                            if (absVal < 0.14) {
+                                const px = gx * gridSpace + absVal * 12;
+                                const py =
+                                    gy * gridSpace +
+                                    ((absVal * 120) % gridSpace);
+                                drawLine(
+                                    vec2(px, py),
+                                    vec2(px - 2, py - 3),
+                                    "#313244",
+                                    1,
+                                );
+                                drawLine(
+                                    vec2(px, py),
+                                    vec2(px + 2, py - 3),
+                                    "#313244",
+                                    1,
+                                );
+                            }
+                        }
+                    }
 
-        drawRect(vec2(cardX, cardY), vec2(cardW, cardH), bgCol);
-        drawRectOutline(vec2(cardX, cardY), vec2(cardW, cardH), borderCol, isSelected ? 2 : 1);
+                    for (const g of gems) {
+                        drawCircle(g.pos, 3, "#94e2d5");
+                        drawCircleOutline(g.pos, 3, "#11111b", 1);
+                    }
 
-        drawText(card.title, vec2(cardX + cardW / 2, cardY + 20), {
-          font: "bold 9px 'Monaspace Neon'", color: titleCol, align: "center"
-        });
+                    for (const b of bullets) {
+                        drawCircle(b.pos, b.size / 2, "#fab387");
+                        drawCircleOutline(b.pos, b.size / 2, "#11111b", 1);
+                    }
 
-        // Wrap description words manually
-        const descWords = card.desc.split(" ");
-        let line = "";
-        let linesCount = 0;
-        for (const w of descWords) {
-          if (line.length + w.length > 22) {
-            drawText(line, vec2(cardX + cardW / 2, cardY + 46 + linesCount * 13), {
-              font: "7px 'Monaspace Neon'", color: "#a6adc8", align: "center"
+                    for (const e of enemies) {
+                        const col =
+                            e.hitTimer > 0
+                                ? "#fff"
+                                : e.type === "orc"
+                                  ? "#a6e3a1"
+                                  : "#f38ba8";
+
+                        if (e.type === "orc") {
+                            drawRect(
+                                e.pos.clone().subtract(vec2(7, 7)),
+                                vec2(14, 14),
+                                col,
+                            );
+                            drawRectOutline(
+                                e.pos.clone().subtract(vec2(7, 7)),
+                                vec2(14, 14),
+                                "#11111b",
+                                1.5,
+                            );
+                            drawRect(
+                                vec2(e.pos.x - 4, e.pos.y - 3),
+                                vec2(8, 2),
+                                "#f38ba8",
+                            );
+                        } else {
+                            drawCircle(e.pos, 5, col);
+                            drawCircleOutline(e.pos, 5, "#11111b", 1.5);
+                            const legSweep = Math.sin(time * 16 + e.pos.x) * 4;
+                            drawLine(
+                                e.pos,
+                                e.pos.clone().add(vec2(-8, -4 + legSweep)),
+                                "#11111b",
+                                1.5,
+                            );
+                            drawLine(
+                                e.pos,
+                                e.pos.clone().add(vec2(8, -4 - legSweep)),
+                                "#11111b",
+                                1.5,
+                            );
+                            drawLine(
+                                e.pos,
+                                e.pos.clone().add(vec2(-8, 4 - legSweep)),
+                                "#11111b",
+                                1.5,
+                            );
+                            drawLine(
+                                e.pos,
+                                e.pos.clone().add(vec2(8, 4 + legSweep)),
+                                "#11111b",
+                                1.5,
+                            );
+                        }
+                    }
+
+                    const wizardColor = "#cba6f7";
+                    const px = player.pos.x;
+                    const py = player.pos.y;
+
+                    if (Math.floor(time * 20) % 2 === 0) {
+                        drawCircle(vec2(px - 4, py + 8), 3, "#fab387");
+                        drawCircle(vec2(px + 4, py + 8), 3, "#fab387");
+                        drawLine(
+                            vec2(px - 4, py + 8),
+                            vec2(px - 4, py + 13),
+                            "#f38ba8",
+                            1.5,
+                        );
+                        drawLine(
+                            vec2(px + 4, py + 8),
+                            vec2(px + 4, py + 13),
+                            "#f38ba8",
+                            1.5,
+                        );
+                    }
+
+                    drawLine(
+                        vec2(px - 11, py),
+                        vec2(px + 11, py),
+                        "#585b70",
+                        2.5,
+                    );
+                    drawLine(
+                        vec2(px - 11, py),
+                        vec2(px - 14, py + 3),
+                        "#f38ba8",
+                        1.5,
+                    );
+                    drawLine(
+                        vec2(px + 11, py),
+                        vec2(px + 14, py + 3),
+                        "#f38ba8",
+                        1.5,
+                    );
+
+                    drawRect(vec2(px - 6, py - 6), vec2(12, 12), "#89b4fa");
+                    drawRectOutline(
+                        vec2(px - 6, py - 6),
+                        vec2(12, 12),
+                        "#11111b",
+                        1.5,
+                    );
+
+                    drawRect(vec2(px - 4, py - 3), vec2(8, 2.5), "#f9e2af");
+
+                    const corePulse = 2 + Math.sin(time * 10) * 0.8;
+                    drawCircle(vec2(px, py + 3), corePulse, "#94e2d5");
+
+                    const podYOffset = Math.sin(time * 6) * 2;
+                    const leftPod = vec2(px - 13, py - 4 + podYOffset);
+                    const rightPod = vec2(px + 13, py - 4 + podYOffset);
+
+                    drawCircle(leftPod, 2.5, "#cba6f7");
+                    drawCircleOutline(leftPod, 2.5, "#11111b", 1);
+                    drawCircle(rightPod, 2.5, "#cba6f7");
+                    drawCircleOutline(rightPod, 2.5, "#11111b", 1);
+
+                    drawLine(
+                        vec2(px - 6, py - 2),
+                        leftPod,
+                        "rgba(203, 166, 247, 0.25)",
+                        1,
+                    );
+                    drawLine(
+                        vec2(px + 6, py - 2),
+                        rightPod,
+                        "rgba(203, 166, 247, 0.25)",
+                        1,
+                    );
+
+                    if (player.shieldCount > 0) {
+                        for (let i = 0; i < player.shieldCount; i++) {
+                            const angle =
+                                player.shieldAngle +
+                                (i * Math.PI * 2) / player.shieldCount;
+                            const radius = 34 + Math.sin(time * 3) * 3;
+                            const sPos = player.pos
+                                .clone()
+                                .add(
+                                    vec2(
+                                        Math.cos(angle) * radius,
+                                        Math.sin(angle) * radius,
+                                    ),
+                                );
+
+                            drawCircle(sPos, 4, "#89dceb");
+                            drawCircleOutline(sPos, 4, "#11111b", 1.5);
+                            drawLine(
+                                player.pos,
+                                sPos,
+                                "rgba(137, 220, 235, 0.08)",
+                                1,
+                            );
+                        }
+                    }
+
+                    renderParticles();
+
+                    for (const ft of floatingTexts) {
+                        drawText(ft.text, ft.pos, {
+                            font: "bold 8px 'Monaspace Neon'",
+                            color: ft.color,
+                            align: "center",
+                        });
+                    }
+
+                    camera.end();
+
+                    const hpW = 140;
+                    drawRect(vec2(20, 46), vec2(hpW, 12), "#181825");
+                    drawRect(
+                        vec2(20, 46),
+                        vec2(hpW * Math.max(0, player.hp / player.maxHp), 12),
+                        "#f38ba8",
+                    );
+                    drawRectOutline(
+                        vec2(20, 46),
+                        vec2(hpW, 12),
+                        "#313244",
+                        1.5,
+                    );
+                    drawText("NANITE SHIELD CORE", vec2(20, 39), {
+                        font: "bold 7px 'Monaspace Neon'",
+                        color: "#f38ba8",
+                    });
+
+                    const xpW = 200;
+                    const xpX = W / 2 - xpW / 2;
+                    drawRect(vec2(xpX, 46), vec2(xpW, 8), "#181825");
+                    drawRect(
+                        vec2(xpX, 46),
+                        vec2(xpW * (player.xp / player.xpNeeded), 8),
+                        "#cba6f7",
+                    );
+                    drawRectOutline(
+                        vec2(xpX, 46),
+                        vec2(xpW, 8),
+                        "#313244",
+                        1.5,
+                    );
+                    drawText(`LEVEL ${player.level}`, vec2(xpX, 39), {
+                        font: "bold 7.5px 'Monaspace Neon'",
+                        color: "#cba6f7",
+                    });
+
+                    drawText(`VAPORIZED: ${player.kills}`, vec2(W - 120, 48), {
+                        font: "bold 8px 'Monaspace Neon'",
+                        color: "#fab387",
+                    });
+
+                    const minutes = Math.floor(timeElapsed / 60);
+                    const seconds = Math.floor(timeElapsed % 60)
+                        .toString()
+                        .padStart(2, "0");
+                    drawText(`TIME: ${minutes}:${seconds}`, vec2(W - 120, 38), {
+                        font: "bold 8px 'Monaspace Neon'",
+                        color: "#a6adc8",
+                    });
+
+                    if (gameState === "levelup") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.75)",
+                        );
+                        drawText(
+                            "SYNAPSE UPGRADE BUFFER DETECTED",
+                            vec2(W / 2, H / 2 - 75),
+                            {
+                                font: "bold 13px 'Monaspace Neon'",
+                                color: "#cba6f7",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "SELECT PROTOCOL CARD FOR INJECTION",
+                            vec2(W / 2, H / 2 - 58),
+                            {
+                                font: "8.5px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+
+                        for (let i = 0; i < 3; i++) {
+                            const card = levelUpCards[i];
+                            const cardW = 160;
+                            const cardH = 120;
+                            const cardX = W / 2 - 250 + i * 170;
+                            const cardY = H / 2 - 40;
+
+                            const isSelected = i === selectedCardIdx;
+                            const bgCol = isSelected ? "#313244" : "#181825";
+                            const borderCol = isSelected
+                                ? "#cba6f7"
+                                : "#45475a";
+                            const titleCol = isSelected ? "#f9e2af" : "#cdd6f4";
+
+                            drawRect(
+                                vec2(cardX, cardY),
+                                vec2(cardW, cardH),
+                                bgCol,
+                            );
+                            drawRectOutline(
+                                vec2(cardX, cardY),
+                                vec2(cardW, cardH),
+                                borderCol,
+                                isSelected ? 2 : 1,
+                            );
+
+                            drawText(
+                                card.title,
+                                vec2(cardX + cardW / 2, cardY + 20),
+                                {
+                                    font: "bold 9px 'Monaspace Neon'",
+                                    color: titleCol,
+                                    align: "center",
+                                },
+                            );
+
+                            const descWords = card.desc.split(" ");
+                            let line = "";
+                            let linesCount = 0;
+                            for (const w of descWords) {
+                                if (line.length + w.length > 22) {
+                                    drawText(
+                                        line,
+                                        vec2(
+                                            cardX + cardW / 2,
+                                            cardY + 46 + linesCount * 13,
+                                        ),
+                                        {
+                                            font: "7px 'Monaspace Neon'",
+                                            color: "#a6adc8",
+                                            align: "center",
+                                        },
+                                    );
+                                    line = "";
+                                    linesCount++;
+                                }
+                                line += w + " ";
+                            }
+                            if (line) {
+                                drawText(
+                                    line,
+                                    vec2(
+                                        cardX + cardW / 2,
+                                        cardY + 46 + linesCount * 13,
+                                    ),
+                                    {
+                                        font: "7px 'Monaspace Neon'",
+                                        color: "#a6adc8",
+                                        align: "center",
+                                    },
+                                );
+                            }
+
+                            if (isSelected) {
+                                drawText(
+                                    "[ SPACE / CLICK TO INSTALL ]",
+                                    vec2(cardX + cardW / 2, cardY + cardH - 15),
+                                    {
+                                        font: "bold 6.5px 'Monaspace Neon'",
+                                        color: "#a6e3a1",
+                                        align: "center",
+                                    },
+                                );
+                            }
+                        }
+                    }
+
+                    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
+                    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+                    drawText(
+                        "MAINFRAME PURGE // SURVIVOR MATRIX v1.0",
+                        vec2(W / 2, 10),
+                        {
+                            font: "bold 9.5px 'Monaspace Neon'",
+                            color: "#cba6f7",
+                            align: "center",
+                        },
+                    );
+
+                    if (gameState === "gameover") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.85)",
+                        );
+                        drawText(
+                            "WIZARD SHIELD BREACHED // SYSTEM OVERRUN",
+                            vec2(W / 2, H / 2 - 12),
+                            {
+                                font: "bold 13px 'Monaspace Neon'",
+                                color: "#f38ba8",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            `SURVIVED: ${minutes}:${seconds}  |  KILLS: ${player.kills}  |  LEVEL: ${player.level}`,
+                            vec2(W / 2, H / 2 + 10),
+                            {
+                                font: "10px 'Monaspace Neon'",
+                                color: "#fab387",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "TAP ANYWHERE OR SPACE TO RE-ACTIVATE BIO-LINKS",
+                            vec2(W / 2, H / 2 + 35),
+                            {
+                                font: "8.5px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+                    }
+                },
             });
-            line = "";
-            linesCount++;
-          }
-          line += w + " ";
-        }
-        if (line) {
-          drawText(line, vec2(cardX + cardW / 2, cardY + 46 + linesCount * 13), {
-            font: "7px 'Monaspace Neon'", color: "#a6adc8", align: "center"
-          });
-        }
 
-        if (isSelected) {
-          drawText("[ SPACE / CLICK TO INSTALL ]", vec2(cardX + cardW / 2, cardY + cardH - 15), {
-            font: "bold 6.5px 'Monaspace Neon'", color: "#a6e3a1", align: "center"
-          });
-        }
-      }
-    }
-
-    // Top Header Stats Bar
-    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
-    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
-    drawText("MAINFRAME PURGE // SURVIVOR MATRIX v1.0", vec2(W / 2, 10), { font: "bold 9.5px 'Monaspace Neon'", color: "#cba6f7", align: "center" });
-
-    // Game Over states overlay
-    if (gameState === "gameover") {
-      drawRect(vec2(0, 0), vec2(W, H), "rgba(17, 17, 27, 0.85)");
-      drawText("WIZARD SHIELD BREACHED // SYSTEM OVERRUN", vec2(W / 2, H / 2 - 12), { font: "bold 13px 'Monaspace Neon'", color: "#f38ba8", align: "center" });
-      drawText(`SURVIVED: ${minutes}:${seconds}  |  KILLS: ${player.kills}  |  LEVEL: ${player.level}`, vec2(W / 2, H / 2 + 10), { font: "10px 'Monaspace Neon'", color: "#fab387", align: "center" });
-      drawText("TAP ANYWHERE OR SPACE TO RE-ACTIVATE BIO-LINKS", vec2(W / 2, H / 2 + 35), { font: "8.5px 'Monaspace Neon'", color: "#a6adc8", align: "center" });
-    }
-  }
-});
-
-document.getElementById('canvas-container').appendChild(engine.canvasManager.canvas);
-if (engine.overlayCanvas) {
-  document.getElementById('canvas-container').appendChild(engine.overlayCanvas);
-}
-</script>
-</body>
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
 </html>

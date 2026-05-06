@@ -1,378 +1,514 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Choice branching dialogue visual novel.">
-  <title>TinyTS - Visual Novel</title>
-  <style>
-    @font-face {
-      font-family: 'Monaspace Neon';
-      src: url('https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2') format('woff2');
-      font-weight: 100 900;
-      font-style: normal;
-      font-display: block;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #1e1e2e;
-      color: #cdd6f4;
-      font-family: 'Monaspace Neon', monospace;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100vw;
-      height: 100vh;
-    }
-    #canvas-container {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      background: #11111b;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #canvas-container canvas {
-      position: absolute !important;
-      left: 50% !important;
-      top: 50% !important;
-      transform: translate(-50%, -50%) !important;
-      max-width: 95% !important;
-      max-height: 95% !important;
-      width: auto !important;
-      height: auto !important;
-      aspect-ratio: 16/9 !important;
-      border: 2px dashed #cba6f7;
-    }
-  </style>
-</head>
-<body>
-<div id="canvas-container"></div>
-<script src="../../dist/tinyts.js"></script>
-<script>
-// Visual Novel Choice Adventure (640x360 Canvas)
-// Demonstrates: Typewriter dialogue text effects, story branching node choices,
-// procedural character rendering with expression variations, and button overlays.
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="Choice branching dialogue visual novel."
+        />
+        <title>TinyTS - Visual Novel</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
 
-const W = 640, H = 360;
+            const storyNodes = {
+                start: {
+                    speaker: "SERAPHINA",
+                    expression: "neutral",
+                    text: "Greetings, voyager. I am Seraphina, the grid maintenance core. Our data streams are collapsing. Will you assist in booting the security protocols?",
+                    choices: [
+                        {
+                            text: "[ INITIATE SECURE LINK ]",
+                            nextNode: "assist_accept",
+                        },
+                        {
+                            text: "[ TERMINATE ENCOUNTER ]",
+                            nextNode: "assist_refuse",
+                        },
+                    ],
+                },
+                assist_accept: {
+                    speaker: "SERAPHINA",
+                    expression: "happy",
+                    text: "Excellent! Synchronization established. We need to deploy either the [ Quantum Shield ] or direct [ Blaster Grid ] to clean the node bugs. Which one is your focus?",
+                    choices: [
+                        {
+                            text: "[ DEPLOY QUANTUM SHIELD ]",
+                            nextNode: "deploy_shield",
+                        },
+                        {
+                            text: "[ ACTIVATE BLASTER GRID ]",
+                            nextNode: "deploy_blaster",
+                        },
+                    ],
+                },
+                assist_refuse: {
+                    speaker: "SERAPHINA",
+                    expression: "worried",
+                    text: "Warning: Data corruption levels rising rapidly. Without your terminal links, node decay will hit 100%. Are you absolutely sure you want to disconnect?",
+                    choices: [
+                        {
+                            text: "[ STAND BY AND CONNECT ]",
+                            nextNode: "assist_accept",
+                        },
+                        { text: "[ SHUTDOWN TERMINAL ]", nextNode: "shutdown" },
+                    ],
+                },
+                deploy_shield: {
+                    speaker: "SERAPHINA",
+                    expression: "happy",
+                    text: "Quantum Shield activated. The defensive grid has stabilized! We have isolated the system bugs. You have successfully protected the core database.",
+                    choices: [
+                        {
+                            text: "[ RUN COMPLETE COMPILATION ]",
+                            nextNode: "victory",
+                        },
+                    ],
+                },
+                deploy_blaster: {
+                    speaker: "SERAPHINA",
+                    expression: "excited",
+                    text: "Bugs vaporized! The Blaster Grid cleared the corruption in a spectacular burst of energy nodes. A bit destructive, but extremely effective!",
+                    choices: [
+                        {
+                            text: "[ RUN COMPLETE COMPILATION ]",
+                            nextNode: "victory",
+                        },
+                    ],
+                },
+                shutdown: {
+                    speaker: "TERMINAL MAIN",
+                    expression: "corrupted",
+                    text: "SYSTEM OFFLINE // CONNECTION TERMINATED // CORE CORRUPTED",
+                    choices: [
+                        {
+                            text: "[ REBOOT SYSTEM COMMAND ]",
+                            nextNode: "start",
+                        },
+                    ],
+                },
+                victory: {
+                    speaker: "SERAPHINA",
+                    expression: "happy",
+                    text: "Database fully compiled. Sector stabilized. Thank you, Voyager! The mainframe is secure. We are ready to sail through the stars.",
+                    choices: [
+                        { text: "[ REPLAY ENCOUNTER ]", nextNode: "start" },
+                    ],
+                },
+            };
 
-// Story data tree nodes
-const storyNodes = {
-  start: {
-    speaker: "SERAPHINA",
-    expression: "neutral",
-    text: "Greetings, voyager. I am Seraphina, the grid maintenance core. Our data streams are collapsing. Will you assist in booting the security protocols?",
-    choices: [
-      { text: "[ INITIATE SECURE LINK ]", nextNode: "assist_accept" },
-      { text: "[ TERMINATE ENCOUNTER ]", nextNode: "assist_refuse" }
-    ]
-  },
-  assist_accept: {
-    speaker: "SERAPHINA",
-    expression: "happy",
-    text: "Excellent! Synchronization established. We need to deploy either the [ Quantum Shield ] or direct [ Blaster Grid ] to clean the node bugs. Which one is your focus?",
-    choices: [
-      { text: "[ DEPLOY QUANTUM SHIELD ]", nextNode: "deploy_shield" },
-      { text: "[ ACTIVATE BLASTER GRID ]", nextNode: "deploy_blaster" }
-    ]
-  },
-  assist_refuse: {
-    speaker: "SERAPHINA",
-    expression: "worried",
-    text: "Warning: Data corruption levels rising rapidly. Without your terminal links, node decay will hit 100%. Are you absolutely sure you want to disconnect?",
-    choices: [
-      { text: "[ STAND BY AND CONNECT ]", nextNode: "assist_accept" },
-      { text: "[ SHUTDOWN TERMINAL ]", nextNode: "shutdown" }
-    ]
-  },
-  deploy_shield: {
-    speaker: "SERAPHINA",
-    expression: "happy",
-    text: "Quantum Shield activated. The defensive grid has stabilized! We have isolated the system bugs. You have successfully protected the core database.",
-    choices: [
-      { text: "[ RUN COMPLETE COMPILATION ]", nextNode: "victory" }
-    ]
-  },
-  deploy_blaster: {
-    speaker: "SERAPHINA",
-    expression: "excited",
-    text: "Bugs vaporized! The Blaster Grid cleared the corruption in a spectacular burst of energy nodes. A bit destructive, but extremely effective!",
-    choices: [
-      { text: "[ RUN COMPLETE COMPILATION ]", nextNode: "victory" }
-    ]
-  },
-  shutdown: {
-    speaker: "TERMINAL MAIN",
-    expression: "corrupted",
-    text: "SYSTEM OFFLINE // CONNECTION TERMINATED // CORE CORRUPTED",
-    choices: [
-      { text: "[ REBOOT SYSTEM COMMAND ]", nextNode: "start" }
-    ]
-  },
-  victory: {
-    speaker: "SERAPHINA",
-    expression: "happy",
-    text: "Database fully compiled. Sector stabilized. Thank you, Voyager! The mainframe is secure. We are ready to sail through the stars.",
-    choices: [
-      { text: "[ REPLAY ENCOUNTER ]", nextNode: "start" }
-    ]
-  }
-};
+            let currentNodeKey = "start";
+            let typedText = "";
+            let textIndex = 0;
+            let textTimer = 0;
+            let promptFlash = 0;
 
-// Dialogue state
-let currentNodeKey = "start";
-let typedText = "";
-let textIndex = 0;
-let textTimer = 0;
-let promptFlash = 0;
+            bindAction("click", ["Mouse0"]);
 
-// Setup input
-bindAction("click", ["Mouse0"]);
+            function selectNode(key) {
+                currentNodeKey = key;
+                typedText = "";
+                textIndex = 0;
+                textTimer = 0;
+                playSound(sfx.blip({ volume: 0.16, pitch: 1.1 }));
 
-function selectNode(key) {
-  currentNodeKey = key;
-  typedText = "";
-  textIndex = 0;
-  textTimer = 0;
-  playSound(sfx.blip({ volume: 0.16, pitch: 1.1 }));
-  
-  // Custom sound per expression
-  const node = storyNodes[currentNodeKey];
-  if (node.expression === "happy") {
-    playSound(sfx.powerup({ volume: 0.1 }));
-  } else if (node.expression === "worried") {
-    playSound(sfx.hit({ volume: 0.1, pitch: 0.7 }));
-  }
-}
+                const node = storyNodes[currentNodeKey];
+                if (node.expression === "happy") {
+                    playSound(sfx.powerup({ volume: 0.1 }));
+                } else if (node.expression === "worried") {
+                    playSound(sfx.hit({ volume: 0.1, pitch: 0.7 }));
+                }
+            }
 
-// Draw a procedurally generated visual novel character
-function drawCharacter(x, y, expression) {
-  // Shadow
-  drawCircle(vec2(x, y + 100), 45, "rgba(24, 24, 37, 0.55)");
+            function drawCharacter(x, y, expression) {
+                drawCircle(vec2(x, y + 100), 45, "rgba(24, 24, 37, 0.55)");
 
-  if (expression === "corrupted") {
-    // Corrupted core glitches
-    drawRect(vec2(x - 25, y - 50), vec2(50, 100), "#f38ba8");
-    drawRectOutline(vec2(x - 28, y - 53), vec2(56, 106), "#11111b", 2);
-    drawLine(vec2(x - 20, y + Math.sin(time * 12) * 40), vec2(x + 20, y + Math.sin(time * 12) * 40), "#fff", 2);
-    return;
-  }
+                if (expression === "corrupted") {
+                    drawRect(vec2(x - 25, y - 50), vec2(50, 100), "#f38ba8");
+                    drawRectOutline(
+                        vec2(x - 28, y - 53),
+                        vec2(56, 106),
+                        "#11111b",
+                        2,
+                    );
+                    drawLine(
+                        vec2(x - 20, y + Math.sin(time * 12) * 40),
+                        vec2(x + 20, y + Math.sin(time * 12) * 40),
+                        "#fff",
+                        2,
+                    );
+                    return;
+                }
 
-  // Draw Clothes / Shoulders
-  const neckY = y + 55;
-  drawCircle(vec2(x, neckY + 45), 38, "#cba6f7"); // Clothes
-  drawCircleOutline(vec2(x, neckY + 45), 38, "#11111b", 2);
-  drawRect(vec2(x - 6, neckY), vec2(12, 16), "#f5e0dc"); // Neck
-  drawRectOutline(vec2(x - 6, neckY), vec2(12, 16), "#11111b", 2);
+                const neckY = y + 55;
+                drawCircle(vec2(x, neckY + 45), 38, "#cba6f7");
+                drawCircleOutline(vec2(x, neckY + 45), 38, "#11111b", 2);
+                drawRect(vec2(x - 6, neckY), vec2(12, 16), "#f5e0dc");
+                drawRectOutline(vec2(x - 6, neckY), vec2(12, 16), "#11111b", 2);
 
-  // Draw Face Base
-  drawCircle(vec2(x, y), 35, "#f5e0dc"); // Skin
-  drawCircleOutline(vec2(x, y), 35, "#11111b", 2);
+                drawCircle(vec2(x, y), 35, "#f5e0dc");
+                drawCircleOutline(vec2(x, y), 35, "#11111b", 2);
 
-  // Hair Back
-  drawCircle(vec2(x - 20, y - 10), 16, "#89b4fa");
-  drawCircle(vec2(x + 20, y - 10), 16, "#89b4fa");
+                drawCircle(vec2(x - 20, y - 10), 16, "#89b4fa");
+                drawCircle(vec2(x + 20, y - 10), 16, "#89b4fa");
 
-  // Hair Front Bangs
-  drawCircle(vec2(x, y - 28), 18, "#89b4fa");
-  drawRect(vec2(x - 30, y - 28), vec2(60, 14), "#89b4fa");
-  drawRectOutline(vec2(x - 30, y - 28), vec2(60, 14), "#11111b", 2);
+                drawCircle(vec2(x, y - 28), 18, "#89b4fa");
+                drawRect(vec2(x - 30, y - 28), vec2(60, 14), "#89b4fa");
+                drawRectOutline(
+                    vec2(x - 30, y - 28),
+                    vec2(60, 14),
+                    "#11111b",
+                    2,
+                );
 
-  // Draw Eyes & Eyebrows based on Expression
-  const eyeY = y - 4;
-  const leftEyeX = x - 12;
-  const rightEyeX = x + 12;
+                const eyeY = y - 4;
+                const leftEyeX = x - 12;
+                const rightEyeX = x + 12;
 
-  if (expression === "happy") {
-    // Curved happy arcs for eyes
-    drawLine(vec2(leftEyeX - 4, eyeY + 1), vec2(leftEyeX, eyeY - 2), "#11111b", 2.5);
-    drawLine(vec2(leftEyeX, eyeY - 2), vec2(leftEyeX + 4, eyeY + 1), "#11111b", 2.5);
-    drawLine(vec2(rightEyeX - 4, eyeY + 1), vec2(rightEyeX, eyeY - 2), "#11111b", 2.5);
-    drawLine(vec2(rightEyeX, eyeY - 2), vec2(rightEyeX + 4, eyeY + 1), "#11111b", 2.5);
-    // Smile mouth
-    drawCircle(vec2(x, y + 14), 6, "#f38ba8");
-    drawRect(vec2(x - 10, y + 8), vec2(20, 8), "#f5e0dc");
-    drawLine(vec2(x - 6, y + 14), vec2(x + 6, y + 14), "#11111b", 1.5);
-  } else if (expression === "worried") {
-    // Worried slanted lines for eyes
-    drawLine(vec2(leftEyeX - 3, eyeY - 2), vec2(leftEyeX + 3, eyeY + 1), "#11111b", 2.5);
-    drawLine(vec2(rightEyeX - 3, eyeY + 1), vec2(rightEyeX + 3, eyeY - 2), "#11111b", 2.5);
-    // Eyebrows
-    drawLine(vec2(leftEyeX - 4, eyeY - 8), vec2(leftEyeX + 2, eyeY - 6), "#11111b", 2);
-    drawLine(vec2(rightEyeX - 2, eyeY - 6), vec2(rightEyeX + 4, eyeY - 8), "#11111b", 2);
-    // Flat mouth
-    drawLine(vec2(x - 6, y + 15), vec2(x + 6, y + 14), "#11111b", 2);
-  } else if (expression === "excited") {
-    // Big glowing circles
-    drawCircle(vec2(leftEyeX, eyeY), 5, "#94e2d5");
-    drawCircleOutline(vec2(leftEyeX, eyeY), 5, "#11111b", 1.5);
-    drawCircle(vec2(rightEyeX, eyeY), 5, "#94e2d5");
-    drawCircleOutline(vec2(rightEyeX, eyeY), 5, "#11111b", 1.5);
-    // Mouth open
-    drawCircle(vec2(x, y + 15), 5, "#f38ba8");
-    drawCircleOutline(vec2(x, y + 15), 5, "#11111b", 2);
-  } else {
-    // Neutral (normal round eyes and flat mouth)
-    drawCircle(vec2(leftEyeX, eyeY), 3, "#11111b");
-    drawCircle(vec2(rightEyeX, eyeY), 3, "#11111b");
-    drawLine(vec2(x - 5, y + 14), vec2(x + 5, y + 14), "#11111b", 2);
-  }
-}
+                if (expression === "happy") {
+                    drawLine(
+                        vec2(leftEyeX - 4, eyeY + 1),
+                        vec2(leftEyeX, eyeY - 2),
+                        "#11111b",
+                        2.5,
+                    );
+                    drawLine(
+                        vec2(leftEyeX, eyeY - 2),
+                        vec2(leftEyeX + 4, eyeY + 1),
+                        "#11111b",
+                        2.5,
+                    );
+                    drawLine(
+                        vec2(rightEyeX - 4, eyeY + 1),
+                        vec2(rightEyeX, eyeY - 2),
+                        "#11111b",
+                        2.5,
+                    );
+                    drawLine(
+                        vec2(rightEyeX, eyeY - 2),
+                        vec2(rightEyeX + 4, eyeY + 1),
+                        "#11111b",
+                        2.5,
+                    );
+                    drawCircle(vec2(x, y + 14), 6, "#f38ba8");
+                    drawRect(vec2(x - 10, y + 8), vec2(20, 8), "#f5e0dc");
+                    drawLine(
+                        vec2(x - 6, y + 14),
+                        vec2(x + 6, y + 14),
+                        "#11111b",
+                        1.5,
+                    );
+                } else if (expression === "worried") {
+                    drawLine(
+                        vec2(leftEyeX - 3, eyeY - 2),
+                        vec2(leftEyeX + 3, eyeY + 1),
+                        "#11111b",
+                        2.5,
+                    );
+                    drawLine(
+                        vec2(rightEyeX - 3, eyeY + 1),
+                        vec2(rightEyeX + 3, eyeY - 2),
+                        "#11111b",
+                        2.5,
+                    );
+                    drawLine(
+                        vec2(leftEyeX - 4, eyeY - 8),
+                        vec2(leftEyeX + 2, eyeY - 6),
+                        "#11111b",
+                        2,
+                    );
+                    drawLine(
+                        vec2(rightEyeX - 2, eyeY - 6),
+                        vec2(rightEyeX + 4, eyeY - 8),
+                        "#11111b",
+                        2,
+                    );
+                    drawLine(
+                        vec2(x - 6, y + 15),
+                        vec2(x + 6, y + 14),
+                        "#11111b",
+                        2,
+                    );
+                } else if (expression === "excited") {
+                    drawCircle(vec2(leftEyeX, eyeY), 5, "#94e2d5");
+                    drawCircleOutline(vec2(leftEyeX, eyeY), 5, "#11111b", 1.5);
+                    drawCircle(vec2(rightEyeX, eyeY), 5, "#94e2d5");
+                    drawCircleOutline(vec2(rightEyeX, eyeY), 5, "#11111b", 1.5);
+                    drawCircle(vec2(x, y + 15), 5, "#f38ba8");
+                    drawCircleOutline(vec2(x, y + 15), 5, "#11111b", 2);
+                } else {
+                    drawCircle(vec2(leftEyeX, eyeY), 3, "#11111b");
+                    drawCircle(vec2(rightEyeX, eyeY), 3, "#11111b");
+                    drawLine(
+                        vec2(x - 5, y + 14),
+                        vec2(x + 5, y + 14),
+                        "#11111b",
+                        2,
+                    );
+                }
+            }
 
-const engine = engineStart({
-  size: { width: W, height: H },
-  pixelated: true,
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
 
-  update(dt) {
-    updateParticles(dt);
+                update(dt) {
+                    updateParticles(dt);
 
-    promptFlash += dt * 5;
+                    promptFlash += dt * 5;
 
-    const node = storyNodes[currentNodeKey];
+                    const node = storyNodes[currentNodeKey];
 
-    // Typewriter text logic
-    if (textIndex < node.text.length) {
-      textTimer += dt;
-      if (textTimer >= 0.025) {
-        textTimer = 0;
-        typedText += node.text[textIndex];
-        textIndex++;
+                    if (textIndex < node.text.length) {
+                        textTimer += dt;
+                        if (textTimer >= 0.025) {
+                            textTimer = 0;
+                            typedText += node.text[textIndex];
+                            textIndex++;
 
-        // Dialogue typing sound effect
-        if (textIndex % 3 === 0) {
-          playSound(sfx.blip({ volume: 0.04, frequency: 700 + Math.sin(textIndex) * 100, attack: 0.002 }));
-        }
-      }
-    }
+                            if (textIndex % 3 === 0) {
+                                playSound(
+                                    sfx.blip({
+                                        volume: 0.04,
+                                        frequency:
+                                            700 + Math.sin(textIndex) * 100,
+                                        attack: 0.002,
+                                    }),
+                                );
+                            }
+                        }
+                    }
 
-    // Evaluate Click / Touch Choice selections
-    if (mousePressed(0) && textIndex >= node.text.length) {
-      const mp = mousePos();
-      const mx = mp.x;
-      const my = mp.y;
+                    if (mousePressed(0) && textIndex >= node.text.length) {
+                        const mp = mousePos();
+                        const mx = mp.x;
+                        const my = mp.y;
 
-      const choiceCount = node.choices.length;
-      for (let i = 0; i < choiceCount; i++) {
-        const choice = node.choices[i];
-        
-        // Dynamic box sizes matching render layout
-        const btnW = 240;
-        const btnH = 30;
-        const btnX = 360;
-        const btnY = H / 2 - 60 + i * 36;
+                        const choiceCount = node.choices.length;
+                        for (let i = 0; i < choiceCount; i++) {
+                            const choice = node.choices[i];
 
-        if (mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH) {
-          // Trigger choice selection node transition
-          selectNode(choice.nextNode);
-          
-          // Button click burst particles
-          emitParticles({
-            pos: vec2(mx, my), count: 6, life: [0.15, 0.3], speed: [20, 60],
-            color: ["#cba6f7", "#fff"]
-          });
-          break;
-        }
-      }
-    }
-  },
+                            const btnW = 240;
+                            const btnH = 30;
+                            const btnX = 360;
+                            const btnY = H / 2 - 60 + i * 36;
 
-  render() {
-    clear("#11111b");
+                            if (
+                                mx >= btnX &&
+                                mx <= btnX + btnW &&
+                                my >= btnY &&
+                                my <= btnY + btnH
+                            ) {
+                                selectNode(choice.nextNode);
 
-    // Grid details
-    for (let x = 0; x < W; x += 40) {
-      drawLine(vec2(x, 0), vec2(x, H), "rgba(49, 50, 68, 0.07)");
-    }
+                                emitParticles({
+                                    pos: vec2(mx, my),
+                                    count: 6,
+                                    life: [0.15, 0.3],
+                                    speed: [20, 60],
+                                    color: ["#cba6f7", "#fff"],
+                                });
+                                break;
+                            }
+                        }
+                    }
+                },
 
-    const node = storyNodes[currentNodeKey];
+                render() {
+                    clear("#11111b");
 
-    // Draw Character on Screen left-ish
-    drawCharacter(180, H / 2 - 40, node.expression);
+                    for (let x = 0; x < W; x += 40) {
+                        drawLine(
+                            vec2(x, 0),
+                            vec2(x, H),
+                            "rgba(49, 50, 68, 0.07)",
+                        );
+                    }
 
-    // Particles render
-    renderParticles();
+                    const node = storyNodes[currentNodeKey];
 
-    // ── Dialogue Text Box Overlay (Bottom) ──
-    const boxX = 20;
-    const boxY = H - 110;
-    const boxW = W - 40;
-    const boxH = 95;
+                    drawCharacter(180, H / 2 - 40, node.expression);
 
-    drawRect(vec2(boxX, boxY), vec2(boxW, boxH), "rgba(24, 24, 37, 0.96)");
-    drawRectOutline(vec2(boxX, boxY), vec2(boxW, boxH), "#313244", 2);
+                    renderParticles();
 
-    // Speaker tag
-    const speakerColor = node.speaker === "SERAPHINA" ? "#cba6f7" : "#fab387";
-    drawText(node.speaker, vec2(boxX + 16, boxY + 18), { font: "bold 9.5px 'Monaspace Neon'", color: speakerColor });
-    drawLine(vec2(boxX + 16, boxY + 28), vec2(boxX + 140, boxY + 28), "#313244", 1);
+                    const boxX = 20;
+                    const boxY = H - 110;
+                    const boxW = W - 40;
+                    const boxH = 95;
 
-    // Speaker typed text (wrap paragraph lines manually)
-    const words = typedText.split(" ");
-    let line = "";
-    let lines = [];
-    for (const w of words) {
-      if (line.length + w.length > 56) {
-        lines.push(line);
-        line = "";
-      }
-      line += w + " ";
-    }
-    if (line) lines.push(line);
+                    drawRect(
+                        vec2(boxX, boxY),
+                        vec2(boxW, boxH),
+                        "rgba(24, 24, 37, 0.96)",
+                    );
+                    drawRectOutline(
+                        vec2(boxX, boxY),
+                        vec2(boxW, boxH),
+                        "#313244",
+                        2,
+                    );
 
-    for (let i = 0; i < lines.length; i++) {
-      drawText(lines[i], vec2(boxX + 16, boxY + 44 + i * 15), { font: "8.5px 'Monaspace Neon'", color: "#cdd6f4" });
-    }
+                    const speakerColor =
+                        node.speaker === "SERAPHINA" ? "#cba6f7" : "#fab387";
+                    drawText(node.speaker, vec2(boxX + 16, boxY + 18), {
+                        font: "bold 9.5px 'Monaspace Neon'",
+                        color: speakerColor,
+                    });
+                    drawLine(
+                        vec2(boxX + 16, boxY + 28),
+                        vec2(boxX + 140, boxY + 28),
+                        "#313244",
+                        1,
+                    );
 
-    // ── Choice Buttons Rendering ──
-    if (textIndex >= node.text.length) {
-      const mp = mousePos();
-      const mx = mp.x;
-      const my = mp.y;
+                    const words = typedText.split(" ");
+                    let line = "";
+                    let lines = [];
+                    for (const w of words) {
+                        if (line.length + w.length > 56) {
+                            lines.push(line);
+                            line = "";
+                        }
+                        line += w + " ";
+                    }
+                    if (line) lines.push(line);
 
-      const choiceCount = node.choices.length;
-      for (let i = 0; i < choiceCount; i++) {
-        const choice = node.choices[i];
+                    for (let i = 0; i < lines.length; i++) {
+                        drawText(
+                            lines[i],
+                            vec2(boxX + 16, boxY + 44 + i * 15),
+                            {
+                                font: "8.5px 'Monaspace Neon'",
+                                color: "#cdd6f4",
+                            },
+                        );
+                    }
 
-        const btnW = 240;
-        const btnH = 30;
-        const btnX = 360;
-        const btnY = H / 2 - 60 + i * 36;
+                    if (textIndex >= node.text.length) {
+                        const mp = mousePos();
+                        const mx = mp.x;
+                        const my = mp.y;
 
-        // Hover checking
-        const hover = mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH;
-        const bgCol = hover ? "#313244" : "#1e1e2e";
-        const borderCol = hover ? "#fff" : "#45475a";
-        const textCol = hover ? "#f9e2af" : "#cdd6f4";
+                        const choiceCount = node.choices.length;
+                        for (let i = 0; i < choiceCount; i++) {
+                            const choice = node.choices[i];
 
-        drawRect(vec2(btnX, btnY), vec2(btnW, btnH), bgCol);
-        drawRectOutline(vec2(btnX, btnY), vec2(btnW, btnH), borderCol, hover ? 1.5 : 1);
-        drawText(choice.text, vec2(btnX + btnW / 2, btnY + btnH / 2 + 1), {
-          font: "bold 8.5px 'Monaspace Neon'",
-          color: textCol,
-          align: "center",
-          baseline: "middle"
-        });
-      }
-    } else {
-      // Typing prompt indicator flashing
-      if (Math.floor(promptFlash) % 2 === 0) {
-        drawRect(vec2(boxX + boxW - 20, boxY + boxH - 20), vec2(8, 8), "#a6e3a1");
-      }
-    }
+                            const btnW = 240;
+                            const btnH = 30;
+                            const btnX = 360;
+                            const btnY = H / 2 - 60 + i * 36;
 
-    // Top Header Stats Bar
-    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
-    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
-    drawText("MAINFRAME INTERACTIVE CHAT // DECISION ENGINE", vec2(W / 2, 10), { font: "bold 9.5px 'Monaspace Neon'", color: "#cba6f7", align: "center" });
-  }
-});
+                            const hover =
+                                mx >= btnX &&
+                                mx <= btnX + btnW &&
+                                my >= btnY &&
+                                my <= btnY + btnH;
+                            const bgCol = hover ? "#313244" : "#1e1e2e";
+                            const borderCol = hover ? "#fff" : "#45475a";
+                            const textCol = hover ? "#f9e2af" : "#cdd6f4";
 
-document.getElementById('canvas-container').appendChild(engine.canvasManager.canvas);
-if (engine.overlayCanvas) {
-  document.getElementById('canvas-container').appendChild(engine.overlayCanvas);
-}
-</script>
-</body>
+                            drawRect(vec2(btnX, btnY), vec2(btnW, btnH), bgCol);
+                            drawRectOutline(
+                                vec2(btnX, btnY),
+                                vec2(btnW, btnH),
+                                borderCol,
+                                hover ? 1.5 : 1,
+                            );
+                            drawText(
+                                choice.text,
+                                vec2(btnX + btnW / 2, btnY + btnH / 2 + 1),
+                                {
+                                    font: "bold 8.5px 'Monaspace Neon'",
+                                    color: textCol,
+                                    align: "center",
+                                    baseline: "middle",
+                                },
+                            );
+                        }
+                    } else {
+                        if (Math.floor(promptFlash) % 2 === 0) {
+                            drawRect(
+                                vec2(boxX + boxW - 20, boxY + boxH - 20),
+                                vec2(8, 8),
+                                "#a6e3a1",
+                            );
+                        }
+                    }
+
+                    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
+                    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+                    drawText(
+                        "MAINFRAME INTERACTIVE CHAT // DECISION ENGINE",
+                        vec2(W / 2, 10),
+                        {
+                            font: "bold 9.5px 'Monaspace Neon'",
+                            color: "#cba6f7",
+                            align: "center",
+                        },
+                    );
+                },
+            });
+
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
 </html>
