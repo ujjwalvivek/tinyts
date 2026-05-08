@@ -1,0 +1,1132 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>TinyTS - Tilemap Pattern Browser</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                overflow-y: auto;
+                padding: 20px;
+            }
+            .container {
+                max-width: 1100px;
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .nav {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                justify-content: center;
+                flex-wrap: wrap;
+                margin-bottom: 8px;
+            }
+            .nav button {
+                background: #313244;
+                border: 1px solid #45475a;
+                color: #cdd6f4;
+                padding: 6px 16px;
+                font-family: "Monaspace Neon", monospace;
+                font-size: 12px;
+                cursor: pointer;
+                border-radius: 0 !important;
+                transition: all 0.15s;
+            }
+            .nav button:hover {
+                background: #45475a;
+                border-color: #89b4fa;
+            }
+            .nav .count {
+                color: #a6adc8;
+                font-size: 11px;
+            }
+            .nav .name {
+                color: #cdd6f4;
+                font-weight: 700;
+                font-size: 16px;
+                min-width: 180px;
+                text-align: center;
+            }
+            .nav .desc {
+                color: #a6adc8;
+                font-size: 12px;
+                width: 100%;
+                text-align: center;
+                margin-top: 4px;
+            }
+
+            .main {
+                display: flex;
+                gap: 20px;
+                width: 100%;
+            }
+            .preview {
+                width: 40%;
+                flex-shrink: 0;
+                background: #181825;
+                border: 2px dashed #cba6f7;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 12px;
+            }
+            .preview canvas {
+                display: block;
+                image-rendering: pixelated;
+                max-width: 100%;
+                height: auto;
+                border: 1px solid #313244;
+            }
+
+            .code-panel {
+                flex: 1;
+                min-width: 0;
+                background: #181825;
+                border: 2px dashed #cba6f7;
+                padding: 16px;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+            .code-panel .label {
+                font-size: 11px;
+                color: #b4befe;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 12px;
+            }
+            .code-panel pre {
+                font-family: "Monaspace Neon", monospace;
+                font-size: 12px;
+                line-height: 1.5;
+                color: #cdd6f4;
+                white-space: pre-wrap;
+                word-break: break-all;
+                max-height: 500px;
+                overflow-y: auto;
+                background: #11111b;
+                padding: 15px;
+                border: 1px solid #313244;
+            }
+            .code-panel .kw {
+                color: #f38ba8;
+            }
+            .code-panel .str {
+                color: #a6e3a1;
+            }
+            .code-panel .cm {
+                color: #585b70;
+            }
+            .code-panel .fn {
+                color: #89b4fa;
+            }
+            .code-panel .num {
+                color: #fab387;
+            }
+
+            .categories {
+                display: flex;
+                gap: 6px;
+                justify-content: center;
+                flex-wrap: wrap;
+                margin-top: 10px;
+            }
+            .categories button {
+                background: transparent;
+                border: 1px solid #313244;
+                color: #a6adc8;
+                padding: 6px 14px;
+                font-family: "Monaspace Neon", monospace;
+                font-size: 11px;
+                cursor: pointer;
+                border-radius: 0 !important;
+                transition: all 0.15s;
+            }
+            .categories button:hover {
+                border-color: #89b4fa;
+                color: #cdd6f4;
+            }
+            .categories button.active {
+                border-color: #89b4fa;
+                color: #89b4fa;
+                background: rgba(137, 180, 250, 0.1);
+            }
+
+            .legend {
+                display: flex;
+                gap: 10px;
+                justify-content: center;
+                flex-wrap: wrap;
+                margin-top: 12px;
+                font-size: 11px;
+                color: #a6adc8;
+            }
+            .legend-item {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+            .legend-swatch {
+                width: 12px;
+                height: 12px;
+                border: 1px solid #313244;
+            }
+
+            .info-bar {
+                display: flex;
+                gap: 16px;
+                justify-content: center;
+                font-size: 11px;
+                color: #a6adc8;
+                margin-top: 8px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="nav">
+                <button onclick="prevPattern()">◀ Prev</button>
+                <span class="name" id="pattern-name">Basic Room</span>
+                <button onclick="nextPattern()">Next ▶</button>
+                <button onclick="randomPattern()">🎲 Random</button>
+                <span class="count" id="pattern-count">1 / 1</span>
+            </div>
+            <div class="nav">
+                <span class="desc" id="pattern-desc"></span>
+            </div>
+
+            <div class="main">
+                <div class="preview">
+                    <canvas id="preview" width="320" height="320"></canvas>
+                    <div class="legend" id="legend"></div>
+                    <div class="info-bar">
+                        <span id="info-size"></span>
+                        <span id="info-tiles"></span>
+                    </div>
+                </div>
+                <div class="code-panel">
+                    <div class="label">📋 Code - click to select all</div>
+                    <pre id="code-display" onclick="selectCode()"></pre>
+                </div>
+            </div>
+
+            <div class="categories" id="categories"></div>
+        </div>
+
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const DIRT_WALL = { solid: true, color: "#fab387" };
+            const STONE_WALL = { solid: true, color: "#585b70" };
+            const DARK_WALL = { solid: true, color: "#313244" };
+            const GRASS = { solid: true, color: "#a6e3a1" };
+            const WATER = { color: "#89b4fa" };
+            const SAND = { color: "#f9e2af" };
+            const LAVA = { color: "#f38ba8" };
+            const PLATFORM = {
+                solid: true,
+                oneWay: true,
+                color: "#f5c2e7",
+                restitution: 0.1,
+            };
+            const WOOD = { solid: true, color: "#fab387" };
+            const LEAVES = { color: "#94e2d5" };
+            const AIR = {};
+
+            // ─── Pseudorandom number generator (mulberry32) ─────────────────
+            function mulberry32(seed) {
+                let s = seed | 0;
+                return function () {
+                    s = (s + 0x6d2b79f5) | 0;
+                    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+                    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+                    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+                };
+            }
+
+            function renderPreview(defs, tiles, cols, rows, tileSize) {
+                const canvas = document.getElementById("preview");
+                const w = cols * tileSize;
+                const h = rows * tileSize;
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext("2d");
+                for (let y = 0; y < rows; y++) {
+                    for (let x = 0; x < cols; x++) {
+                        const def = defs[tiles[y]?.[x]];
+                        ctx.fillStyle = def?.color || "#11111b";
+                        ctx.fillRect(
+                            x * tileSize,
+                            y * tileSize,
+                            tileSize,
+                            tileSize,
+                        );
+                    }
+                }
+            }
+
+            function buildLegend(defs) {
+                const names = [
+                    "air",
+                    "water",
+                    "sand",
+                    "grass",
+                    "stone",
+                    "dark",
+                    "lava",
+                    "platform",
+                    "wood",
+                    "leaves",
+                ];
+                let html = "";
+                for (let i = 0; i < defs.length; i++) {
+                    const d = defs[i];
+                    if (d?.color) {
+                        html += `<div class="legend-item"><div class="legend-swatch" style="background:${d.color}"></div>${i} ${names[i] || ""}</div>`;
+                    }
+                }
+                return html;
+            }
+
+            const registry = [];
+            let currentIdx = 0;
+            let currentSeed = 0;
+            let filterCat = null;
+            const PREVIEW_COLS = 20;
+            const PREVIEW_ROWS = 20;
+            const TILE_SZ = 16;
+
+            function defsWith(...overrides) {
+                const base = [
+                    AIR,
+                    WATER,
+                    SAND,
+                    GRASS,
+                    STONE_WALL,
+                    DARK_WALL,
+                    LAVA,
+                    PLATFORM,
+                    WOOD,
+                    LEAVES,
+                ];
+                for (const [i, d] of overrides) base[i] = d;
+                return base;
+            }
+
+            function reg(name, cat, desc, defs, code, fn) {
+                registry.push({ name, cat, desc, defs, code, fn });
+            }
+
+            reg(
+                "Basic Room",
+                "rooms",
+                "A simple rectangular room with solid walls and an open interior.",
+                [AIR, STONE_WALL],
+                `// Basic Room - rectangular room with walls
+const defs = [ {}, { solid: true, color: '#6a7a8a' } ];
+const W = 20, H = 20;
+const tiles = Array.from({ length: H }, () => Array(W).fill(0));
+// Walls
+for (let x = 0; x < W; x++) {
+  tiles[0][x] = tiles[H-1][x] = 1;
+}
+for (let y = 0; y < H; y++) {
+  tiles[y][0] = tiles[y][W-1] = 1;
+}
+// Door
+tiles[0][W>>1] = tiles[0][(W>>1)+1] = 0;`,
+                function (rng) {
+                    const W = PREVIEW_COLS,
+                        H = PREVIEW_ROWS;
+                    const t = Array.from({ length: H }, () => Array(W).fill(0));
+                    for (let x = 1; x < W - 1; x++) {
+                        t[0][x] = t[H - 1][x] = 1;
+                    }
+                    for (let y = 0; y < H; y++) {
+                        t[y][0] = t[y][W - 1] = 1;
+                    }
+                    // Door at top
+                    const doorX = ((rng() * (W - 6)) | 0) + 3;
+                    t[0][doorX] = t[0][doorX + 1] = 0;
+                    return t;
+                },
+            );
+
+            reg(
+                "Room with Pillars",
+                "rooms",
+                "A room with stone pillars supporting the ceiling.",
+                [AIR, STONE_WALL, DARK_WALL],
+                `// Room with Pillars
+const defs = [
+  {}, { solid: true, color: '#6a7a8a' }, { solid: true, color: '#2a2a3a' }
+];
+const W = 20, H = 20;
+const tiles = Array.from({ length: H }, () => Array(W).fill(0));
+for (let x = 0; x < W; x++) tiles[0][x] = tiles[H-1][x] = 1;
+for (let y = 0; y < H; y++) tiles[y][0] = tiles[y][W-1] = 1;
+// Pillars (3x3 blocks at positions)
+const pillars = [[5,5],[5,14],[14,5],[14,14]];
+for (const [px, py] of pillars) {
+  for (let dy = -1; dy <= 1; dy++)
+    for (let dx = -1; dx <= 1; dx++)
+      tiles[py+dy][px+dx] = 2;
+}`,
+                function (rng) {
+                    const W = PREVIEW_COLS,
+                        H = PREVIEW_ROWS;
+                    const t = Array.from({ length: H }, () => Array(W).fill(0));
+                    for (let x = 0; x < W; x++) t[0][x] = t[H - 1][x] = 1;
+                    for (let y = 0; y < H; y++) t[y][0] = t[y][W - 1] = 1;
+                    const pillars = [
+                        [5, 5],
+                        [5, 14],
+                        [14, 5],
+                        [14, 14],
+                    ];
+                    for (const [px, py] of pillars) {
+                        for (let dy = -1; dy <= 1; dy++)
+                            for (let dx = -1; dx <= 1; dx++)
+                                t[py + dy][px + dx] = 2;
+                    }
+                    return t;
+                },
+            );
+
+            reg(
+                "L-Shaped Room",
+                "rooms",
+                "An L-shaped room - two rectangles joined at a corner.",
+                [AIR, STONE_WALL],
+                `// L-Shaped Room
+const defs = [ {}, { solid: true, color: '#6a7a8a' } ];
+const W = 20, H = 20;
+const tiles = Array.from({ length: H }, () => Array(W).fill(1));
+// Carve L shape
+const cx = 5, cy = 5, cw = 10, ch = 10;
+for (let y = cy; y < cy+ch; y++)
+  for (let x = cx; x < cx+cw; x++)
+    tiles[y][x] = 0;
+// Extend right arm
+for (let y = cy+4; y < cy+ch; y++)
+  for (let x = cx+cw; x < cx+cw+6; x++)
+    tiles[y][x] = 0;`,
+                function (rng) {
+                    const W = PREVIEW_COLS,
+                        H = PREVIEW_ROWS;
+                    const t = Array.from({ length: H }, () => Array(W).fill(1));
+                    const cx = 4,
+                        cy = 3,
+                        cw = 10,
+                        ch = 10;
+                    for (let y = cy; y < cy + ch; y++)
+                        for (let x = cx; x < cx + cw; x++) t[y][x] = 0;
+                    for (let y = cy + 4; y < cy + ch; y++)
+                        for (let x = cx + cw; x < cx + cw + 6; x++) t[y][x] = 0;
+                    return t;
+                },
+            );
+
+            reg(
+                "Cross Room",
+                "rooms",
+                "A cross-shaped room with four alcoves.",
+                [AIR, STONE_WALL],
+                `// Cross Room - centre hall with four alcoves
+const defs = [ {}, { solid: true, color: '#6a7a8a' } ];
+const W = 20, H = 20;
+const tiles = Array.from({ length: H }, () => Array(W).fill(1));
+const cx = 10, cy = 10;
+// Center
+for (let y = cy-4; y <= cy+4; y++)
+  for (let x = cx-6; x <= cx+6; x++) tiles[y][x] = 0;
+// Top alcove
+for (let y = 1; y < cy-4; y++)
+  for (let x = cx-2; x <= cx+2; x++) tiles[y][x] = 0;
+// Bottom alcove
+for (let y = cy+5; y < H-1; y++)
+  for (let x = cx-2; x <= cx+2; x++) tiles[y][x] = 0;
+// Left alcove
+for (let x = 1; x < cx-6; x++)
+  for (let y = cy-2; y <= cy+2; y++) tiles[y][x] = 0;
+// Right alcove
+for (let x = cx+7; x < W-1; x++)
+  for (let y = cy-2; y <= cy+2; y++) tiles[y][x] = 0;`,
+                function (rng) {
+                    const W = PREVIEW_COLS,
+                        H = PREVIEW_ROWS;
+                    const t = Array.from({ length: H }, () => Array(W).fill(1));
+                    const cx = 10,
+                        cy = 10;
+                    for (let y = cy - 4; y <= cy + 4; y++)
+                        for (let x = cx - 6; x <= cx + 6; x++) t[y][x] = 0;
+                    for (let y = 1; y < cy - 4; y++)
+                        for (let x = cx - 2; x <= cx + 2; x++) t[y][x] = 0;
+                    for (let y = cy + 5; y < H - 1; y++)
+                        for (let x = cx - 2; x <= cx + 2; x++) t[y][x] = 0;
+                    for (let x = 1; x < cx - 6; x++)
+                        for (let y = cy - 2; y <= cy + 2; y++) t[y][x] = 0;
+                    for (let x = cx + 7; x < W - 1; x++)
+                        for (let y = cy - 2; y <= cy + 2; y++) t[y][x] = 0;
+                    return t;
+                },
+            );
+
+            reg(
+                "Cellular Cave",
+                "caves",
+                "A cave generated with cellular automata (4 iterations). Organic-looking walls.",
+                [AIR, DARK_WALL],
+                `// Cellular Automata Cave
+const defs = [ {}, { solid: true, color: '#2a2a3a' } ];
+const W = 20, H = 20;
+// Random fill (40% wall)
+let tiles = Array.from({ length: H }, () =>
+  Array.from({ length: W }, () => Math.random() < 0.4 ? 1 : 0)
+);
+function countNeighbors(t, x, y) {
+  let n = 0;
+  for (let dy = -1; dy <= 1; dy++)
+    for (let dx = -1; dx <= 1; dx++)
+      if (dx||dy && t[y+dy]?.[x+dx] === 1) n++;
+  return n;
+}
+// 4 iterations of cellular automata
+for (let iter = 0; iter < 4; iter++) {
+  const next = tiles.map(r => [...r]);
+  for (let y = 1; y < H-1; y++)
+    for (let x = 1; x < W-1; x++) {
+      const n = countNeighbors(tiles, x, y);
+      next[y][x] = (n >= 4 || (tiles[y][x] === 1 && n >= 3)) ? 1 : 0;
+    }
+  tiles = next;
+}
+// Ensure border walls
+for (let x = 0; x < W; x++) tiles[0][x] = tiles[H-1][x] = 1;
+for (let y = 0; y < H; y++) tiles[y][0] = tiles[y][W-1] = 1;`,
+                function (rng) {
+                    const W = PREVIEW_COLS,
+                        H = PREVIEW_ROWS;
+                    let t = Array.from({ length: H }, () =>
+                        Array.from({ length: W }, () => (rng() < 0.4 ? 1 : 0)),
+                    );
+                    function countNeighbors(tile, x, y) {
+                        let n = 0;
+                        for (let dy = -1; dy <= 1; dy++)
+                            for (let dx = -1; dx <= 1; dx++)
+                                if ((dx || dy) && tile[y + dy]?.[x + dx] === 1)
+                                    n++;
+                        return n;
+                    }
+                    for (let iter = 0; iter < 4; iter++) {
+                        const next = t.map((r) => [...r]);
+                        for (let y = 1; y < H - 1; y++)
+                            for (let x = 1; x < W - 1; x++) {
+                                const n = countNeighbors(t, x, y);
+                                next[y][x] =
+                                    n >= 4 || (t[y][x] === 1 && n >= 3) ? 1 : 0;
+                            }
+                        t = next;
+                    }
+                    for (let x = 0; x < W; x++) t[0][x] = t[H - 1][x] = 1;
+                    for (let y = 0; y < H; y++) t[y][0] = t[y][W - 1] = 1;
+                    return t;
+                },
+            );
+
+            reg(
+                "Noise Cave",
+                "caves",
+                "A cave carved using fractal noise - smoother, more natural contours.",
+                [AIR, DARK_WALL],
+                `// Noise Cave - uses fractal noise for cave contours
+const defs = [ {}, { solid: true, color: '#2a2a3a' } ];
+const W = 20, H = 20, OFF = Math.random() * 1000;
+const tiles = Array.from({ length: H }, () => Array(W).fill(0));
+for (let y = 0; y < H; y++) {
+  for (let x = 0; x < W; x++) {
+    const v = fractalNoise2D((x+OFF)/6, (y+OFF)/6, 3);
+    tiles[y][x] = v > 0.5 ? 0 : 1;
+  }
+}
+for (let x = 0; x < W; x++) tiles[0][x] = tiles[H-1][x] = 1;
+for (let y = 0; y < H; y++) tiles[y][0] = tiles[y][W-1] = 1;`,
+                function (rng) {
+                    const W = PREVIEW_COLS,
+                        H = PREVIEW_ROWS,
+                        OFF = rng() * 1000;
+                    const t = Array.from({ length: H }, () => Array(W).fill(0));
+                    for (let y = 0; y < H; y++) {
+                        for (let x = 0; x < W; x++) {
+                            const v = fractalNoise2D(
+                                (x + OFF) / 6,
+                                (y + OFF) / 6,
+                                3,
+                            );
+                            t[y][x] = v > 0.5 ? 0 : 1;
+                        }
+                    }
+                    for (let x = 0; x < W; x++) t[0][x] = t[H - 1][x] = 1;
+                    for (let y = 0; y < H; y++) t[y][0] = t[y][W - 1] = 1;
+                    return t;
+                },
+            );
+
+            reg(
+                "Platform Layout",
+                "platforms",
+                "Multiple floating platforms at staggered heights - the skeleton of a platformer level.",
+                [AIR, GRASS, STONE_WALL, PLATFORM],
+                `// Platform Layout - staggered platforms at various heights
+const defs = [
+  {}, { solid: true, color: '#5a9a4a' },
+  { solid: true, color: '#6a7a8a' },
+  { solid: true, oneWay: true, color: '#e8a030' },
+];
+const W = 20, H = 20;
+const tiles = Array.from({ length: H }, () => Array(W).fill(0));
+// Ground at bottom
+for (let x = 0; x < W; x++) tiles[H-1][x] = 1;
+// Floating platforms at random heights
+const platYs = [2, 6, 10, 14, 16].map(y => [y, y]);
+const platXs = [[2,6],[8,12],[14,18],[2,5],[11,16]];
+for (let i = 0; i < platYs.length; i++) {
+  for (let x = platXs[i][0]; x <= platXs[i][1]; x++)
+    tiles[platYs[i][0]][x] = 3;
+}
+// Stone walls for decoration
+tiles[10][7] = tiles[11][7] = 2;`,
+                function (rng) {
+                    const W = PREVIEW_COLS,
+                        H = PREVIEW_ROWS;
+                    const t = Array.from({ length: H }, () => Array(W).fill(0));
+                    for (let x = 0; x < W; x++) t[H - 1][x] = 1;
+                    const platYs = [2, 6, 10, 14, 16];
+                    const platXs = [
+                        [2, 6],
+                        [8, 12],
+                        [14, 18],
+                        [2, 5],
+                        [11, 16],
+                    ];
+                    for (let i = 0; i < platYs.length; i++) {
+                        for (let x = platXs[i][0]; x <= platXs[i][1]; x++)
+                            t[platYs[i]][x] = 3;
+                    }
+                    return t;
+                },
+            );
+
+            reg(
+                "Staircase",
+                "platforms",
+                "A staircase of platforms leading upward - useful for vertical transitions.",
+                [AIR, STONE_WALL],
+                `// Staircase - ascending platforms
+const defs = [ {}, { solid: true, color: '#6a7a8a' } ];
+const W = 20, H = 20;
+const tiles = Array.from({ length: H }, () => Array(W).fill(0));
+for (let i = 0; i < 8; i++) {
+  const sy = H - 2 - i * 2;
+  const sx = i * 2;
+  tiles[sy][sx] = tiles[sy][sx+1] = tiles[sy+1][sx] = tiles[sy+1][sx+1] = 1;
+}
+// Background wall
+for (let y = 0; y < H; y++) tiles[y][W-1] = 1;`,
+                function (rng) {
+                    const W = PREVIEW_COLS,
+                        H = PREVIEW_ROWS;
+                    const t = Array.from({ length: H }, () => Array(W).fill(0));
+                    for (let i = 0; i < 8; i++) {
+                        const sy = H - 2 - i * 2;
+                        const sx = i * 2;
+                        t[sy][sx] =
+                            t[sy][sx + 1] =
+                            t[sy + 1][sx] =
+                            t[sy + 1][sx + 1] =
+                                1;
+                    }
+                    for (let y = 0; y < H; y++) t[y][W - 1] = 1;
+                    return t;
+                },
+            );
+
+            reg(
+                "Bridge",
+                "platforms",
+                "Two cliffs with a bridge spanning between them.",
+                [AIR, GRASS, WOOD],
+                `// Bridge - two cliffs with a wood plank bridge
+const defs = [
+  {}, { solid: true, color: '#5a9a4a' }, { solid: true, color: '#6a4a2a' }
+];
+const W = 20, H = 20;
+const tiles = Array.from({ length: H }, () => Array(W).fill(0));
+// Left cliff
+for (let y = 10; y < H; y++)
+  for (let x = 0; x < 6; x++) tiles[y][x] = 1;
+// Right cliff
+for (let y = 10; y < H; y++)
+  for (let x = 14; x < W; x++) tiles[y][x] = 1;
+// Bridge
+for (let x = 6; x < 14; x++) tiles[10][x] = 2;
+// Bridge supports
+tiles[11][6] = tiles[11][13] = 2;`,
+                function (rng) {
+                    const W = PREVIEW_COLS,
+                        H = PREVIEW_ROWS;
+                    const t = Array.from({ length: H }, () => Array(W).fill(0));
+                    for (let y = 10; y < H; y++)
+                        for (let x = 0; x < 6; x++) t[y][x] = 1;
+                    for (let y = 10; y < H; y++)
+                        for (let x = 14; x < W; x++) t[y][x] = 1;
+                    for (let x = 6; x < 14; x++) t[10][x] = 2;
+                    t[11][6] = t[11][13] = 2;
+                    return t;
+                },
+            );
+
+            reg(
+                "Arena",
+                "rooms",
+                "A large open arena with thick walls and corner watchtowers.",
+                [AIR, STONE_WALL, DARK_WALL],
+                `// Arena - open centre with corner towers
+const defs = [
+  {}, { solid: true, color: '#6a7a8a' }, { solid: true, color: '#2a2a3a' }
+];
+const W = 20, H = 20;
+const tiles = Array.from({ length: H }, () => Array(W).fill(0));
+for (let y = 0; y < 3; y++)
+  for (let x = 0; x < W; x++) tiles[y][x] = 1;
+for (let y = H-3; y < H; y++)
+  for (let x = 0; x < W; x++) tiles[y][x] = 1;
+for (let x = 0; x < 3; x++)
+  for (let y = 3; y < H-3; y++) tiles[y][x] = 1;
+for (let x = W-3; x < W; x++)
+  for (let y = 3; y < H-3; y++) tiles[y][x] = 1;
+// Corner towers (dark stone)
+for (let y = 0; y < 3; y++)
+  for (let x = 0; x < 3; x++) tiles[y][x] = 2;
+for (let y = 0; y < 3; y++)
+  for (let x = W-3; x < W; x++) tiles[y][x] = 2;
+for (let y = H-3; y < H; y++)
+  for (let x = 0; x < 3; x++) tiles[y][x] = 2;
+for (let y = H-3; y < H; y++)
+  for (let x = W-3; x < W; x++) tiles[y][x] = 2;`,
+                function (rng) {
+                    const W = PREVIEW_COLS,
+                        H = PREVIEW_ROWS;
+                    const t = Array.from({ length: H }, () => Array(W).fill(0));
+                    for (let y = 0; y < 3; y++)
+                        for (let x = 0; x < W; x++) t[y][x] = 1;
+                    for (let y = H - 3; y < H; y++)
+                        for (let x = 0; x < W; x++) t[y][x] = 1;
+                    for (let x = 0; x < 3; x++)
+                        for (let y = 3; y < H - 3; y++) t[y][x] = 1;
+                    for (let x = W - 3; x < W; x++)
+                        for (let y = 3; y < H - 3; y++) t[y][x] = 1;
+                    for (let y = 0; y < 3; y++)
+                        for (let x = 0; x < 3; x++) t[y][x] = 2;
+                    for (let y = 0; y < 3; y++)
+                        for (let x = W - 3; x < W; x++) t[y][x] = 2;
+                    for (let y = H - 3; y < H; y++)
+                        for (let x = 0; x < 3; x++) t[y][x] = 2;
+                    for (let y = H - 3; y < H; y++)
+                        for (let x = W - 3; x < W; x++) t[y][x] = 2;
+                    return t;
+                },
+            );
+
+            reg(
+                "Lake",
+                "natural",
+                "A body of water surrounded by grass and sand, with reeds.",
+                [AIR, GRASS, WATER, SAND],
+                `// Lake - water surrounded by sandbanks and grass
+const defs = [
+  {}, { solid: true, color: '#5a9a4a' },
+  { color: '#1a5599' }, { color: '#d4b878' },
+];
+const W = 20, H = 20;
+// Start with grass
+const tiles = Array.from({ length: H }, () => Array(W).fill(1));
+// Carve lake circle
+const cx = 10, cy = 10, r = 6;
+for (let y = 0; y < H; y++)
+  for (let x = 0; x < W; x++) {
+    const d = Math.hypot(x-cx, y-cy);
+    if (d < r) tiles[y][x] = 2;     // water
+    else if (d < r+1.5) tiles[y][x] = 3;  // sand
+  }`,
+                function (rng) {
+                    const W = PREVIEW_COLS,
+                        H = PREVIEW_ROWS;
+                    const t = Array.from({ length: H }, () => Array(W).fill(1));
+                    const cx = 10,
+                        cy = 10,
+                        r = 6;
+                    for (let y = 0; y < H; y++)
+                        for (let x = 0; x < W; x++) {
+                            const d = Math.hypot(x - cx, y - cy);
+                            if (d < r) t[y][x] = 2;
+                            else if (d < r + 1.5) t[y][x] = 3;
+                        }
+                    return t;
+                },
+            );
+
+            reg(
+                "Forest Patch",
+                "natural",
+                "A cluster of trees with trunks and leaf canopies.",
+                [AIR, GRASS, WOOD, LEAVES],
+                `// Forest Patch - trees scattered on grass
+const defs = [
+  {}, { solid: true, color: '#5a9a4a' },
+  { solid: true, color: '#6a4a2a' }, { color: '#3a8a3a' },
+];
+const W = 20, H = 20;
+const tiles = Array.from({ length: H }, () => Array(W).fill(1));
+function placeTree(t, x, y) {
+  if (y < 2) return;
+  t[y][x] = 2; t[y-1][x] = 2;
+  for (let dy = -2; dy <= 0; dy++)
+    for (let dx = -2; dx <= 2; dx++) {
+      const lx = x+dx, ly = y-1+dy;
+      if (lx>=0 && lx<W && ly>=0 && ly<H && t[ly][lx] !== 2)
+        t[ly][lx] = 3;
+    }
+}
+// Place 6 trees
+const treePositions = [[4,14],[8,12],[13,14],[5,7],[11,6],[16,9]];
+for (const [x,y] of treePositions) placeTree(tiles, x, y);`,
+                function (rng) {
+                    const W = PREVIEW_COLS,
+                        H = PREVIEW_ROWS;
+                    const t = Array.from({ length: H }, () => Array(W).fill(1));
+                    function placeTree(tile, x, y) {
+                        if (y < 2) return;
+                        tile[y][x] = 2;
+                        tile[y - 1][x] = 2;
+                        for (let dy = -2; dy <= 0; dy++)
+                            for (let dx = -2; dx <= 2; dx++) {
+                                const lx = x + dx,
+                                    ly = y - 1 + dy;
+                                if (
+                                    lx >= 0 &&
+                                    lx < W &&
+                                    ly >= 0 &&
+                                    ly < H &&
+                                    tile[ly][lx] !== 2
+                                )
+                                    tile[ly][lx] = 3;
+                            }
+                    }
+                    const pos = [
+                        [4, 14],
+                        [8, 12],
+                        [13, 14],
+                        [5, 7],
+                        [11, 6],
+                        [16, 9],
+                    ];
+                    for (const [x, y] of pos) placeTree(t, x, y);
+                    return t;
+                },
+            );
+
+            reg(
+                "Lava Pit",
+                "natural",
+                "A pit of lava with stone walls and bridges.",
+                [AIR, STONE_WALL, LAVA, WOOD],
+                `// Lava Pit - dangerous floor with crossing bridges
+const defs = [
+  {}, { solid: true, color: '#6a7a8a' },
+  { color: '#d93030' }, { solid: true, color: '#6a4a2a' },
+];
+const W = 20, H = 20;
+const tiles = Array.from({ length: H }, () => Array(W).fill(0));
+// Walls around
+for (let x = 0; x < W; x++) tiles[0][x] = tiles[H-1][x] = 1;
+for (let y = 0; y < H; y++) tiles[y][0] = tiles[y][W-1] = 1;
+// Lava floor
+for (let y = 2; y < H-2; y++)
+  for (let x = 2; x < W-2; x++) tiles[y][x] = 2;
+// Wood bridges crossing
+for (let x = 3; x < W-3; x++) tiles[6][x] = tiles[13][x] = 3;
+for (let y = 3; y < H-3; y++) tiles[y][5] = tiles[y][14] = 3;`,
+                function (rng) {
+                    const W = PREVIEW_COLS,
+                        H = PREVIEW_ROWS;
+                    const t = Array.from({ length: H }, () => Array(W).fill(0));
+                    for (let x = 0; x < W; x++) t[0][x] = t[H - 1][x] = 1;
+                    for (let y = 0; y < H; y++) t[y][0] = t[y][W - 1] = 1;
+                    for (let y = 2; y < H - 2; y++)
+                        for (let x = 2; x < W - 2; x++) t[y][x] = 2;
+                    for (let x = 3; x < W - 3; x++) t[6][x] = t[13][x] = 3;
+                    for (let y = 3; y < H - 3; y++) t[y][5] = t[y][14] = 3;
+                    return t;
+                },
+            );
+
+            reg(
+                "Dungeon Corridor",
+                "rooms",
+                "A winding corridor with branching passages.",
+                [AIR, DARK_WALL],
+                `// Dungeon Corridor - winding path with branches
+const defs = [ {}, { solid: true, color: '#2a2a3a' } ];
+const W = 20, H = 20;
+const tiles = Array.from({ length: H }, () => Array(W).fill(1));
+// Main corridor (horizontal)
+for (let x = 2; x < W-2; x++) tiles[10][x] = tiles[11][x] = 0;
+// Vertical branches
+for (let y = 4; y <= 10; y++) tiles[y][5] = tiles[y][6] = 0;
+for (let y = 10; y <= 16; y++) tiles[y][13] = tiles[y][14] = 0;
+// Small room at end
+for (let y = 8; y <= 13; y++)
+  for (let x = 16; x <= 18; x++) tiles[y][x] = 0;`,
+                function (rng) {
+                    const W = PREVIEW_COLS,
+                        H = PREVIEW_ROWS;
+                    const t = Array.from({ length: H }, () => Array(W).fill(1));
+                    for (let x = 2; x < W - 2; x++) t[10][x] = t[11][x] = 0;
+                    for (let y = 4; y <= 10; y++) t[y][5] = t[y][6] = 0;
+                    for (let y = 10; y <= 16; y++) t[y][13] = t[y][14] = 0;
+                    for (let y = 8; y <= 13; y++)
+                        for (let x = 16; x <= 18; x++) t[y][x] = 0;
+                    return t;
+                },
+            );
+
+            reg(
+                "Ruins",
+                "rooms",
+                "Broken walls and rubble - the remains of an old structure.",
+                [AIR, STONE_WALL, DARK_WALL],
+                `// Ruins - broken walls with gaps
+const defs = [
+  {}, { solid: true, color: '#6a7a8a' }, { solid: true, color: '#2a2a3a' }
+];
+const W = 20, H = 20;
+const tiles = Array.from({ length: H }, () => Array(W).fill(1));
+// Carve out random chunks to make it "ruined"
+for (let y = 1; y < H-1; y++)
+  for (let x = 1; x < W-1; x++)
+    if (Math.random() < 0.35) tiles[y][x] = 0;
+// Outline some rooms
+for (let y = 3; y <= 8; y++)
+  for (let x = 3; x <= 8; x++) tiles[y][x] = 0;
+for (let y = 11; y <= 16; y++)
+  for (let x = 11; x <= 16; x++) tiles[y][x] = 0;
+// Rubble piles (dark)
+tiles[8][3] = tiles[8][4] = tiles[9][3] = 2;
+tiles[11][11] = tiles[11][12] = tiles[12][11] = 2;`,
+                function (rng) {
+                    const W = PREVIEW_COLS,
+                        H = PREVIEW_ROWS;
+                    const t = Array.from({ length: H }, () => Array(W).fill(1));
+                    for (let y = 1; y < H - 1; y++)
+                        for (let x = 1; x < W - 1; x++)
+                            if (rng() < 0.35) t[y][x] = 0;
+                    for (let y = 3; y <= 8; y++)
+                        for (let x = 3; x <= 8; x++) t[y][x] = 0;
+                    for (let y = 11; y <= 16; y++)
+                        for (let x = 11; x <= 16; x++) t[y][x] = 0;
+                    t[8][3] = t[8][4] = t[9][3] = 2;
+                    t[11][11] = t[11][12] = t[12][11] = 2;
+                    return t;
+                },
+            );
+
+            reg(
+                "Beach",
+                "natural",
+                "A shoreline where water meets sand and grass.",
+                [AIR, GRASS, WATER, SAND],
+                `// Beach - water → sand → grass transition
+const defs = [
+  {}, { solid: true, color: '#5a9a4a' },
+  { color: '#1a5599' }, { color: '#d4b878' },
+];
+const W = 20, H = 20;
+const tiles = Array.from({ length: H }, () => Array(W).fill(0));
+for (let y = 0; y < H; y++) {
+  for (let x = 0; x < W; x++) {
+    if (y > 14) tiles[y][x] = 2;         // water
+    else if (y > 12) tiles[y][x] = 3;    // sand
+    else if (x < 3 || x > 16) tiles[y][x] = 1;  // grass sides
+    else tiles[y][x] = 0;                // air
+  }
+}
+// Palm trees
+tiles[12][4] = tiles[11][4] = 1;
+tiles[10][4] = 0;
+tiles[12][15] = tiles[11][15] = 1;
+tiles[10][15] = 0;`,
+                function (rng) {
+                    const W = PREVIEW_COLS,
+                        H = PREVIEW_ROWS;
+                    const t = Array.from({ length: H }, () => Array(W).fill(0));
+                    for (let y = 0; y < H; y++)
+                        for (let x = 0; x < W; x++) {
+                            if (y > 14) t[y][x] = 2;
+                            else if (y > 12) t[y][x] = 3;
+                            else if (x < 3 || x > 16) t[y][x] = 1;
+                            else t[y][x] = 0;
+                        }
+                    return t;
+                },
+            );
+
+            function showPattern(idx) {
+                const p = registry[idx];
+                if (!p) return;
+                currentIdx = idx;
+                currentSeed = (Math.random() * 100000) | 0;
+
+                document.getElementById("pattern-name").textContent = p.name;
+                document.getElementById("pattern-desc").textContent = p.desc;
+                document.getElementById("pattern-count").textContent =
+                    `${idx + 1} / ${registry.length}`;
+
+                const rng = mulberry32(currentSeed);
+                const tiles = p.fn(rng);
+
+                renderPreview(
+                    p.defs,
+                    tiles,
+                    PREVIEW_COLS,
+                    PREVIEW_ROWS,
+                    TILE_SZ,
+                );
+
+                document.getElementById("legend").innerHTML = buildLegend(
+                    p.defs,
+                );
+
+                const wallCount = tiles.flat().filter((v, i) => {
+                    const def = p.defs[v];
+                    return def?.solid;
+                }).length;
+                document.getElementById("info-size").textContent =
+                    `${PREVIEW_COLS}×${PREVIEW_ROWS} tiles`;
+                document.getElementById("info-tiles").textContent =
+                    `${wallCount} solid tiles`;
+
+                // Code
+                document.getElementById("code-display").textContent = p.code;
+
+                // Update active category
+                document
+                    .querySelectorAll(".categories button")
+                    .forEach((btn) => {
+                        btn.classList.toggle(
+                            "active",
+                            btn.dataset.cat === p.cat ||
+                                btn.dataset.cat === "all",
+                        );
+                    });
+            }
+
+            function nextPattern() {
+                showPattern((currentIdx + 1) % registry.length);
+            }
+
+            function prevPattern() {
+                showPattern(
+                    (currentIdx - 1 + registry.length) % registry.length,
+                );
+            }
+
+            function randomPattern() {
+                let idx;
+                do {
+                    idx = (Math.random() * registry.length) | 0;
+                } while (idx === currentIdx && registry.length > 1);
+                showPattern(idx);
+            }
+
+            function randomizeVariation() {
+                currentSeed = (Math.random() * 100000) | 0;
+                showPattern(currentIdx);
+            }
+
+            function filterByCat(cat) {
+                const list =
+                    cat === "all"
+                        ? registry
+                        : registry.filter((p) => p.cat === cat);
+                if (list.length === 0) return;
+                const idx = registry.indexOf(list[0]);
+                showPattern(idx);
+
+                document
+                    .querySelectorAll(".categories button")
+                    .forEach((btn) => {
+                        btn.classList.toggle("active", btn.dataset.cat === cat);
+                    });
+            }
+
+            function selectCode() {
+                const el = document.getElementById("code-display");
+                const range = document.createRange();
+                range.selectNodeContents(el);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+
+            function buildCategories() {
+                const cats = new Set(registry.map((p) => p.cat));
+                const container = document.getElementById("categories");
+                container.innerHTML =
+                    '<button data-cat="all" class="active" onclick="filterByCat(\'all\')">All</button>';
+                for (const cat of ["rooms", "caves", "platforms", "natural"]) {
+                    if (cats.has(cat)) {
+                        container.innerHTML += `<button data-cat="${cat}" onclick="filterByCat('${cat}')">${cat.charAt(0).toUpperCase() + cat.slice(1)}</button>`;
+                    }
+                }
+            }
+
+            document.addEventListener("keydown", (e) => {
+                if (e.key === "ArrowRight") nextPattern();
+                if (e.key === "ArrowLeft") prevPattern();
+                if (e.key === "r" || e.key === "R") randomPattern();
+                if (e.key === " ") {
+                    e.preventDefault();
+                    randomizeVariation();
+                }
+            });
+
+            buildCategories();
+            showPattern(0);
+        </script>
+    </body>
+</html>
