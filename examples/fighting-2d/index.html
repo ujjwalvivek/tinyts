@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="2D platformer combat fighting game.">
+  <title>TinyTS - 2D Fighting Arena</title>
+  <style>
+    @font-face {
+      font-family: 'Monaspace Neon';
+      src: url('https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2') format('woff2');
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: block;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1e1e2e;
+      color: #cdd6f4;
+      font-family: 'Monaspace Neon', monospace;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100vw;
+      height: 100vh;
+    }
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background: #11111b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #canvas-container canvas {
+      position: absolute !important;
+      left: 50% !important;
+      top: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      max-width: 95% !important;
+      max-height: 95% !important;
+      width: auto !important;
+      height: auto !important;
+      aspect-ratio: 16/9 !important;
+      border: 2px dashed #cba6f7;
+    }
+  </style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<script src="../../dist/tinyts.js"></script>
+<script>
+// 2D Fighting Arena (640x360 Canvas)
+// Demonstrates: AABB hitbox/hurtbox overlap checks, jump/physics integration,
+// basic state machine tracking, reactive opponent AI behavior, and status HUD meters.
+
+const W = 640, H = 360;
+const FLOOR_Y = H - 60;
+
+// Setup input
+bindAction("left", ["KeyA", "ArrowLeft"]);
+bindAction("right", ["KeyD", "ArrowRight"]);
+bindAction("jump", ["KeyW", "ArrowUp"]);
+bindAction("punch", ["KeyJ"]);
+bindAction("kick", ["KeyK"]);
+
+// Fighter definitions
+const p1 = {
+  pos: vec2(150, FLOOR_Y - 45),
+  size: vec2(20, 45),
+  vel: vec2(0, 0),
+  hp: 100,
+  maxHp: 100,
+  speed: 160,
+  gravity: 620,
+  jumpImpulse: -240,
+  grounded: false,
+  flipX: false,
+  state: "idle", // idle | punch | kick | hitstun | dead
+  stateTimer: 0,
+  attackActive: false,
+  blockActive: false
+};
+
+const p2 = {
+  pos: vec2(W - 170, FLOOR_Y - 45),
+  size: vec2(20, 45),
+  vel: vec2(0, 0),
+  hp: 100,
+  maxHp: 100,
+  speed: 130,
+  gravity: 620,
+  jumpImpulse: -240,
+  grounded: false,
+  flipX: true,
+  state: "idle",
+  stateTimer: 0,
+  attackActive: false,
+  blockActive: false,
+  
+  // AI Decisions variables
+  aiDecisionTimer: 0,
+  aiAction: "none"
+};
+
+let matchState = "fight"; // fight | p1_win | p2_win
+let fightMessage = "ROUND 1 // FIGHT!";
+let messageTimer = 2.0;
+
+function initGame() {
+  p1.pos.set(150, FLOOR_Y - 45);
+  p1.vel.set(0, 0);
+  p1.hp = 100;
+  p1.state = "idle";
+  p1.stateTimer = 0;
+  p1.attackActive = false;
+
+  p2.pos.set(W - 170, FLOOR_Y - 45);
+  p2.vel.set(0, 0);
+  p2.hp = 100;
+  p2.state = "idle";
+  p2.stateTimer = 0;
+  p2.attackActive = false;
+
+  matchState = "fight";
+  fightMessage = "ROUND 1 // FIGHT!";
+  messageTimer = 2.0;
+  playSound(sfx.powerup({ volume: 0.25 }));
+}
+
+function handlePhysics(char, dt) {
+  // Apply gravity
+  char.vel.y += char.gravity * dt;
+  char.pos.x += char.vel.x * dt;
+  char.pos.y += char.vel.y * dt;
+
+  // Collision with ground floor
+  if (char.pos.y >= FLOOR_Y - char.size.y) {
+    char.pos.y = FLOOR_Y - char.size.y;
+    char.vel.y = 0;
+    char.grounded = true;
+  } else {
+    char.grounded = false;
+  }
+
+  // Clamping within screen walls
+  if (char.pos.x < 15) {
+    char.pos.x = 15;
+  } else if (char.pos.x > W - 15 - char.size.x) {
+    char.pos.x = W - 15 - char.size.x;
+  }
+
+  // Decrease state timers
+  if (char.stateTimer > 0) {
+    char.stateTimer -= dt;
+    if (char.stateTimer <= 0) {
+      char.state = "idle";
+      char.attackActive = false;
+    }
+  }
+}
+
+function triggerAttack(attacker, defender, type) {
+  if (attacker.state !== "idle" && attacker.state !== "walk") return;
+
+  attacker.state = type;
+  attacker.stateTimer = type === "punch" ? 0.18 : 0.28;
+  attacker.attackActive = true;
+  
+  playSound(sfx.laser({ volume: 0.12, pitch: type === "punch" ? 1.5 : 0.95 }));
+
+  // Evaluate hitboxes
+  // Hurtbox is the defender's AABB
+  const hurtBox = { pos: defender.pos, size: defender.size };
+
+  // Hitbox extends in the direction the attacker is facing
+  const reach = type === "punch" ? 18 : 28;
+  const hW = reach;
+  const hH = type === "punch" ? 8 : 12;
+  const hX = attacker.flipX ? attacker.pos.x - hW : attacker.pos.x + attacker.size.x;
+  const hY = attacker.pos.y + (type === "punch" ? 10 : 25);
+  const hitBox = { pos: vec2(hX, hY), size: vec2(hW, hH) };
+
+  if (aabbOverlap(hitBox, hurtBox)) {
+    // Attack hits!
+    let dmg = type === "punch" ? 8 : 14;
+    
+    // Check if defender is blocking (standing/idle and facing the attack)
+    const isBlocking = defender.state === "idle" && defender.flipX !== attacker.flipX;
+    
+    if (isBlocking) {
+      dmg = Math.floor(dmg * 0.15); // block absorbs 85% dmg
+      playSound(sfx.blip({ volume: 0.15, pitch: 1.8 }));
+      triggerMessage("BLOCKED // REBOUND ABSORB");
+      
+      // Block sparks
+      emitParticles({
+        pos: vec2(hX + (attacker.flipX ? 0 : hW), hY + hH/2), count: 3, life: [0.1, 0.2],
+        speed: [20, 50], color: ["#89b4fa", "#fff"]
+      });
+    } else {
+      defender.state = "hitstun";
+      defender.stateTimer = type === "punch" ? 0.22 : 0.35;
+      defender.vel.x = attacker.flipX ? -70 : 70; // knockback
+      
+      playSound(sfx.hit({ volume: 0.24 }));
+      
+      // Damage impact sparks
+      emitParticles({
+        pos: vec2(hX + (attacker.flipX ? 0 : hW), hY + hH/2), count: 8, life: [0.2, 0.4],
+        speed: [30, 90], color: ["#f38ba8", "#fab387"]
+      });
+    }
+
+    defender.hp = Math.max(0, defender.hp - dmg);
+    if (defender.hp <= 0) {
+      defender.state = "dead";
+      defender.stateTimer = 9999;
+      matchState = attacker === p1 ? "p1_win" : "p2_win";
+      playSound(sfx.death());
+    }
+  }
+}
+
+function triggerMessage(text) {
+  fightMessage = text;
+  messageTimer = 1.8;
+}
+
+initGame();
+
+const engine = engineStart({
+  size: { width: W, height: H },
+  pixelated: true,
+
+  update(dt) {
+    updateParticles(dt);
+
+    if (matchState !== "fight") {
+      if (mousePressed(0) || keyPressed("Space")) {
+        initGame();
+      }
+      return;
+    }
+
+    if (messageTimer > 0) {
+      messageTimer -= dt;
+    }
+
+    // ── 1. Update Player 1 (Manual Inputs) ──
+    if (p1.state !== "hitstun" && p1.state !== "dead") {
+      let moveDir = 0;
+      if (actionDown("left")) moveDir = -1;
+      if (actionDown("right")) moveDir = 1;
+
+      p1.vel.x = moveDir * p1.speed;
+
+      // Face opponent automatically
+      p1.flipX = p1.pos.x > p2.pos.x;
+
+      if (actionPressed("jump") && p1.grounded) {
+        p1.vel.y = p1.jumpImpulse;
+        playSound(sfx.jump({ volume: 0.16 }));
+      }
+
+      if (actionPressed("punch")) {
+        triggerAttack(p1, p2, "punch");
+      } else if (actionPressed("kick")) {
+        triggerAttack(p1, p2, "kick");
+      }
+    }
+
+    // ── 2. Update Player 2 (Opponent AI Decision loops) ──
+    if (p2.state !== "hitstun" && p2.state !== "dead") {
+      p2.flipX = p2.pos.x > p1.pos.x;
+
+      p2.aiDecisionTimer -= dt;
+      if (p2.aiDecisionTimer <= 0) {
+        p2.aiDecisionTimer = rand(0.35, 0.7);
+
+        const dist = p2.pos.distanceTo(p1.pos);
+        const chance = Math.random();
+
+        if (dist > 95) {
+          // Walk toward player
+          p2.aiAction = p1.pos.x < p2.pos.x ? "walk_left" : "walk_right";
+        } else if (dist < 40) {
+          // Close quarters combat triggers
+          if (chance < 0.45) p2.aiAction = "punch";
+          else if (chance < 0.75) p2.aiAction = "kick";
+          else p2.aiAction = "block";
+        } else {
+          // Mid range gap closing
+          if (chance < 0.6) p2.aiAction = p1.pos.x < p2.pos.x ? "walk_left" : "walk_right";
+          else if (chance < 0.75 && p2.grounded) p2.aiAction = "jump";
+          else p2.aiAction = "none";
+        }
+      }
+
+      // Execute AI actions
+      if (p2.aiAction === "walk_left") {
+        p2.vel.x = -p2.speed;
+      } else if (p2.aiAction === "walk_right") {
+        p2.vel.x = p2.speed;
+      } else if (p2.aiAction === "none" || p2.aiAction === "block") {
+        p2.vel.x = 0;
+      } else if (p2.aiAction === "jump" && p2.grounded) {
+        p2.vel.y = p2.jumpImpulse;
+        p2.aiAction = "none";
+        playSound(sfx.jump({ volume: 0.14 }));
+      } else if (p2.aiAction === "punch") {
+        triggerAttack(p2, p1, "punch");
+        p2.aiAction = "none";
+      } else if (p2.aiAction === "kick") {
+        triggerAttack(p2, p1, "kick");
+        p2.aiAction = "none";
+      }
+    }
+
+    // Apply physics updates
+    handlePhysics(p1, dt);
+    handlePhysics(p2, dt);
+  },
+
+  render() {
+    clear("#11111b");
+
+    // Grid details
+    for (let x = 0; x < W; x += 40) {
+      drawLine(vec2(x, 0), vec2(x, H), "rgba(49, 50, 68, 0.08)");
+    }
+
+    // Arena Floor
+    drawRect(vec2(0, FLOOR_Y), vec2(W, H - FLOOR_Y), "#181825");
+    drawLine(vec2(0, FLOOR_Y), vec2(W, FLOOR_Y), "#313244", 2);
+
+    // Draw Controls/Instructions inside the floor rect
+    drawText("CONTROLS: [A]/[D] or [L/R ARROW] MOVE  |  [W] or [UP] JUMP  |  [J] PUNCH  |  [K] KICK  |  [STAND STILL] TO BLOCK", vec2(W / 2, FLOOR_Y + 30), {
+      font: "bold 7.5px 'Monaspace Neon'",
+      color: "#a6adc8",
+      align: "center",
+      baseline: "middle"
+    });
+
+    // ── Render Fighters ──
+
+    // Attacker Hitboxes drawing on active frames for debug view
+    function drawFighter(char, bodyColor, detailColor) {
+      const isDead = char.state === "dead";
+      
+      // If dead, draw lying down
+      if (isDead) {
+        drawRect(vec2(char.pos.x, FLOOR_Y - 14), vec2(char.size.y, 12), "#585b70");
+        return;
+      }
+
+      // Body Rect
+      const stateColor = char.state === "hitstun" ? "#f38ba8" : bodyColor;
+      drawRect(char.pos, char.size, stateColor);
+      drawRectOutline(char.pos, char.size, "#11111b", 1.5);
+
+      // Face visors
+      const headY = char.pos.y + 4;
+      const headX = char.flipX ? char.pos.x + 2 : char.pos.x + char.size.x - 7;
+      drawRect(vec2(headX, headY), vec2(5, 4), detailColor);
+
+      // Render attack limbs
+      if (char.state === "punch" && char.attackActive) {
+        const lx = char.flipX ? char.pos.x - 14 : char.pos.x + char.size.x;
+        drawRect(vec2(lx, char.pos.y + 12), vec2(14, 5), detailColor);
+      } else if (char.state === "kick" && char.attackActive) {
+        const lx = char.flipX ? char.pos.x - 22 : char.pos.x + char.size.x;
+        drawRect(vec2(lx, char.pos.y + 26), vec2(22, 7), detailColor);
+      }
+    }
+
+    drawFighter(p1, "#89b4fa", "#fff");  // Player 1 - Blue
+    drawFighter(p2, "#f38ba8", "#fff");  // Player 2 - Red
+
+    // Sparks particles
+    renderParticles();
+
+    // ── HUD Healthbars Overlay (Screen-space top) ──
+    const hudY = 46;
+    const barW = 200;
+    const barH = 16;
+
+    // Player 1 health
+    drawRect(vec2(40, hudY), vec2(barW, barH), "#181825");
+    drawRect(vec2(40, hudY), vec2(barW * (p1.hp / p1.maxHp), barH), "#89b4fa");
+    drawRectOutline(vec2(40, hudY), vec2(barW, barH), "#313244", 1.5);
+    drawText("COBALT CORE (P1)", vec2(40, hudY - 8), { font: "bold 8px 'Monaspace Neon'", color: "#89b4fa" });
+
+    // Player 2 health
+    drawRect(vec2(W - 40 - barW, hudY), vec2(barW, barH), "#181825");
+    drawRect(vec2(W - 40 - barW, hudY), vec2(barW * (p2.hp / p2.maxHp), barH), "#f38ba8");
+    drawRectOutline(vec2(W - 40 - barW, hudY), vec2(barW, barH), "#313244", 1.5);
+    drawText("CRIMSON BUG (AI)", vec2(W - 40 - barW, hudY - 8), { font: "bold 8px 'Monaspace Neon'", color: "#f38ba8" });
+
+    // Center Versus text
+    drawText("VS", vec2(W / 2, hudY + 10), { font: "bold 14px 'Monaspace Neon'", color: "#f9e2af", align: "center", baseline: "middle" });
+
+    // Floating notifications
+    if (messageTimer > 0) {
+      drawText(fightMessage, vec2(W / 2, H / 2 - 30), { font: "bold 15px 'Monaspace Neon'", color: "#a6e3a1", align: "center" });
+    }
+
+    // Top Header Stats Bar
+    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
+    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+    drawText("SECURITY PROTOCOL // 2D COMBAT SIMULATOR", vec2(W / 2, 10), { font: "bold 9.5px 'Monaspace Neon'", color: "#cba6f7", align: "center" });
+
+    // Game Over states overlay
+    if (matchState === "p1_win") {
+      drawRect(vec2(0, 0), vec2(W, H), "rgba(17, 17, 27, 0.85)");
+      drawText("COBALT CORE VICTORIOUS // SECURITY MAINTAINED", vec2(W / 2, H / 2 - 12), { font: "bold 13px 'Monaspace Neon'", color: "#a6e3a1", align: "center" });
+      drawText("TAP ANYWHERE OR SPACE TO BOOT NEXT STAGE", vec2(W / 2, H / 2 + 15), { font: "9px 'Monaspace Neon'", color: "#a6adc8", align: "center" });
+    } else if (matchState === "p2_win") {
+      drawRect(vec2(0, 0), vec2(W, H), "rgba(17, 17, 27, 0.85)");
+      drawText("CRIMSON BUG DOMINATED // SECURITY OVERRUN // FAILURE", vec2(W / 2, H / 2 - 12), { font: "bold 13px 'Monaspace Neon'", color: "#f38ba8", align: "center" });
+      drawText("TAP ANYWHERE OR SPACE TO RETRY COMBAT LOGS", vec2(W / 2, H / 2 + 15), { font: "9px 'Monaspace Neon'", color: "#a6adc8", align: "center" });
+    }
+  }
+});
+
+document.getElementById('canvas-container').appendChild(engine.canvasManager.canvas);
+if (engine.overlayCanvas) {
+  document.getElementById('canvas-container').appendChild(engine.overlayCanvas);
+}
+</script>
+</body>
+</html>

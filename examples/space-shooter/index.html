@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="Top-down space shooter retro game." />
+        <title>TinyTS - Space Shooter</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
+
+            const shooterPlayerTex = createTexture((ctx, w, h) => {
+                const s = w / 16;
+                drawProceduralPolygon(
+                    ctx,
+                    [
+                        { x: 0, y: 12 * s },
+                        { x: 5 * s, y: 5 * s },
+                        { x: 5 * s, y: 14 * s },
+                    ],
+                    "#89b4fa",
+                );
+                drawProceduralPolygon(
+                    ctx,
+                    [
+                        { x: 16 * s, y: 12 * s },
+                        { x: 11 * s, y: 5 * s },
+                        { x: 11 * s, y: 14 * s },
+                    ],
+                    "#89b4fa",
+                );
+                drawProceduralPolygon(
+                    ctx,
+                    [
+                        { x: 8 * s, y: 0 },
+                        { x: 12 * s, y: 12 * s },
+                        { x: 4 * s, y: 12 * s },
+                    ],
+                    "#cba6f7",
+                );
+                // Cockpit
+                drawProceduralRect(ctx, 7 * s, 4 * s, 2 * s, 4 * s, "#89dceb");
+                // Engines thrusters glow
+                drawProceduralRect(ctx, 5 * s, 12 * s, 2 * s, 3 * s, "#fab387");
+                drawProceduralRect(ctx, 9 * s, 12 * s, 2 * s, 3 * s, "#fab387");
+            }, "shooter-player");
+
+            const shooterEnemyTex = createTexture((ctx, w, h) => {
+                const s = w / 16;
+                drawProceduralCircle(ctx, 8 * s, 5 * s, 4.5 * s, "#f38ba8");
+                drawProceduralPolygon(
+                    ctx,
+                    [
+                        { x: 0, y: 9 * s },
+                        { x: 16 * s, y: 9 * s },
+                        { x: 13 * s, y: 13 * s },
+                        { x: 3 * s, y: 13 * s },
+                    ],
+                    "#e94560",
+                );
+                drawProceduralCircle(ctx, 8 * s, 4.5 * s, 1.5 * s, "#fff");
+            }, "shooter-enemy");
+
+            const player = {
+                pos: vec2(W / 2 - 8, H - 45),
+                size: vec2(16, 16),
+                speed: 200,
+                health: 3,
+                maxHealth: 3,
+                score: 0,
+                shootCooldown: 0,
+            };
+
+            let bullets = [];
+            let enemies = [];
+            let stars = [];
+            let nextEntityId = 1;
+            let spawnTimer = 0;
+            let gameState = "playing";
+            let shakeTimer = 0;
+            let shakeIntensity = 0;
+
+            const grid = createSpatialGrid(32);
+
+            for (let i = 0; i < 80; i++) {
+                stars.push({
+                    pos: vec2(rand(0, W), rand(0, H)),
+                    speed: rand(30, 110),
+                    size: rand(0.5, 2.0),
+                    color: choose(["#45475a", "#585b70", "#89b4fa"]),
+                });
+            }
+
+            bindAction("left", ["KeyA", "ArrowLeft"]);
+            bindAction("right", ["KeyD", "ArrowRight"]);
+            bindAction("up", ["KeyW", "ArrowUp"]);
+            bindAction("down", ["KeyS", "ArrowDown"]);
+            bindAction("shoot", ["Space"]);
+
+            function triggerShake(intensity, duration) {
+                shakeIntensity = intensity;
+                shakeTimer = duration;
+            }
+
+            function spawnEnemy() {
+                enemies.push({
+                    id: nextEntityId++,
+                    pos: vec2(rand(20, W - 36), -20),
+                    size: vec2(16, 16),
+                    vel: vec2(0, rand(50, 85)),
+                    pulse: rand(0, Math.PI * 2),
+                });
+            }
+
+            function resetGame() {
+                player.pos.set(W / 2 - 8, H - 45);
+                player.health = 3;
+                player.score = 0;
+                player.shootCooldown = 0;
+                bullets = [];
+                enemies = [];
+                gameState = "playing";
+            }
+
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
+
+                update(dt) {
+                    updateParticles(dt);
+
+                    if (shakeTimer > 0) {
+                        shakeTimer -= dt;
+                    }
+
+                    for (const star of stars) {
+                        star.pos.y += star.speed * dt;
+                        if (star.pos.y > H) {
+                            star.pos.y = 0;
+                            star.pos.x = rand(0, W);
+                        }
+                    }
+
+                    if (gameState === "gameover") {
+                        if (keyPressed("Space")) {
+                            resetGame();
+                        }
+                        return;
+                    }
+
+                    const move = vec2(0, 0);
+                    if (actionDown("left")) move.x = -1;
+                    if (actionDown("right")) move.x = 1;
+                    if (actionDown("up")) move.y = -1;
+                    if (actionDown("down")) move.y = 1;
+
+                    if (move.lengthSquared() > 0) {
+                        move.normalize().scale(player.speed * dt);
+                        player.pos.add(move);
+                    }
+
+                    player.pos.x = clamp(player.pos.x, 10, W - 26);
+                    player.pos.y = clamp(player.pos.y, 35, H - 26);
+
+                    if (player.shootCooldown > 0) {
+                        player.shootCooldown -= dt;
+                    }
+                    if (actionDown("shoot") && player.shootCooldown <= 0) {
+                        bullets.push({
+                            pos: vec2(player.pos.x + 8, player.pos.y),
+                            size: vec2(2, 6),
+                            vel: vec2(0, -320),
+                        });
+                        player.shootCooldown = 0.15;
+                        playSound(sfx.laser({ volume: 0.12 }));
+
+                        emitParticles({
+                            pos: vec2(player.pos.x + 8, player.pos.y),
+                            count: 2,
+                            life: [0.1, 0.2],
+                            speed: [30, 60],
+                            angle: [-Math.PI * 0.6, -Math.PI * 0.4],
+                            size: [1, 2],
+                            color: ["#cba6f7", "#89dceb"],
+                        });
+                    }
+
+                    for (let i = bullets.length - 1; i >= 0; i--) {
+                        const b = bullets[i];
+                        b.pos.y += b.vel.y * dt;
+                        if (b.pos.y < 0) {
+                            bullets.splice(i, 1);
+                        }
+                    }
+
+                    spawnTimer += dt;
+                    if (spawnTimer >= 0.7) {
+                        spawnEnemy();
+                        spawnTimer = 0;
+                    }
+
+                    for (let i = enemies.length - 1; i >= 0; i--) {
+                        const enemy = enemies[i];
+                        enemy.pos.y += enemy.vel.y * dt;
+                        enemy.pos.x +=
+                            Math.sin(time * 3.5 + enemy.pulse) * 0.55;
+
+                        if (enemy.pos.y > H) {
+                            enemies.splice(i, 1);
+                        }
+                    }
+
+                    grid.clear();
+                    const enemyMap = new Map();
+                    for (const enemy of enemies) {
+                        grid.insert(enemy.id, {
+                            pos: enemy.pos,
+                            size: enemy.size,
+                        });
+                        enemyMap.set(enemy.id, enemy);
+                    }
+
+                    for (let bIdx = bullets.length - 1; bIdx >= 0; bIdx--) {
+                        const bullet = bullets[bIdx];
+                        const bulletAABB = {
+                            pos: bullet.pos,
+                            size: bullet.size,
+                        };
+
+                        const queryResults = grid.query(bulletAABB);
+
+                        for (const enemyId of queryResults) {
+                            const enemy = enemyMap.get(enemyId);
+                            if (
+                                enemy &&
+                                aabbOverlap(bulletAABB, {
+                                    pos: enemy.pos,
+                                    size: enemy.size,
+                                })
+                            ) {
+                                bullets.splice(bIdx, 1);
+                                const eIndex = enemies.indexOf(enemy);
+                                if (eIndex !== -1) enemies.splice(eIndex, 1);
+
+                                player.score += 10;
+                                playSound(sfx.enemyDeath({ volume: 0.15 }));
+
+                                emitParticles({
+                                    pos: enemy.pos.clone().add(vec2(8, 8)),
+                                    count: 12,
+                                    life: [0.2, 0.5],
+                                    speed: [40, 110],
+                                    size: [1.5, 3.5],
+                                    color: ["#f38ba8", "#fab387", "#313244"],
+                                });
+                                break;
+                            }
+                        }
+                    }
+
+                    const pBox = { pos: player.pos, size: player.size };
+                    for (let i = enemies.length - 1; i >= 0; i--) {
+                        const enemy = enemies[i];
+                        if (
+                            aabbOverlap(pBox, {
+                                pos: enemy.pos,
+                                size: enemy.size,
+                            })
+                        ) {
+                            enemies.splice(i, 1);
+                            player.health--;
+                            playSound(sfx.hit({ volume: 0.3 }));
+                            triggerShake(6, 0.35);
+
+                            emitParticles({
+                                pos: enemy.pos.clone().add(vec2(8, 8)),
+                                count: 15,
+                                life: [0.3, 0.6],
+                                speed: [50, 130],
+                                size: [2, 4],
+                                color: ["#f9e2af", "#f38ba8"],
+                            });
+
+                            if (player.health <= 0) {
+                                gameState = "gameover";
+                                playSound(sfx.death());
+                            }
+                        }
+                    }
+                },
+
+                render() {
+                    clear("#11111b");
+
+                    if (shakeTimer > 0) {
+                        const shakeX = rand(-shakeIntensity, shakeIntensity);
+                        const shakeY = rand(-shakeIntensity, shakeIntensity);
+                        setRenderTransform(
+                            vec2(W / 2 + shakeX, H / 2 + shakeY),
+                            1,
+                        );
+                    }
+
+                    for (const star of stars) {
+                        drawRect(
+                            star.pos,
+                            vec2(star.size, star.size),
+                            star.color,
+                        );
+                    }
+
+                    for (const b of bullets) {
+                        drawRect(b.pos, b.size, "#cba6f7");
+                    }
+
+                    for (const enemy of enemies) {
+                        drawSprite(shooterEnemyTex, enemy.pos, enemy.size);
+                    }
+
+                    if (gameState === "playing") {
+                        drawSprite(shooterPlayerTex, player.pos, player.size);
+                    }
+
+                    renderParticles();
+
+                    resetRenderTransform();
+
+                    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.85)");
+                    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+
+                    drawText(`SCORE: ${player.score}`, vec2(16, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#fab387",
+                    });
+
+                    let hpStr = "";
+                    for (let i = 0; i < player.maxHealth; i++) {
+                        hpStr += i < player.health ? "♥" : "♡";
+                    }
+                    drawText(`SHIELD: ${hpStr}`, vec2(W - 16, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#f38ba8",
+                        align: "right",
+                    });
+
+                    if (gameState === "gameover") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.8)",
+                        );
+                        drawText(
+                            "SYSTEM COMPROMISED // GAME OVER",
+                            vec2(W / 2, H / 2 - 15),
+                            {
+                                font: "bold 16px 'Monaspace Neon'",
+                                color: "#f38ba8",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            `FINAL SCORE: ${player.score}`,
+                            vec2(W / 2, H / 2 + 10),
+                            {
+                                font: "10px 'Monaspace Neon'",
+                                color: "#fab387",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "PRESS SPACE TO REDEPLOY",
+                            vec2(W / 2, H / 2 + 35),
+                            {
+                                font: "9px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+                    }
+                },
+            });
+
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
+</html>
