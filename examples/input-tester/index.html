@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="TinyTS interactive input tester showing keyboard, mouse, gamepad, and touch state."
+        />
+        <meta name="theme-color" content="#1e1e2e" />
+        <title>TinyTS - Input Tester</title>
+        <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
+                update() {},
+                render() {
+                    clear("#11111b");
+
+                    drawText("KEYBOARD", vec2(10, 16), {
+                        color: "#cba6f7",
+                        size: 10,
+                        weight: "bold",
+                    });
+                    const keys = [
+                        "KeyW",
+                        "KeyA",
+                        "KeyS",
+                        "KeyD",
+                        "Space",
+                        "ArrowUp",
+                        "ArrowDown",
+                        "ArrowLeft",
+                        "ArrowRight",
+                    ];
+                    let kx = 10,
+                        ky = 30;
+                    for (const k of keys) {
+                        const active = keyDown(k);
+                        drawRect(
+                            vec2(kx, ky),
+                            vec2(56, 18),
+                            active ? "#a6e3a1" : "#313244",
+                        );
+                        drawText(
+                            k.replace("Key", "").replace("Arrow", ""),
+                            vec2(kx + 28, ky + 9),
+                            {
+                                color: active ? "#11111b" : "#585b70",
+                                size: 7,
+                                align: "center",
+                                baseline: "middle",
+                            },
+                        );
+                        kx += 62;
+                        if (kx > 280) {
+                            kx = 10;
+                            ky += 22;
+                        }
+                    }
+
+                    const mx = 400;
+                    drawText("MOUSE", vec2(mx, 16), {
+                        color: "#cba6f7",
+                        size: 10,
+                        weight: "bold",
+                    });
+                    const mp = mousePos();
+                    drawText(
+                        `POS: (${Math.round(mp.x)}, ${Math.round(mp.y)})`,
+                        vec2(mx, 34),
+                        { color: "#a6adc8", size: 8 },
+                    );
+                    drawText(
+                        `BTN: ${mouseDown(0) ? "L" : "·"} ${mouseDown(2) ? "R" : "·"} ${mouseDown(1) ? "M" : "·"}`,
+                        vec2(mx, 48),
+                        { color: "#a6adc8", size: 8 },
+                    );
+                    drawText(
+                        `WHEEL: ${mouseWheel().toFixed(0)}`,
+                        vec2(mx, 62),
+                        { color: "#a6adc8", size: 8 },
+                    );
+
+                    drawRectOutline(
+                        vec2(mp.x, mp.y),
+                        vec2(12, 12),
+                        "#f9e2af",
+                        1,
+                    );
+                    drawLine(
+                        vec2(mp.x - 6, mp.y),
+                        vec2(mp.x + 6, mp.y),
+                        "#f9e2af",
+                    );
+                    drawLine(
+                        vec2(mp.x, mp.y - 6),
+                        vec2(mp.x, mp.y + 6),
+                        "#f9e2af",
+                    );
+
+                    drawText("ACTIONS", vec2(mx, 86), {
+                        color: "#cba6f7",
+                        size: 10,
+                        weight: "bold",
+                    });
+                    const actions = [
+                        ["move", "left"],
+                        ["move", "right"],
+                        ["jump", "up"],
+                        ["shoot", "space"],
+                    ];
+                    let ay = 100;
+                    for (const [name, key] of actions) {
+                        bindAction(name, [key]);
+                        const active = actionDown(name);
+                        drawRect(
+                            vec2(mx, ay),
+                            vec2(100, 18),
+                            active ? "#89b4fa" : "#181825",
+                        );
+                        drawText(`${name} (${key})`, vec2(mx + 50, ay + 9), {
+                            color: active ? "#11111b" : "#585b70",
+                            size: 7,
+                            align: "center",
+                            baseline: "middle",
+                        });
+                        ay += 22;
+                    }
+
+                    drawText(
+                        "GAMEPAD: plug in a controller - detected automatically",
+                        vec2(10, H - 24),
+                        { color: "#45475a", size: 7 },
+                    );
+                    drawText("TOUCH: tap / drag anywhere", vec2(10, H - 12), {
+                        color: "#45475a",
+                        size: 7,
+                    });
+                },
+            });
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas)
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+        </script>
+    </body>
+</html>

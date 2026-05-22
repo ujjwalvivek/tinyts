@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="TinyTS easing and tween visualization demo."
+        />
+        <meta name="theme-color" content="#1e1e2e" />
+        <title>TinyTS - Tweens & Easing</title>
+        <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640;
+            const H = 360;
+
+            const easings = [
+                { name: "linear", fn: linear },
+                { name: "quadIn", fn: quadIn },
+                { name: "quadOut", fn: quadOut },
+                { name: "quadInOut", fn: quadInOut },
+                { name: "cubicIn", fn: cubicIn },
+                { name: "cubicOut", fn: cubicOut },
+                { name: "cubicInOut", fn: cubicInOut },
+                { name: "bounceOut", fn: bounceOut },
+                { name: "elasticOut", fn: elasticOut },
+                { name: "backOut", fn: backOut },
+            ];
+
+            let selIdx = 0;
+            let playing = true;
+            let liveT = 0;
+            let pausedT = 0;
+
+            let spaceWasDown = false;
+
+            const chainItems = [
+                { fn: bounceOut, color: "#a6e3a1", label: "bounceOut" },
+                { fn: elasticOut, color: "#89b4fa", label: "elasticOut" },
+                { fn: backOut, color: "#f9e2af", label: "backOut" },
+            ];
+            const chainT = [0, 0.33, 0.66];
+
+            const barDefs = [
+                { fn: quadOut, color: "#f38ba8", label: "quadOut" },
+                { fn: bounceOut, color: "#fab387", label: "bounceOut" },
+                { fn: elasticOut, color: "#f9e2af", label: "elasticOut" },
+                { fn: cubicInOut, color: "#a6e3a1", label: "cubicInOut" },
+            ];
+            const barT = [0, 0.25, 0.5, 0.75];
+
+            bindAction("prev", ["ArrowLeft", "KeyA"]);
+            bindAction("next", ["ArrowRight", "KeyD"]);
+
+            function computeLiveT() {
+                if (!playing) return pausedT;
+                return clamp(liveT, 0, 1);
+            }
+
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
+
+                update(dt) {
+                    if (actionPressed("prev")) {
+                        selIdx = (selIdx - 1 + easings.length) % easings.length;
+                        liveT = 0;
+                        playing = true;
+                    }
+                    if (actionPressed("next")) {
+                        selIdx = (selIdx + 1) % easings.length;
+                        liveT = 0;
+                        playing = true;
+                    }
+
+                    const sd = keyDown("Space");
+                    if (sd && !spaceWasDown) {
+                        spaceWasDown = true;
+                        if (playing) {
+                            pausedT = computeLiveT();
+                            playing = false;
+                        } else {
+                            playing = true;
+                        }
+                    }
+                    if (!sd) spaceWasDown = false;
+
+                    if (playing) {
+                        liveT = (liveT + dt * 0.4) % 1;
+                    }
+
+                    for (let i = 0; i < chainItems.length; i++) {
+                        chainT[i] = (chainT[i] + dt * 0.35) % 1;
+                    }
+
+                    for (let i = 0; i < barDefs.length; i++) {
+                        barT[i] = (barT[i] + dt * 0.3) % 1;
+                    }
+                },
+
+                render() {
+                    clear("#11111b");
+                    drawText(
+                        "← → cycle  •  SPACE pause/resume",
+                        vec2(W / 2, 8),
+                        {
+                            color: "#a6adc8",
+                            size: 8,
+                            align: "center",
+                        },
+                    );
+
+                    const gx = 10,
+                        gy = 24,
+                        gw = 290,
+                        gh = 130;
+                    drawRect(vec2(gx, gy), vec2(gw, gh), "#181825");
+                    drawRectOutline(vec2(gx, gy), vec2(gw, gh), "#cba6f7", 1);
+
+                    drawText("1", vec2(gx - 3, gy + 3), {
+                        color: "#585b70",
+                        size: 7,
+                        align: "right",
+                    });
+                    drawText("0", vec2(gx - 3, gy + gh - 3), {
+                        color: "#585b70",
+                        size: 7,
+                        align: "right",
+                        baseline: "bottom",
+                    });
+                    drawText("0", vec2(gx + 3, gy + gh + 3), {
+                        color: "#585b70",
+                        size: 7,
+                    });
+                    drawText("1", vec2(gx + gw - 3, gy + gh + 3), {
+                        color: "#585b70",
+                        size: 7,
+                    });
+
+                    const easing = easings[selIdx].fn;
+                    let px = gx,
+                        py = gy + gh;
+                    const SEGS = 80;
+                    for (let i = 0; i <= SEGS; i++) {
+                        const t = i / SEGS;
+                        const v = clamp(easing(t), -0.08, 1.08);
+                        const nx = gx + t * gw;
+                        const ny = gy + gh - v * gh;
+                        drawLine(vec2(px, py), vec2(nx, ny), "#cba6f7", 2);
+                        px = nx;
+                        py = ny;
+                    }
+
+                    const tVal = computeLiveT();
+                    const dotX = gx + tVal * gw;
+                    const dotY = gy + gh;
+                    drawCircle(vec2(dotX, dotY), 4, "#89b4fa");
+
+                    const easedVal = clamp(easing(tVal), 0, 1);
+                    const bx = gx + tVal * gw;
+                    const by = gy + gh - easedVal * gh;
+                    drawLine(
+                        vec2(bx, gy + gh),
+                        vec2(bx, by),
+                        "rgba(249,226,175,0.15)",
+                        1,
+                    );
+                    drawCircle(vec2(bx, by), 5, "#f9e2af");
+
+                    drawText(easings[selIdx].name, vec2(gx + gw / 2, gy - 2), {
+                        color: "#cdd6f4",
+                        size: 10,
+                        align: "center",
+                        baseline: "bottom",
+                    });
+                    drawText(
+                        `t: ${tVal.toFixed(2)}  out: ${easedVal.toFixed(2)}`,
+                        vec2(gx + gw / 2, gy + gh + 12),
+                        { color: "#a6adc8", size: 7, align: "center" },
+                    );
+
+                    const cx = 418,
+                        col2 = cx + 95;
+
+                    drawText("LIVE DEMO", vec2(cx + 50, 22), {
+                        color: "#cba6f7",
+                        size: 8,
+                        align: "center",
+                    });
+
+                    const trackX = cx + 5;
+                    drawRect(vec2(trackX, 30), vec2(3, 90), "#313244");
+
+                    const ballY = 30 + (1 - easedVal) * 90;
+                    drawCircle(vec2(trackX + 1, ballY), 6, "#f9e2af");
+                    drawText(
+                        `${easings[selIdx].name}`,
+                        vec2(trackX - 8, ballY - 8),
+                        {
+                            color: "#a6adc8",
+                            size: 6,
+                            align: "right",
+                            baseline: "bottom",
+                        },
+                    );
+
+                    drawText("AUTO CHAIN", vec2(cx + 50, 132), {
+                        color: "#cba6f7",
+                        size: 8,
+                        align: "center",
+                    });
+                    for (let i = 0; i < chainItems.length; i++) {
+                        const y = 148 + i * 20;
+                        drawText(chainItems[i].label, vec2(cx + 2, y), {
+                            color: "#585b70",
+                            size: 6,
+                        });
+                        drawRect(vec2(cx + 54, y - 1), vec2(94, 3), "#313244");
+                        const eased = chainItems[i].fn(chainT[i]);
+                        drawCircle(
+                            vec2(cx + 54 + eased * 94, y),
+                            4,
+                            chainItems[i].color,
+                        );
+                    }
+
+                    drawText(
+                        "UI ANIMATION BARS  - each uses a different easing",
+                        vec2(W / 2, 208),
+                        {
+                            color: "#585b70",
+                            size: 7,
+                            align: "center",
+                        },
+                    );
+
+                    const barW = 155,
+                        barMaxH = 34;
+                    const barGap = (W - 20 - 4 * barW) / 3;
+                    for (let i = 0; i < barDefs.length; i++) {
+                        const t = barT[i];
+                        const h = 3 + barDefs[i].fn(t) * barMaxH;
+                        const bx2 = 10 + i * (barW + barGap);
+                        drawRect(
+                            vec2(bx2, 300 - h),
+                            vec2(barW, h),
+                            barDefs[i].color,
+                        );
+                        drawText(barDefs[i].label, vec2(bx2 + barW / 2, 228), {
+                            color: "#585b70",
+                            size: 6,
+                            align: "center",
+                        });
+                    }
+
+                    drawText(
+                        `${selIdx + 1} / ${easings.length}`,
+                        vec2(W - 6, H - 4),
+                        {
+                            color: "#45475a",
+                            size: 7,
+                            align: "right",
+                            baseline: "bottom",
+                        },
+                    );
+                },
+            });
+
+            const container = document.getElementById("canvas-container");
+            container.appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                container.appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
+</html>
