@@ -1,0 +1,771 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="Top-down tilemap action adventure RPG."
+        />
+        <title>TinyTS - Action RPG Adventure</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
+            const TILE_SIZE = 24;
+
+            const MAP_STRING = `
+################################
+#P......#..............#.......#
+#..K....D.......E..K...D...C...#
+#.......#.......E......#.......#
+#.......#..............#.......#
+#...#####..............#####L###
+#...#   #..............#       #
+#...#   #.......E......#       #
+#...#   ########.#######       #
+#...#          .               #
+#...#          .        ########
+#...#          .        #......#
+#...############........#......#
+#..............#........#..E...#
+#.......K......#........#......#
+#.......................#......#
+################################
+`;
+
+            const map = tilemapFromString(
+                MAP_STRING,
+                {
+                    "#": { solid: true, color: "#313244", sprite: 1 },
+                    ".": { solid: false, color: "#181825", sprite: 0 },
+                    P: {
+                        solid: false,
+                        color: "#181825",
+                        sprite: 0,
+                        spawn: "player",
+                    },
+                    E: {
+                        solid: false,
+                        color: "#181825",
+                        sprite: 0,
+                        spawn: "enemy",
+                    },
+                    K: {
+                        solid: false,
+                        color: "#181825",
+                        sprite: 0,
+                        spawn: "key",
+                    },
+                    C: {
+                        solid: false,
+                        color: "#181825",
+                        sprite: 0,
+                        spawn: "chest",
+                    },
+                    D: { solid: true, color: "#45475a", sprite: 2 },
+                    L: { solid: true, color: "#fab387", sprite: 3 },
+                    " ": { solid: true, color: "#11111b", sprite: 4 },
+                },
+                TILE_SIZE,
+            );
+
+            const player = {
+                pos:
+                    map.getSpawn("player") ||
+                    vec2(TILE_SIZE * 1.5, TILE_SIZE * 1.5),
+                size: vec2(14, 14),
+                vel: vec2(0, 0),
+                speed: 100,
+                hp: 3,
+                maxHp: 3,
+                keys: 0,
+                coins: 0,
+                facing: vec2(0, 1),
+
+                attackTimer: 0,
+                attackActive: false,
+                attackDir: vec2(0, 1),
+            };
+
+            const enemies = [];
+            const keysList = [];
+            const chestsList = [];
+
+            function initEntities() {
+                enemies.length = 0;
+                keysList.length = 0;
+                chestsList.length = 0;
+
+                let idx = 0;
+                while (true) {
+                    const p = map.getSpawn("enemy", idx++);
+                    if (!p) break;
+                    enemies.push({
+                        pos: p,
+                        size: vec2(12, 12),
+                        hp: 2,
+                        speed: 45,
+                        dir: vec2(rand(-1, 1), rand(-1, 1)).normalize(),
+                        decisionTimer: rand(0.5, 1.5),
+                        hitstun: 0,
+                    });
+                }
+
+                idx = 0;
+                while (true) {
+                    const p = map.getSpawn("key", idx++);
+                    if (!p) break;
+                    keysList.push({
+                        pos: p,
+                        collected: false,
+                        bobTimer: rand(0, 100),
+                    });
+                }
+
+                idx = 0;
+                while (true) {
+                    const p = map.getSpawn("chest", idx++);
+                    if (!p) break;
+                    chestsList.push({ pos: p, opened: false });
+                }
+            }
+
+            let gameState = "playing";
+            let bannerMessage = "";
+            let bannerTimer = 0;
+
+            function showBanner(text) {
+                bannerMessage = text;
+                bannerTimer = 2.0;
+            }
+
+            function resetGame() {
+                player.pos.set(TILE_SIZE * 1.5, TILE_SIZE * 1.5);
+                const spawn = map.getSpawn("player");
+                if (spawn) player.pos.set(spawn.x, spawn.y);
+                player.vel.set(0, 0);
+                player.hp = 3;
+                player.keys = 0;
+                player.coins = 0;
+                player.attackTimer = 0;
+                player.attackActive = false;
+
+                for (let y = 0; y < map.height; y++) {
+                    for (let x = 0; x < map.width; x++) {
+                        const char = MAP_STRING.trim().split("\n")[y][x];
+                        if (char === "D") map.tiles[y][x] = 2; // Closed Gate
+                        if (char === "L") map.tiles[y][x] = 3; // Locked Gate
+                    }
+                }
+
+                initEntities();
+                gameState = "playing";
+                showBanner("ENTER DUNGEON SECTOR");
+                playSound(sfx.powerup({ volume: 0.2 }));
+            }
+
+            bindAction("left", ["KeyA", "ArrowLeft"]);
+            bindAction("right", ["KeyD", "ArrowRight"]);
+            bindAction("up", ["KeyW", "ArrowUp"]);
+            bindAction("down", ["KeyS", "ArrowDown"]);
+            bindAction("attack", ["Space", "Mouse0"]);
+
+            resetGame();
+
+            const camera = createCamera({
+                size: vec2(W, H),
+                bounds: {
+                    pos: vec2(0, 0),
+                    size: vec2(map.width * TILE_SIZE, map.height * TILE_SIZE),
+                },
+            });
+
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
+
+                update(dt) {
+                    updateParticles(dt);
+
+                    if (gameState !== "playing") {
+                        if (actionPressed("attack") || keyPressed("Space")) {
+                            resetGame();
+                        }
+                        return;
+                    }
+
+                    if (bannerTimer > 0) {
+                        bannerTimer -= dt;
+                    }
+
+                    if (player.attackActive) {
+                        player.attackTimer -= dt;
+                        if (player.attackTimer <= 0) {
+                            player.attackActive = false;
+                        }
+                    }
+
+                    let moveDir = vec2(0, 0);
+                    if (!player.attackActive) {
+                        if (actionDown("left")) moveDir.x = -1;
+                        if (actionDown("right")) moveDir.x = 1;
+                        if (actionDown("up")) moveDir.y = -1;
+                        if (actionDown("down")) moveDir.y = 1;
+                    }
+
+                    if (moveDir.x !== 0 || moveDir.y !== 0) {
+                        moveDir.normalize();
+                        player.vel.set(
+                            moveDir.x * player.speed,
+                            moveDir.y * player.speed,
+                        );
+                        player.facing.set(moveDir.x, moveDir.y);
+                    } else {
+                        player.vel.set(0, 0);
+                    }
+
+                    if (actionPressed("attack") && !player.attackActive) {
+                        player.attackActive = true;
+                        player.attackTimer = 0.18;
+                        player.attackDir.set(player.facing.x, player.facing.y);
+                        playSound(sfx.laser({ volume: 0.08, pitch: 1.4 }));
+
+                        const reach = 16;
+                        const attackPos = player.pos
+                            .clone()
+                            .add(vec2(player.size.x / 2, player.size.y / 2))
+                            .add(player.attackDir.clone().scale(reach));
+
+                        for (const e of enemies) {
+                            if (e.pos.distanceTo(attackPos) < e.size.x + 8) {
+                                e.hp--;
+                                e.hitstun = 0.25;
+                                e.dir
+                                    .set(player.attackDir.x, player.attackDir.y)
+                                    .normalize();
+                                e.pos.add(e.dir.clone().scale(15));
+                                playSound(
+                                    sfx.hit({ volume: 0.15, pitch: 1.1 }),
+                                );
+
+                                emitParticles({
+                                    pos: e.pos,
+                                    count: 6,
+                                    life: [0.1, 0.2],
+                                    speed: [30, 60],
+                                    color: ["#f38ba8", "#fff"],
+                                });
+
+                                if (e.hp <= 0) {
+                                    player.coins += 5;
+                                    showBanner("+5 DUNGEON METRIC COINS");
+                                    playSound(
+                                        sfx.powerup({
+                                            volume: 0.12,
+                                            pitch: 1.6,
+                                        }),
+                                    );
+                                }
+                            }
+                        }
+
+                        emitParticles({
+                            pos: attackPos,
+                            count: 4,
+                            life: [0.08, 0.15],
+                            speed: [20, 45],
+                            color: ["#cba6f7", "#fff"],
+                        });
+                    }
+
+                    if (player.vel.x !== 0 || player.vel.y !== 0) {
+                        const body = {
+                            pos: player.pos.clone(),
+                            size: player.size,
+                        };
+                        const res = moveTilemap(body, player.vel, map, dt);
+                        player.pos.set(res.pos.x, res.pos.y);
+                    }
+
+                    for (let i = enemies.length - 1; i >= 0; i--) {
+                        if (enemies[i].hp <= 0) {
+                            enemies.splice(i, 1);
+                        }
+                    }
+
+                    camera.follow(player.pos, { speed: 8 });
+                    camera.update(dt);
+
+                    for (const e of enemies) {
+                        if (e.hitstun > 0) {
+                            e.hitstun -= dt;
+                            continue;
+                        }
+
+                        e.decisionTimer -= dt;
+                        if (e.decisionTimer <= 0) {
+                            e.decisionTimer = rand(0.8, 2.0);
+                            const dist = e.pos.distanceTo(player.pos);
+                            if (dist < 100) {
+                                e.dir = player.pos
+                                    .clone()
+                                    .subtract(e.pos)
+                                    .normalize();
+                            } else {
+                                const angle = Math.random() * Math.PI * 2;
+                                e.dir.set(Math.cos(angle), Math.sin(angle));
+                            }
+                        }
+
+                        const eVel = e.dir.clone().scale(e.speed);
+                        const eBody = { pos: e.pos.clone(), size: e.size };
+                        const res = moveTilemap(eBody, eVel, map, dt);
+                        e.pos.set(res.pos.x, res.pos.y);
+
+                        if (
+                            e.pos.distanceTo(player.pos) <
+                            e.size.x / 2 + player.size.x / 2 + 2
+                        ) {
+                            if (player.hp > 0 && e.hitstun <= 0) {
+                                player.hp--;
+                                e.hitstun = 0.5;
+                                e.pos.add(e.dir.clone().scale(-12));
+                                camera.shake(2);
+                                playSound(sfx.hit({ volume: 0.2, pitch: 0.6 }));
+
+                                if (player.hp <= 0) {
+                                    gameState = "gameover";
+                                    playSound(sfx.death());
+                                }
+                            }
+                        }
+                    }
+
+                    for (const k of keysList) {
+                        if (!k.collected) {
+                            k.bobTimer += dt;
+                            if (player.pos.distanceTo(k.pos) < 14) {
+                                k.collected = true;
+                                player.keys++;
+                                showBanner("COLLECTED MASTER KEY MATRIX");
+                                playSound(
+                                    sfx.coin({ volume: 0.18, pitch: 1.2 }),
+                                );
+
+                                emitParticles({
+                                    pos: k.pos,
+                                    count: 5,
+                                    life: [0.1, 0.25],
+                                    speed: [15, 30],
+                                    color: ["#f9e2af", "#fff"],
+                                });
+                            }
+                        }
+                    }
+
+                    for (const c of chestsList) {
+                        if (!c.opened && player.pos.distanceTo(c.pos) < 16) {
+                            c.opened = true;
+                            player.coins += 20;
+                            showBanner("OPENED MAIN VAULT // +20 COINS");
+                            playSound(sfx.powerup({ volume: 0.2 }));
+
+                            emitParticles({
+                                pos: c.pos,
+                                count: 12,
+                                life: [0.2, 0.45],
+                                speed: [30, 70],
+                                color: ["#f9e2af", "#a6e3a1"],
+                            });
+
+                            if (chestsList.every((ch) => ch.opened)) {
+                                gameState = "victory";
+                                playSound(sfx.coin({ volume: 0.35 }));
+                            }
+                        }
+                    }
+
+                    const pCenter = player.pos
+                        .clone()
+                        .add(vec2(player.size.x / 2, player.size.y / 2));
+                    const pTile = map.worldToTile(pCenter.x, pCenter.y);
+
+                    const dirs = [
+                        [0, 0],
+                        [0, 1],
+                        [0, -1],
+                        [1, 0],
+                        [-1, 0],
+                    ];
+                    for (const d of dirs) {
+                        const tx = pTile.x + d[0];
+                        const ty = pTile.y + d[1];
+                        if (
+                            tx >= 0 &&
+                            tx < map.width &&
+                            ty >= 0 &&
+                            ty < map.height
+                        ) {
+                            const spriteIdx = map.tiles[ty][tx];
+
+                            if (spriteIdx === 2) {
+                                map.tiles[ty][tx] = 0;
+                                showBanner("UNLOCKED DUNGEON GATE");
+                                playSound(
+                                    sfx.menuAccept({
+                                        volume: 0.15,
+                                        pitch: 1.15,
+                                    }),
+                                );
+
+                                emitParticles({
+                                    pos: map
+                                        .tileToWorld(tx, ty)
+                                        .add(
+                                            vec2(TILE_SIZE / 2, TILE_SIZE / 2),
+                                        ),
+                                    count: 10,
+                                    life: [0.15, 0.3],
+                                    speed: [15, 45],
+                                    color: ["#a6adc8", "#fff"],
+                                });
+                            } else if (spriteIdx === 3 && player.keys > 0) {
+                                // Open locked door with key
+                                player.keys--;
+                                map.tiles[ty][tx] = 0;
+                                showBanner("UNLOCKED COMPARTMENT BARRIER");
+                                playSound(
+                                    sfx.menuAccept({
+                                        volume: 0.15,
+                                        pitch: 0.75,
+                                    }),
+                                );
+
+                                emitParticles({
+                                    pos: map
+                                        .tileToWorld(tx, ty)
+                                        .add(
+                                            vec2(TILE_SIZE / 2, TILE_SIZE / 2),
+                                        ),
+                                    count: 10,
+                                    life: [0.15, 0.3],
+                                    speed: [15, 45],
+                                    color: ["#fab387", "#fff"],
+                                });
+                            }
+                        }
+                    }
+                },
+
+                render() {
+                    clear("#11111b");
+
+                    camera.apply();
+
+                    map.render();
+
+                    for (const k of keysList) {
+                        if (!k.collected) {
+                            const keyY =
+                                k.pos.y + Math.sin(k.bobTimer * 4.5) * 2.5;
+                            const keyPos = vec2(k.pos.x, keyY);
+                            drawCircle(keyPos, 2, "#f9e2af");
+                            drawLine(
+                                keyPos,
+                                keyPos.clone().add(vec2(0, 5)),
+                                "#f9e2af",
+                                1.5,
+                            );
+                            drawLine(
+                                keyPos.clone().add(vec2(0, 3)),
+                                keyPos.clone().add(vec2(2, 3)),
+                                "#f9e2af",
+                                1,
+                            );
+                            drawLine(
+                                keyPos.clone().add(vec2(0, 5)),
+                                keyPos.clone().add(vec2(2, 5)),
+                                "#f9e2af",
+                                1,
+                            );
+                        }
+                    }
+
+                    for (const c of chestsList) {
+                        const chestPos = c.pos.clone().subtract(vec2(6, 6));
+                        if (!c.opened) {
+                            drawRect(chestPos, vec2(12, 10), "#b4befe");
+                            drawRectOutline(
+                                chestPos,
+                                vec2(12, 10),
+                                "#11111b",
+                                1,
+                            );
+                            drawRect(
+                                vec2(c.pos.x - 2, c.pos.y - 1),
+                                vec2(4, 3),
+                                "#f9e2af",
+                            );
+                        } else {
+                            drawRect(chestPos, vec2(12, 6), "#585b70");
+                            drawRectOutline(
+                                chestPos,
+                                vec2(12, 6),
+                                "#11111b",
+                                1,
+                            );
+                            drawCircle(
+                                c.pos.clone().add(vec2(0, -3)),
+                                2,
+                                "#f9e2af",
+                            );
+                        }
+                    }
+
+                    for (const e of enemies) {
+                        const col = e.hitstun > 0 ? "#fff" : "#f38ba8";
+                        const ep = e.pos.clone();
+
+                        drawRect(ep, e.size, col);
+                        drawRectOutline(ep, e.size, "#11111b", 1);
+
+                        drawRect(
+                            vec2(ep.x + 2, ep.y + 2),
+                            vec2(2, 2),
+                            "#11111b",
+                        );
+                        drawRect(
+                            vec2(ep.x + e.size.x - 4, ep.y + 2),
+                            vec2(2, 2),
+                            "#11111b",
+                        );
+                    }
+
+                    const pk = player.pos.clone();
+                    drawRect(pk, player.size, "#89b4fa");
+                    drawRectOutline(pk, player.size, "#11111b", 1.5);
+
+                    drawRect(vec2(pk.x + 3, pk.y + 2), vec2(8, 3), "#b4befe");
+                    drawRect(vec2(pk.x + 4, pk.y + 3), vec2(6, 1), "#11111b");
+
+                    const shieldX =
+                        player.facing.x >= 0
+                            ? pk.x - 2
+                            : pk.x + player.size.x - 2;
+                    drawRect(vec2(shieldX, pk.y + 4), vec2(4, 7), "#a6e3a1");
+                    drawRectOutline(
+                        vec2(shieldX, pk.y + 4),
+                        vec2(4, 7),
+                        "#11111b",
+                        1,
+                    );
+
+                    if (player.attackActive) {
+                        const reach = 14;
+                        const swingPos = player.pos
+                            .clone()
+                            .add(vec2(player.size.x / 2, player.size.y / 2))
+                            .add(player.attackDir.clone().scale(reach));
+
+                        drawCircle(swingPos, 6, "rgba(203, 166, 247, 0.8)");
+                        drawCircleOutline(swingPos, 6, "#fff", 1);
+                    }
+
+                    renderParticles();
+
+                    camera.end();
+
+                    const hudX = 20;
+                    const hudY = 46;
+
+                    for (let i = 0; i < player.maxHp; i++) {
+                        const heartX = hudX + i * 16;
+                        const col = i < player.hp ? "#f38ba8" : "#313244";
+                        const points = [
+                            vec2(heartX + 6, hudY),
+                            vec2(heartX + 12, hudY + 5),
+                            vec2(heartX + 6, hudY + 11),
+                            vec2(heartX, hudY + 5),
+                        ];
+                        drawProceduralPolygon(
+                            getContext(),
+                            points,
+                            col,
+                            "#11111b",
+                            1,
+                        );
+                    }
+
+                    drawText(
+                        `KEYS: ${player.keys}`,
+                        vec2(hudX + 60, hudY + 8),
+                        {
+                            font: "bold 8.5px 'Monaspace Neon'",
+                            color: "#fab387",
+                        },
+                    );
+
+                    drawText(
+                        `COINS: ${player.coins}`,
+                        vec2(hudX + 130, hudY + 8),
+                        {
+                            font: "bold 8.5px 'Monaspace Neon'",
+                            color: "#f9e2af",
+                        },
+                    );
+
+                    if (bannerTimer > 0) {
+                        drawRect(
+                            vec2(W / 2 - 160, H - 55),
+                            vec2(320, 20),
+                            "rgba(24, 24, 37, 0.9)",
+                        );
+                        drawRectOutline(
+                            vec2(W / 2 - 160, H - 55),
+                            vec2(320, 20),
+                            "#313244",
+                            1,
+                        );
+                        drawText(bannerMessage, vec2(W / 2, H - 45), {
+                            font: "bold 7.5px 'Monaspace Neon'",
+                            color: "#a6e3a1",
+                            align: "center",
+                            baseline: "middle",
+                        });
+                    }
+
+                    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
+                    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+                    drawText(
+                        "DUNGEON ADVENTURE PROTOCOL // SECTOR MAZE",
+                        vec2(W / 2, 10),
+                        {
+                            font: "bold 9.5px 'Monaspace Neon'",
+                            color: "#cba6f7",
+                            align: "center",
+                        },
+                    );
+
+                    if (gameState === "gameover") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.85)",
+                        );
+                        drawText(
+                            "KNIGHT ENERGY DEPLETED // GAME OVER",
+                            vec2(W / 2, H / 2 - 12),
+                            {
+                                font: "bold 13px 'Monaspace Neon'",
+                                color: "#f38ba8",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "TAP ANYWHERE OR SPACE TO GENERATE NEW MAP LINKS",
+                            vec2(W / 2, H / 2 + 15),
+                            {
+                                font: "9px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+                    } else if (gameState === "victory") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.85)",
+                        );
+                        drawText(
+                            "DUNGEON STABILIZED // ALL COIN SECURED // VICTORY",
+                            vec2(W / 2, H / 2 - 12),
+                            {
+                                font: "bold 13px 'Monaspace Neon'",
+                                color: "#a6e3a1",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            `FINAL LOOT COLLECTED: ${player.coins} COINS`,
+                            vec2(W / 2, H / 2 + 10),
+                            {
+                                font: "10px 'Monaspace Neon'",
+                                color: "#fab387",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "TAP ANYWHERE OR SPACE TO BOOT NEXT DUNGEON ROOM",
+                            vec2(W / 2, H / 2 + 32),
+                            {
+                                font: "9px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+                    }
+                },
+            });
+
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
+</html>
