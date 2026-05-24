@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="Tower defense tactical game." />
+        <title>TinyTS - Tower Defense</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
+
+            const path = [
+                vec2(0, 180),
+                vec2(160, 180),
+                vec2(160, 280),
+                vec2(360, 280),
+                vec2(360, 100),
+                vec2(480, 100),
+                vec2(480, 200),
+                vec2(640, 200),
+            ];
+
+            const creeps = [];
+            const towers = [];
+            let gold = 150;
+            let health = 20;
+            let waveNumber = 1;
+            let waveTimer = 3.0;
+            let selectedTurretType = "laser";
+            const turretCost = { laser: 80, cannon: 100 };
+
+            bindAction("click", ["Mouse0"]);
+
+            function spawnCreep() {
+                creeps.push({
+                    pos: path[0].clone(),
+                    segment: 0,
+                    speed: rand(45, 70) + waveNumber * 3,
+                    hp: 15 + waveNumber * 8,
+                    maxHp: 15 + waveNumber * 8,
+                    value: 15,
+                    size: 10,
+                });
+            }
+
+            function startWave() {
+                let count = 4 + waveNumber * 2;
+                let interval = setInterval(() => {
+                    if (health <= 0) {
+                        clearInterval(interval);
+                        return;
+                    }
+                    spawnCreep();
+                    count--;
+                    if (count <= 0) clearInterval(interval);
+                }, 450);
+                waveNumber++;
+                waveTimer = 15.0;
+                playSound(sfx.teleport({ pitch: 1.2 }));
+            }
+
+            function isNearPath(pos) {
+                for (let i = 0; i < path.length - 1; i++) {
+                    const p1 = path[i];
+                    const p2 = path[i + 1];
+                    const segmentLen = p1.distanceTo(p2);
+                    const d =
+                        Math.abs(
+                            (p2.y - p1.y) * pos.x -
+                                (p2.x - p1.x) * pos.y +
+                                p2.x * p1.y -
+                                p2.y * p1.x,
+                        ) / segmentLen;
+                    if (d < 18) {
+                        const minX = Math.min(p1.x, p2.x) - 10;
+                        const maxX = Math.max(p1.x, p2.x) + 10;
+                        const minY = Math.min(p1.y, p2.y) - 10;
+                        const maxY = Math.max(p1.y, p2.y) + 10;
+                        if (
+                            pos.x >= minX &&
+                            pos.x <= maxX &&
+                            pos.y >= minY &&
+                            pos.y <= maxY
+                        ) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
+
+                update(dt) {
+                    updateParticles(dt);
+
+                    if (health <= 0) {
+                        if (mousePressed(0)) {
+                            health = 20;
+                            gold = 150;
+                            waveNumber = 1;
+                            waveTimer = 3.0;
+                            creeps.length = 0;
+                            towers.length = 0;
+                        }
+                        return;
+                    }
+
+                    waveTimer -= dt;
+                    if (waveTimer <= 0) {
+                        startWave();
+                    }
+
+                    for (let i = creeps.length - 1; i >= 0; i--) {
+                        const c = creeps[i];
+                        const target = path[c.segment + 1];
+
+                        const toNode = target.clone().subtract(c.pos);
+                        const dist = toNode.length();
+
+                        if (dist < 4) {
+                            c.segment++;
+                            if (c.segment >= path.length - 1) {
+                                health--;
+                                playSound(sfx.hit({ volume: 0.35 }));
+                                creeps.splice(i, 1);
+                                continue;
+                            }
+                        } else {
+                            toNode.normalize().scale(c.speed * dt);
+                            c.pos.add(toNode);
+                        }
+                    }
+
+                    for (const t of towers) {
+                        t.shootCooldown -= dt;
+
+                        let target = null;
+                        let closestDist = t.range;
+
+                        for (const c of creeps) {
+                            const d = t.pos.distanceTo(c.pos);
+                            if (d < closestDist) {
+                                closestDist = d;
+                                target = c;
+                            }
+                        }
+
+                        if (target) {
+                            t.angle = Math.atan2(
+                                target.pos.y - t.pos.y,
+                                target.pos.x - t.pos.x,
+                            );
+
+                            if (t.type === "laser") {
+                                target.hp -= 20 * dt;
+
+                                if (rand(0, 1) < 0.08) {
+                                    playSound(
+                                        sfx.laser({ volume: 0.05, pitch: 1.4 }),
+                                    );
+                                }
+
+                                emitParticles({
+                                    pos: target.pos.clone(),
+                                    count: 1,
+                                    life: [0.1, 0.2],
+                                    speed: [20, 50],
+                                    color: ["#94e2d5", "#fff"],
+                                });
+
+                                if (target.hp <= 0) {
+                                    const idx = creeps.indexOf(target);
+                                    if (idx !== -1) {
+                                        creeps.splice(idx, 1);
+                                        gold += target.value;
+                                        playSound(
+                                            sfx.enemyDeath({ volume: 0.15 }),
+                                        );
+                                        emitParticles({
+                                            pos: target.pos.clone(),
+                                            count: 8,
+                                            life: [0.2, 0.5],
+                                            speed: [30, 80],
+                                            color: ["#f38ba8", "#fab387"],
+                                        });
+                                    }
+                                }
+                                t.activeLaserTarget = target.pos;
+                            } else if (
+                                t.type === "cannon" &&
+                                t.shootCooldown <= 0
+                            ) {
+                                target.hp -= 20;
+                                t.shootCooldown = 0.5;
+                                playSound(
+                                    sfx.hit({ volume: 0.25, pitch: 0.6 }),
+                                );
+
+                                emitParticles({
+                                    pos: target.pos.clone(),
+                                    count: 6,
+                                    life: [0.2, 0.4],
+                                    speed: [40, 90],
+                                    color: ["#f9e2af", "#f38ba8"],
+                                });
+
+                                if (target.hp <= 0) {
+                                    const idx = creeps.indexOf(target);
+                                    if (idx !== -1) {
+                                        creeps.splice(idx, 1);
+                                        gold += target.value;
+                                        playSound(
+                                            sfx.enemyDeath({ volume: 0.15 }),
+                                        );
+                                    }
+                                }
+                                t.activeLaserTarget = null;
+                            }
+                        } else {
+                            t.activeLaserTarget = null;
+                        }
+                    }
+
+                    if (mousePressed(0)) {
+                        const mp = mousePos();
+                        const mx = mp.x;
+                        const my = mp.y;
+
+                        if (mx > W - 140) {
+                            if (my > 50 && my < 90) {
+                                selectedTurretType = "laser";
+                                playSound(sfx.blip({ volume: 0.15 }));
+                            }
+                            if (my > 100 && my < 140) {
+                                selectedTurretType = "cannon";
+                                playSound(sfx.blip({ volume: 0.15 }));
+                            }
+                        } else if (my > 30) {
+                            const price = turretCost[selectedTurretType];
+                            const placementPos = vec2(mx, my);
+
+                            let overlapOther = false;
+                            for (const t of towers) {
+                                if (t.pos.distanceTo(placementPos) < 22) {
+                                    overlapOther = true;
+                                    break;
+                                }
+                            }
+
+                            if (
+                                gold >= price &&
+                                !isNearPath(placementPos) &&
+                                !overlapOther
+                            ) {
+                                gold -= price;
+                                towers.push({
+                                    pos: placementPos,
+                                    type: selectedTurretType,
+                                    range:
+                                        selectedTurretType === "laser"
+                                            ? 75
+                                            : 110,
+                                    angle: 0,
+                                    shootCooldown: 0,
+                                    activeLaserTarget: null,
+                                });
+                                playSound(sfx.menuAccept({ volume: 0.2 }));
+                            } else {
+                                playSound(sfx.menuCancel({ volume: 0.15 }));
+                            }
+                        }
+                    }
+                },
+
+                render() {
+                    clear("#11111b");
+
+                    const gridSp = 32;
+                    for (let x = 0; x < W - 140; x += gridSp) {
+                        drawLine(
+                            vec2(x, 30),
+                            vec2(x, H),
+                            "rgba(49, 50, 68, 0.08)",
+                        );
+                    }
+
+                    for (let i = 0; i < path.length - 1; i++) {
+                        drawLine(path[i], path[i + 1], "#313244", 20);
+                        drawLine(path[i], path[i + 1], "#45475a", 2);
+                    }
+
+                    const hoverPos = mousePos();
+                    if (hoverPos.x < W - 140 && hoverPos.y > 30) {
+                        const range = selectedTurretType === "laser" ? 75 : 110;
+                        drawCircleOutline(
+                            hoverPos,
+                            range,
+                            "rgba(203, 166, 247, 0.12)",
+                            1,
+                        );
+                    }
+
+                    for (const t of towers) {
+                        drawCircle(t.pos, 10, "#45475a");
+                        drawCircleOutline(t.pos, 10, "#585b70", 1.5);
+
+                        const muzzleX = t.pos.x + Math.cos(t.angle) * 9;
+                        const muzzleY = t.pos.y + Math.sin(t.angle) * 9;
+                        const muzzleColor =
+                            t.type === "laser" ? "#94e2d5" : "#fab387";
+                        drawLine(
+                            t.pos,
+                            vec2(muzzleX, muzzleY),
+                            muzzleColor,
+                            3.5,
+                        );
+
+                        if (t.activeLaserTarget) {
+                            drawLine(
+                                t.pos,
+                                t.activeLaserTarget,
+                                "rgba(148, 226, 213, 0.65)",
+                                1.5,
+                            );
+                        }
+                    }
+
+                    for (const c of creeps) {
+                        drawCircle(c.pos, 5.5, "#f38ba8");
+
+                        const barW = 12;
+                        const hpPct = c.hp / c.maxHp;
+                        drawRect(
+                            vec2(c.pos.x - barW / 2, c.pos.y - 10),
+                            vec2(barW, 2),
+                            "#313244",
+                        );
+                        drawRect(
+                            vec2(c.pos.x - barW / 2, c.pos.y - 10),
+                            vec2(barW * hpPct, 2),
+                            "#a6e3a1",
+                        );
+                    }
+
+                    renderParticles();
+
+                    drawRect(vec2(W - 140, 30), vec2(140, H - 30), "#181825");
+                    drawLine(vec2(W - 140, 30), vec2(W - 140, H), "#313244", 2);
+
+                    const laserSelColor =
+                        selectedTurretType === "laser" ? "#313244" : "#1e1e2e";
+                    drawRect(vec2(W - 130, 50), vec2(120, 36), laserSelColor);
+                    drawRectOutline(
+                        vec2(W - 130, 50),
+                        vec2(120, 36),
+                        "#94e2d5",
+                        1,
+                    );
+                    drawText("LASER BEAM", vec2(W - 120, 60), {
+                        font: "bold 9px 'Monaspace Neon'",
+                        color: "#cdd6f4",
+                    });
+                    drawText("$80 // SHORT RNG", vec2(W - 120, 72), {
+                        font: "7px 'Monaspace Neon'",
+                        color: "#a6adc8",
+                    });
+
+                    const cannonSelColor =
+                        selectedTurretType === "cannon" ? "#313244" : "#1e1e2e";
+                    drawRect(vec2(W - 130, 100), vec2(120, 36), cannonSelColor);
+                    drawRectOutline(
+                        vec2(W - 130, 100),
+                        vec2(120, 36),
+                        "#fab387",
+                        1,
+                    );
+                    drawText("CANNON BURST", vec2(W - 120, 110), {
+                        font: "bold 9px 'Monaspace Neon'",
+                        color: "#cdd6f4",
+                    });
+                    drawText("$100 // LONG RNG", vec2(W - 120, 122), {
+                        font: "7px 'Monaspace Neon'",
+                        color: "#a6adc8",
+                    });
+
+                    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
+                    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+
+                    drawText(`GOLD: $${gold}`, vec2(16, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#f9e2af",
+                    });
+                    drawText(`SHIELDS: ${health}`, vec2(120, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#f38ba8",
+                    });
+                    drawText(`WAVE: ${waveNumber - 1}`, vec2(240, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#cba6f7",
+                    });
+
+                    if (waveTimer > 0) {
+                        drawText(
+                            `NEXT WAVE IN: ${waveTimer.toFixed(1)}S`,
+                            vec2(W - 16, 10),
+                            {
+                                font: "9px 'Monaspace Neon'",
+                                color: "#a6e3a1",
+                                align: "right",
+                            },
+                        );
+                    } else {
+                        drawText("CREEPS DEPLOYING!", vec2(W - 16, 10), {
+                            font: "9px 'Monaspace Neon'",
+                            color: "#fab387",
+                            align: "right",
+                        });
+                    }
+
+                    if (health <= 0) {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.85)",
+                        );
+                        drawText(
+                            "TOWER GRID FAILED // GAME OVER",
+                            vec2(W / 2, H / 2 - 15),
+                            {
+                                font: "bold 16px 'Monaspace Neon'",
+                                color: "#f38ba8",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            `SURVIVED: ${waveNumber - 2} WAVES`,
+                            vec2(W / 2, H / 2 + 10),
+                            {
+                                font: "11px 'Monaspace Neon'",
+                                color: "#f9e2af",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "TAP ANYWHERE TO DEPLOY AGAIN",
+                            vec2(W / 2, H / 2 + 35),
+                            {
+                                font: "9px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+                    }
+                },
+            });
+
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
+</html>
