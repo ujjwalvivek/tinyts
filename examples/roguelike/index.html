@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="Turn-based procedural roguelike dungeon crawler."
+        />
+        <title>TinyTS - Roguelike</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
+            const TILE_SZ = 16;
+            const COLS = 30;
+            const ROWS = 16;
+
+            const mapOffsetX = 80;
+            const mapOffsetY = 42;
+
+            class GridPos {
+                constructor(x = 0, y = 0) {
+                    this.x = x;
+                    this.y = y;
+                }
+            }
+            class Sprite {
+                constructor(char = "@", color = "#fff") {
+                    this.char = char;
+                    this.color = color;
+                }
+            }
+            class Combat {
+                constructor(
+                    hp = 10,
+                    maxHp = 10,
+                    atk = 2,
+                    type = "enemy",
+                    name = "Goblin",
+                ) {
+                    this.hp = hp;
+                    this.maxHp = maxHp;
+                    this.atk = atk;
+                    this.type = type;
+                    this.name = name;
+                }
+            }
+            class Item {
+                constructor(type = "potion", heal = 4) {
+                    this.type = type;
+                    this.heal = heal;
+                }
+            }
+
+            const reg = new Registry();
+            reg.registerComponentType("GridPos", GridPos);
+            reg.registerComponentType("Sprite", Sprite);
+            reg.registerComponentType("Combat", Combat);
+            reg.registerComponentType("Item", Item);
+
+            const renderableEntities = reg.view(GridPos, Sprite);
+            const combatActors = reg.view(GridPos, Combat);
+            const itemsView = reg.view(GridPos, Item);
+
+            const dungeonMap = [];
+            const explored = [];
+            const roomCenters = [];
+            const logs = [
+                "WAKE UP, STRANGER. SURVIVE.",
+                "WASD / ARROWS TO STEP. SPACE TO WAIT.",
+            ];
+
+            function logMessage(text) {
+                logs.push(text);
+                if (logs.length > 3) logs.shift();
+            }
+
+            function generateDungeon() {
+                roomCenters.length = 0;
+                for (let y = 0; y < ROWS; y++) {
+                    dungeonMap[y] = [];
+                    explored[y] = [];
+                    for (let x = 0; x < COLS; x++) {
+                        dungeonMap[y][x] = "#";
+                        explored[y][x] = false;
+                    }
+                }
+
+                const numRooms = 6;
+                for (let r = 0; r < numRooms; r++) {
+                    const w = randInt(4, 7);
+                    const h = randInt(3, 6);
+                    const rx = randInt(1, COLS - w - 1);
+                    const ry = randInt(1, ROWS - h - 1);
+
+                    for (let y = ry; y < ry + h; y++) {
+                        for (let x = rx; x < rx + w; x++) {
+                            dungeonMap[y][x] = ".";
+                        }
+                    }
+
+                    const cx = Math.floor(rx + w / 2);
+                    const cy = Math.floor(ry + h / 2);
+                    const center = vec2(cx, cy);
+
+                    if (roomCenters.length > 0) {
+                        const prev = roomCenters[roomCenters.length - 1];
+                        const startX = Math.min(prev.x, center.x);
+                        const endX = Math.max(prev.x, center.x);
+                        for (let x = startX; x <= endX; x++) {
+                            dungeonMap[prev.y][x] = ".";
+                        }
+                        const startY = Math.min(prev.y, center.y);
+                        const endY = Math.max(prev.y, center.y);
+                        for (let y = startY; y <= endY; y++) {
+                            dungeonMap[y][center.x] = ".";
+                        }
+                    }
+
+                    roomCenters.push(center);
+                }
+            }
+
+            let playerEntity;
+            let gameState = "playing";
+
+            function clearDungeonEntities() {
+                const allPos = reg.view(GridPos);
+                for (const e of [...allPos]) {
+                    reg.destroyEntity(e);
+                }
+            }
+
+            function spawnDungeon() {
+                clearDungeonEntities();
+                generateDungeon();
+
+                playerEntity = reg.createEntity();
+                reg.addComponent(
+                    playerEntity,
+                    GridPos,
+                    new GridPos(roomCenters[0].x, roomCenters[0].y),
+                );
+                reg.addComponent(
+                    playerEntity,
+                    Sprite,
+                    new Sprite("@", "#89b4fa"),
+                );
+                reg.addComponent(
+                    playerEntity,
+                    Combat,
+                    new Combat(15, 15, 3, "player", "HERO"),
+                );
+
+                const enemyTypes = [
+                    {
+                        name: "SLIME",
+                        char: "s",
+                        color: "#a6e3a1",
+                        hp: 4,
+                        atk: 1,
+                    },
+                    {
+                        name: "GOBLIN",
+                        char: "g",
+                        color: "#fab387",
+                        hp: 6,
+                        atk: 2,
+                    },
+                    { name: "ORC", char: "o", color: "#f38ba8", hp: 8, atk: 3 },
+                ];
+
+                for (let i = 1; i < roomCenters.length; i++) {
+                    const center = roomCenters[i];
+                    const enemyData = choose(enemyTypes);
+                    const e = reg.createEntity();
+                    reg.addComponent(
+                        e,
+                        GridPos,
+                        new GridPos(center.x, center.y),
+                    );
+                    reg.addComponent(
+                        e,
+                        Sprite,
+                        new Sprite(enemyData.char, enemyData.color),
+                    );
+                    reg.addComponent(
+                        e,
+                        Combat,
+                        new Combat(
+                            enemyData.hp,
+                            enemyData.hp,
+                            enemyData.atk,
+                            "enemy",
+                            enemyData.name,
+                        ),
+                    );
+                }
+
+                const pot1 = reg.createEntity();
+                reg.addComponent(
+                    pot1,
+                    GridPos,
+                    new GridPos(roomCenters[2].x - 1, roomCenters[2].y),
+                );
+                reg.addComponent(pot1, Sprite, new Sprite("!", "#f5c2e7"));
+                reg.addComponent(pot1, Item, new Item("potion", 6));
+
+                const pot2 = reg.createEntity();
+                reg.addComponent(
+                    pot2,
+                    GridPos,
+                    new GridPos(roomCenters[4].x + 1, roomCenters[4].y),
+                );
+                reg.addComponent(pot2, Sprite, new Sprite("!", "#f5c2e7"));
+                reg.addComponent(pot2, Item, new Item("potion", 6));
+
+                const portal = reg.createEntity();
+                reg.addComponent(
+                    portal,
+                    GridPos,
+                    new GridPos(
+                        roomCenters[roomCenters.length - 1].x,
+                        roomCenters[roomCenters.length - 1].y,
+                    ),
+                );
+                reg.addComponent(portal, Sprite, new Sprite("X", "#cba6f7"));
+                reg.addComponent(portal, Item, new Item("portal", 0));
+            }
+
+            bindAction("left", ["KeyA", "ArrowLeft"]);
+            bindAction("right", ["KeyD", "ArrowRight"]);
+            bindAction("up", ["KeyW", "ArrowUp"]);
+            bindAction("down", ["KeyS", "ArrowDown"]);
+            bindAction("wait", ["Space"]);
+
+            spawnDungeon();
+
+            function getVisible(x, y) {
+                const pPos = reg.getComponent(playerEntity, GridPos);
+                if (!pPos) return false;
+                const dist = Math.sqrt((x - pPos.x) ** 2 + (y - pPos.y) ** 2);
+                if (dist <= 4.8) {
+                    explored[y][x] = true;
+                    return true;
+                }
+                return false;
+            }
+
+            function processTurn(dx, dy) {
+                const pPos = reg.getComponent(playerEntity, GridPos);
+                const pCom = reg.getComponent(playerEntity, Combat);
+                if (!pPos || !pCom) return;
+
+                const tx = pPos.x + dx;
+                const ty = pPos.y + dy;
+
+                if (
+                    tx < 0 ||
+                    tx >= COLS ||
+                    ty < 0 ||
+                    ty >= ROWS ||
+                    dungeonMap[ty][tx] === "#"
+                ) {
+                    playSound(sfx.blip({ volume: 0.1, pitch: 0.8 }));
+                    return;
+                }
+
+                let attacked = false;
+                for (const e of combatActors) {
+                    const ePos = reg.getComponent(e, GridPos);
+                    const eCom = reg.getComponent(e, Combat);
+                    if (
+                        ePos &&
+                        eCom &&
+                        eCom.type === "enemy" &&
+                        ePos.x === tx &&
+                        ePos.y === ty
+                    ) {
+                        attacked = true;
+                        eCom.hp -= pCom.atk;
+                        logMessage(`YOU HIT ${eCom.name} FOR ${pCom.atk} DMG`);
+                        playSound(sfx.hit({ volume: 0.25 }));
+
+                        emitParticles({
+                            pos: vec2(
+                                mapOffsetX + tx * TILE_SZ + 8,
+                                mapOffsetY + ty * TILE_SZ + 8,
+                            ),
+                            count: 6,
+                            life: [0.15, 0.3],
+                            speed: [30, 70],
+                            size: [1.5, 3],
+                            color: ["#f38ba8", "#fab387"],
+                        });
+
+                        if (eCom.hp <= 0) {
+                            logMessage(`${eCom.name} SHATTERED!`);
+                            playSound(sfx.enemyDeath({ volume: 0.2 }));
+                            reg.destroyEntity(e);
+                        }
+                        break;
+                    }
+                }
+
+                if (!attacked) {
+                    pPos.x = tx;
+                    pPos.y = ty;
+                    playSound(sfx.blip({ volume: 0.05, pitch: 1.5 }));
+
+                    for (const itemEnt of itemsView) {
+                        const iPos = reg.getComponent(itemEnt, GridPos);
+                        const item = reg.getComponent(itemEnt, Item);
+                        if (
+                            iPos &&
+                            item &&
+                            iPos.x === pPos.x &&
+                            iPos.y === pPos.y
+                        ) {
+                            if (item.type === "potion") {
+                                pCom.hp = Math.min(
+                                    pCom.hp + item.heal,
+                                    pCom.maxHp,
+                                );
+                                logMessage(
+                                    `DRANK POTION. HEALED +${item.heal} HP`,
+                                );
+                                playSound(sfx.powerup({ volume: 0.2 }));
+                                emitParticles({
+                                    pos: vec2(
+                                        mapOffsetX + pPos.x * TILE_SZ + 8,
+                                        mapOffsetY + pPos.y * TILE_SZ + 8,
+                                    ),
+                                    count: 10,
+                                    life: [0.2, 0.4],
+                                    speed: [20, 50],
+                                    size: [1, 2],
+                                    color: ["#f5c2e7", "#fff"],
+                                });
+                                reg.destroyEntity(itemEnt);
+                            } else if (item.type === "portal") {
+                                gameState = "victory";
+                                playSound(sfx.teleport());
+                            }
+                        }
+                    }
+                }
+
+                triggerEnemyTurns();
+            }
+
+            function triggerEnemyTurns() {
+                const pPos = reg.getComponent(playerEntity, GridPos);
+                const pCom = reg.getComponent(playerEntity, Combat);
+                if (!pPos || !pCom) return;
+
+                for (const e of combatActors) {
+                    const ePos = reg.getComponent(e, GridPos);
+                    const eCom = reg.getComponent(e, Combat);
+                    if (ePos && eCom && eCom.type === "enemy") {
+                        if (getVisible(ePos.x, ePos.y)) {
+                            const dx = Math.sign(pPos.x - ePos.x);
+                            const dy = Math.sign(pPos.y - ePos.y);
+
+                            const tx = ePos.x + dx;
+                            const ty = ePos.y + dy;
+
+                            if (tx === pPos.x && ty === pPos.y) {
+                                pCom.hp -= eCom.atk;
+                                logMessage(
+                                    `${eCom.name} HIT YOU FOR ${eCom.atk} DMG`,
+                                );
+                                playSound(sfx.hit({ volume: 0.3, pitch: 0.7 }));
+
+                                emitParticles({
+                                    pos: vec2(
+                                        mapOffsetX + pPos.x * TILE_SZ + 8,
+                                        mapOffsetY + pPos.y * TILE_SZ + 8,
+                                    ),
+                                    count: 6,
+                                    life: [0.2, 0.35],
+                                    speed: [30, 60],
+                                    size: [1.5, 3.5],
+                                    color: ["#f38ba8", "#fab387"],
+                                });
+
+                                if (pCom.hp <= 0) {
+                                    gameState = "gameover";
+                                    playSound(sfx.death());
+                                }
+                            } else {
+                                let cellBlocked = false;
+                                if (dungeonMap[ty]?.[tx] === "#")
+                                    cellBlocked = true;
+
+                                for (const other of combatActors) {
+                                    const oPos = reg.getComponent(
+                                        other,
+                                        GridPos,
+                                    );
+                                    if (
+                                        oPos &&
+                                        oPos.x === tx &&
+                                        oPos.y === ty
+                                    ) {
+                                        cellBlocked = true;
+                                        break;
+                                    }
+                                }
+
+                                if (!cellBlocked) {
+                                    ePos.x = tx;
+                                    ePos.y = ty;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
+
+                update(dt) {
+                    updateParticles(dt);
+
+                    if (gameState !== "playing") {
+                        if (keyPressed("Space")) {
+                            gameState = "playing";
+                            spawnDungeon();
+                            logMessage("RE-ENTERING DEEPER DUNGEON...");
+                        }
+                        return;
+                    }
+
+                    if (actionPressed("left")) processTurn(-1, 0);
+                    else if (actionPressed("right")) processTurn(1, 0);
+                    else if (actionPressed("up")) processTurn(0, -1);
+                    else if (actionPressed("down")) processTurn(0, 1);
+                    else if (actionPressed("wait")) processTurn(0, 0);
+                },
+
+                render() {
+                    clear("#11111b");
+
+                    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.85)");
+                    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+                    drawText("DUNGEON CRAWLER // PROC_GEN ECS", vec2(16, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#cba6f7",
+                    });
+
+                    for (let y = 0; y < ROWS; y++) {
+                        for (let x = 0; x < COLS; x++) {
+                            const visible = getVisible(x, y);
+                            const exp = explored[y][x];
+
+                            if (!visible && !exp) continue;
+
+                            const tileChar = dungeonMap[y][x];
+                            const px = mapOffsetX + x * TILE_SZ;
+                            const py = mapOffsetY + y * TILE_SZ;
+
+                            const tileColor = visible
+                                ? tileChar === "#"
+                                    ? "#313244"
+                                    : "#45475a"
+                                : tileChar === "#"
+                                  ? "rgba(49, 50, 68, 0.3)"
+                                  : "rgba(69, 71, 90, 0.3)";
+
+                            if (tileChar === "#") {
+                                drawRect(
+                                    vec2(px, py),
+                                    vec2(TILE_SZ - 1, TILE_SZ - 1),
+                                    tileColor,
+                                );
+                            } else {
+                                drawCircle(
+                                    vec2(px + TILE_SZ / 2, py + TILE_SZ / 2),
+                                    1.5,
+                                    tileColor,
+                                );
+                            }
+                        }
+                    }
+
+                    for (const entity of renderableEntities) {
+                        const gp = reg.getComponent(entity, GridPos);
+                        const spr = reg.getComponent(entity, Sprite);
+                        if (gp && spr && getVisible(gp.x, gp.y)) {
+                            const px =
+                                mapOffsetX + gp.x * TILE_SZ + TILE_SZ / 2;
+                            const py =
+                                mapOffsetY + gp.y * TILE_SZ + TILE_SZ / 2;
+                            drawText(spr.char, vec2(px, py), {
+                                font: "bold 12px 'Monaspace Neon'",
+                                color: spr.color,
+                                align: "center",
+                                baseline: "middle",
+                            });
+                        }
+                    }
+
+                    renderParticles();
+
+                    resetRenderTransform();
+
+                    const pCom = reg.getComponent(playerEntity, Combat);
+                    if (pCom) {
+                        const paneW = 52;
+                        drawRect(
+                            vec2(15, 42),
+                            vec2(paneW, H - 110),
+                            "rgba(24, 24, 37, 0.45)",
+                        );
+                        drawRectOutline(
+                            vec2(15, 42),
+                            vec2(paneW, H - 110),
+                            "#313244",
+                            1,
+                        );
+                        drawText("STATUS", vec2(15 + paneW / 2, 52), {
+                            font: "bold 8px 'Monaspace Neon'",
+                            color: "#fab387",
+                            align: "center",
+                        });
+
+                        drawText("HP", vec2(15 + paneW / 2, 70), {
+                            font: "8px 'Monaspace Neon'",
+                            color: "#a6adc8",
+                            align: "center",
+                        });
+                        drawText(
+                            `${pCom.hp}/${pCom.maxHp}`,
+                            vec2(15 + paneW / 2, 82),
+                            {
+                                font: "bold 10px 'Monaspace Neon'",
+                                color: "#f38ba8",
+                                align: "center",
+                            },
+                        );
+
+                        drawText("ATK", vec2(15 + paneW / 2, 102), {
+                            font: "8px 'Monaspace Neon'",
+                            color: "#a6adc8",
+                            align: "center",
+                        });
+                        drawText(`${pCom.atk}`, vec2(15 + paneW / 2, 114), {
+                            font: "bold 10px 'Monaspace Neon'",
+                            color: "#a6e3a1",
+                            align: "center",
+                        });
+                    }
+
+                    drawRect(
+                        vec2(15, H - 56),
+                        vec2(W - 30, 45),
+                        "rgba(17, 17, 27, 0.9)",
+                    );
+                    drawRectOutline(
+                        vec2(15, H - 56),
+                        vec2(W - 30, 45),
+                        "#313244",
+                        1,
+                    );
+                    for (let i = 0; i < logs.length; i++) {
+                        const ly = H - 48 + i * 12;
+                        drawText(`> ${logs[i]}`, vec2(25, ly), {
+                            font: "8px 'Monaspace Neon'",
+                            color:
+                                i === logs.length - 1 ? "#a6e3a1" : "#585b70",
+                        });
+                    }
+
+                    if (gameState === "gameover") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.85)",
+                        );
+                        drawText(
+                            "YOU PERISHED IN THE DEPTHS",
+                            vec2(W / 2, H / 2 - 10),
+                            {
+                                font: "bold 14px 'Monaspace Neon'",
+                                color: "#f38ba8",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "PRESS SPACE TO RESPAWN",
+                            vec2(W / 2, H / 2 + 15),
+                            {
+                                font: "9px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+                    } else if (gameState === "victory") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.85)",
+                        );
+                        drawText(
+                            "PORTAL ESCAPED // MAZE CONQUERED",
+                            vec2(W / 2, H / 2 - 10),
+                            {
+                                font: "bold 14px 'Monaspace Neon'",
+                                color: "#a6e3a1",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "PRESS SPACE TO ENTER NEXT DEPTHS",
+                            vec2(W / 2, H / 2 + 15),
+                            {
+                                font: "9px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+                    }
+                },
+            });
+
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
+</html>
