@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="Horizontal scrolling arcade space shooter."
+        />
+        <title>TinyTS - Side-Scrolling Shmup</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
+
+            const stars = [];
+            for (let i = 0; i < 70; i++) {
+                stars.push({
+                    pos: vec2(rand(0, W), rand(0, H)),
+                    speed: rand(15, 120),
+                    size: rand(0.5, 2),
+                    color: choose(["#89b4fa", "#f5e0dc", "#585b70", "#fff"]),
+                });
+            }
+
+            const player = {
+                pos: vec2(80, H / 2 - 10),
+                size: vec2(20, 16),
+                hp: 3,
+                maxHp: 3,
+                speed: 160,
+                score: 0,
+                weaponLevel: 1,
+                fireTimer: 0,
+                fireRate: 0.16,
+                hitstun: 0,
+            };
+
+            const bullets = [];
+            const enemyBullets = [];
+            const enemies = [];
+            const powerups = [];
+
+            let gameState = "playing";
+            let waveTimer = 0.5;
+            let mainCamera = createCamera({
+                pos: vec2(W / 2, H / 2),
+                size: vec2(W, H),
+            });
+
+            function spawnEnemyWave() {
+                const count = randInt(2, 4);
+                const type = Math.random() < 0.4 ? "sine" : "straight";
+                const startY = rand(80, H - 80);
+                const isYellowPowerupCarrier = Math.random() < 0.35;
+
+                for (let i = 0; i < count; i++) {
+                    enemies.push({
+                        pos: vec2(
+                            W + 20 + i * 28,
+                            startY + (type === "sine" ? 0 : i * 12),
+                        ),
+                        size: vec2(14, 12),
+                        hp: type === "sine" ? 10 : 15,
+                        speed: 80,
+                        type: type,
+                        sinOffset: i * 0.7,
+                        shootTimer: rand(1.2, 3.2),
+                        isCarrier: i === 0 && isYellowPowerupCarrier,
+                    });
+                }
+            }
+
+            function shootPlayerLaser() {
+                playSound(sfx.laser({ volume: 0.07, pitch: 1.8 }));
+
+                if (player.weaponLevel === 1) {
+                    bullets.push({
+                        pos: player.pos
+                            .clone()
+                            .add(vec2(player.size.x, player.size.y / 2)),
+                        vel: vec2(340, 0),
+                        size: 4,
+                    });
+                } else if (player.weaponLevel === 2) {
+                    bullets.push({
+                        pos: player.pos.clone().add(vec2(player.size.x, 3)),
+                        vel: vec2(340, 0),
+                        size: 4,
+                    });
+                    bullets.push({
+                        pos: player.pos
+                            .clone()
+                            .add(vec2(player.size.x, player.size.y - 3)),
+                        vel: vec2(340, 0),
+                        size: 4,
+                    });
+                } else {
+                    bullets.push({
+                        pos: player.pos
+                            .clone()
+                            .add(vec2(player.size.x, player.size.y / 2)),
+                        vel: vec2(340, 0),
+                        size: 4,
+                    });
+                    bullets.push({
+                        pos: player.pos.clone().add(vec2(player.size.x, 3)),
+                        vel: vec2(330, -70),
+                        size: 4,
+                    });
+                    bullets.push({
+                        pos: player.pos
+                            .clone()
+                            .add(vec2(player.size.x, player.size.y - 3)),
+                        vel: vec2(330, 70),
+                        size: 4,
+                    });
+                }
+            }
+
+            function resetGame() {
+                player.pos.set(80, H / 2 - 10);
+                player.hp = 3;
+                player.score = 0;
+                player.weaponLevel = 1;
+                player.fireTimer = 0;
+                player.hitstun = 0;
+
+                bullets.length = 0;
+                enemyBullets.length = 0;
+                enemies.length = 0;
+                powerups.length = 0;
+
+                waveTimer = 0.5;
+                gameState = "playing";
+                playSound(sfx.powerup({ volume: 0.2 }));
+            }
+
+            bindAction("up", ["KeyW", "ArrowUp"]);
+            bindAction("down", ["KeyS", "ArrowDown"]);
+            bindAction("left", ["KeyA", "ArrowLeft"]);
+            bindAction("right", ["KeyD", "ArrowRight"]);
+            bindAction("shoot", ["Space", "Mouse0"]);
+
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
+
+                update(dt) {
+                    updateParticles(dt);
+                    mainCamera.update(dt);
+
+                    if (gameState === "gameover") {
+                        if (actionPressed("shoot") || keyPressed("Space")) {
+                            resetGame();
+                        }
+                        return;
+                    }
+
+                    for (const s of stars) {
+                        s.pos.x -= s.speed * dt;
+                        if (s.pos.x < 0) {
+                            s.pos.x = W;
+                            s.pos.y = rand(0, H);
+                        }
+                    }
+
+                    if (player.hitstun > 0) player.hitstun -= dt;
+
+                    let moveX = 0,
+                        moveY = 0;
+                    if (actionDown("up")) moveY = -1;
+                    if (actionDown("down")) moveY = 1;
+                    if (actionDown("left")) moveX = -1;
+                    if (actionDown("right")) moveX = 1;
+
+                    player.pos.x += moveX * player.speed * dt;
+                    player.pos.y += moveY * player.speed * dt;
+
+                    player.pos.x = clamp(
+                        player.pos.x,
+                        10,
+                        W - player.size.x - 10,
+                    );
+                    player.pos.y = clamp(
+                        player.pos.y,
+                        35,
+                        H - player.size.y - 10,
+                    );
+
+                    player.fireTimer += dt;
+                    if (
+                        actionDown("shoot") &&
+                        player.fireTimer >= player.fireRate
+                    ) {
+                        player.fireTimer = 0;
+                        shootPlayerLaser();
+                    }
+
+                    waveTimer -= dt;
+                    if (waveTimer <= 0) {
+                        waveTimer = rand(2.2, 4.0);
+                        spawnEnemyWave();
+                    }
+
+                    for (let i = enemies.length - 1; i >= 0; i--) {
+                        const e = enemies[i];
+
+                        if (e.type === "sine") {
+                            e.pos.x -= e.speed * dt;
+                            e.pos.y +=
+                                Math.sin(time * 5.5 + e.sinOffset) * 85 * dt;
+                        } else {
+                            e.pos.x -= e.speed * 0.8 * dt;
+                        }
+
+                        e.shootTimer -= dt;
+                        if (e.shootTimer <= 0) {
+                            e.shootTimer = rand(3.0, 5.0);
+                            enemyBullets.push({
+                                pos: e.pos.clone().add(vec2(0, e.size.y / 2)),
+                                vel: vec2(-150, 0),
+                                size: 5,
+                            });
+                        }
+
+                        for (let j = bullets.length - 1; j >= 0; j--) {
+                            const b = bullets[j];
+                            if (e.pos.distanceTo(b.pos) < e.size.x + b.size) {
+                                e.hp -= 10;
+                                bullets.splice(j, 1);
+
+                                if (e.hp <= 0) {
+                                    player.score += e.isCarrier ? 300 : 100;
+                                    playSound(
+                                        sfx.hit({ volume: 0.12, pitch: 0.7 }),
+                                    );
+
+                                    emitParticles({
+                                        pos: e.pos,
+                                        count: 8,
+                                        life: [0.2, 0.45],
+                                        speed: [30, 80],
+                                        color: [
+                                            e.isCarrier ? "#f9e2af" : "#f38ba8",
+                                            "#fff",
+                                        ],
+                                    });
+
+                                    if (e.isCarrier) {
+                                        powerups.push({
+                                            pos: e.pos.clone(),
+                                            size: vec2(10, 10),
+                                            vel: vec2(-45, rand(-15, 15)),
+                                        });
+                                    }
+
+                                    enemies.splice(i, 1);
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (e.pos.x < -20) {
+                            enemies.splice(i, 1);
+                        }
+                    }
+
+                    for (let i = bullets.length - 1; i >= 0; i--) {
+                        const b = bullets[i];
+                        b.pos.add(b.vel.clone().scale(dt));
+                        if (b.pos.x > W + 10) {
+                            bullets.splice(i, 1);
+                        }
+                    }
+
+                    for (let i = enemyBullets.length - 1; i >= 0; i--) {
+                        const eb = enemyBullets[i];
+                        eb.pos.add(eb.vel.clone().scale(dt));
+
+                        if (
+                            player.hitstun <= 0 &&
+                            eb.pos.distanceTo(player.pos) <
+                                eb.size + player.size.x / 2
+                        ) {
+                            player.hp--;
+                            player.hitstun = 0.8;
+                            mainCamera.shake(3.5);
+                            playSound(sfx.hit({ volume: 0.22, pitch: 0.5 }));
+
+                            enemyBullets.splice(i, 1);
+
+                            if (player.hp <= 0) {
+                                gameState = "gameover";
+                                playSound(sfx.death());
+                            }
+                            continue;
+                        }
+
+                        if (eb.pos.x < -10) {
+                            enemyBullets.splice(i, 1);
+                        }
+                    }
+
+                    for (let i = powerups.length - 1; i >= 0; i--) {
+                        const p = powerups[i];
+                        p.pos.add(p.vel.clone().scale(dt));
+
+                        p.vel.y += Math.sin(time * 8) * 1.5;
+
+                        if (p.pos.distanceTo(player.pos) < 14) {
+                            player.weaponLevel = Math.min(
+                                3,
+                                player.weaponLevel + 1,
+                            );
+                            player.score += 500;
+                            playSound(sfx.powerup({ volume: 0.2, pitch: 1.3 }));
+
+                            emitParticles({
+                                pos: p.pos,
+                                count: 12,
+                                life: [0.15, 0.4],
+                                speed: [20, 60],
+                                color: ["#f9e2af", "#fff"],
+                            });
+
+                            powerups.splice(i, 1);
+                            continue;
+                        }
+
+                        if (p.pos.x < -15) {
+                            powerups.splice(i, 1);
+                        }
+                    }
+                },
+
+                render() {
+                    clear("#11111b");
+
+                    mainCamera.apply();
+
+                    for (const s of stars) {
+                        drawCircle(s.pos, s.size, s.color);
+                    }
+
+                    for (const p of powerups) {
+                        const rot = time * 2;
+                        drawCircle(p.pos, 5, "#f9e2af");
+                        drawCircleOutline(p.pos, 5, "#fff", 1);
+                        drawText("W", p.pos, {
+                            font: "bold 6.5px 'Monaspace Neon'",
+                            color: "#11111b",
+                            align: "center",
+                            baseline: "middle",
+                        });
+                    }
+
+                    for (const b of bullets) {
+                        const bulletPos = b.pos.clone().subtract(vec2(6, 1.5));
+                        drawRect(bulletPos, vec2(12, 3), "#89b4fa");
+                        drawRectOutline(bulletPos, vec2(12, 3), "#fff", 0.5);
+                    }
+
+                    for (const eb of enemyBullets) {
+                        drawCircle(eb.pos, eb.size, "#f38ba8");
+                        drawCircleOutline(eb.pos, eb.size, "#fff", 1);
+                    }
+
+                    for (const e of enemies) {
+                        const ep = e.pos.clone();
+                        const col = e.isCarrier ? "#f9e2af" : "#cba6f7";
+
+                        const points = [
+                            vec2(ep.x - e.size.x / 2, ep.y),
+                            vec2(ep.x + e.size.x / 2, ep.y - e.size.y / 2),
+                            vec2(ep.x + e.size.x / 2, ep.y + e.size.y / 2),
+                        ];
+                        drawProceduralPolygon(
+                            getContext(),
+                            points,
+                            col,
+                            "#11111b",
+                            1,
+                        );
+
+                        if (Math.floor(time * 20) % 2 === 0) {
+                            drawLine(
+                                vec2(ep.x + e.size.x / 2, ep.y),
+                                vec2(ep.x + e.size.x / 2 + 6, ep.y),
+                                "#fab387",
+                                2,
+                            );
+                        }
+                    }
+
+                    if (
+                        player.hitstun <= 0 ||
+                        Math.floor(time * 15) % 2 === 0
+                    ) {
+                        const pk = player.pos.clone();
+                        const points = [
+                            vec2(pk.x, pk.y),
+                            vec2(
+                                pk.x + player.size.x,
+                                pk.y + player.size.y / 2,
+                            ),
+                            vec2(pk.x, pk.y + player.size.y),
+                        ];
+                        drawProceduralPolygon(
+                            getContext(),
+                            points,
+                            "#89b4fa",
+                            "#11111b",
+                            1.5,
+                        );
+
+                        drawLine(
+                            vec2(pk.x + 2, pk.y + 2),
+                            vec2(pk.x + 2, pk.y + player.size.y - 2),
+                            "#b4befe",
+                            2,
+                        );
+
+                        if (Math.floor(time * 24) % 2 === 0) {
+                            const flamePos = pk
+                                .clone()
+                                .add(vec2(-8, player.size.y / 2));
+                            drawCircle(flamePos, 3, "#fab387");
+                        }
+                    }
+
+                    renderParticles();
+
+                    mainCamera.end();
+
+                    const hudY = 46;
+
+                    drawText("HP MATRIX: ", vec2(20, hudY), {
+                        font: "bold 8px 'Monaspace Neon'",
+                        color: "#a6adc8",
+                    });
+                    for (let i = 0; i < player.maxHp; i++) {
+                        const shipX = 80 + i * 16;
+                        const col = i < player.hp ? "#a6e3a1" : "#313244";
+                        const points = [
+                            vec2(shipX, hudY - 5),
+                            vec2(shipX + 8, hudY - 2),
+                            vec2(shipX, hudY + 1),
+                        ];
+                        drawProceduralPolygon(
+                            getContext(),
+                            points,
+                            col,
+                            "#11111b",
+                            0.5,
+                        );
+                    }
+
+                    drawText(
+                        `LASER TECH: Lvl ${player.weaponLevel}`,
+                        vec2(180, hudY),
+                        { font: "bold 8px 'Monaspace Neon'", color: "#fab387" },
+                    );
+
+                    drawText(
+                        `SCORE: ${player.score.toString().padStart(6, "0")}`,
+                        vec2(W - 140, hudY),
+                        { font: "bold 9px 'Monaspace Neon'", color: "#cba6f7" },
+                    );
+
+                    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
+                    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+                    drawText(
+                        "GALAXY DEFENDER // HORIZONTAL SHMUP PROTOCOL",
+                        vec2(W / 2, 10),
+                        {
+                            font: "bold 9.5px 'Monaspace Neon'",
+                            color: "#cba6f7",
+                            align: "center",
+                        },
+                    );
+
+                    if (gameState === "gameover") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.85)",
+                        );
+                        drawText(
+                            "SHIP STRUCTURAL COLLAPSE // GAME OVER",
+                            vec2(W / 2, H / 2 - 12),
+                            {
+                                font: "bold 13px 'Monaspace Neon'",
+                                color: "#f38ba8",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            `FINAL SCORE ARCHIVE: ${player.score}`,
+                            vec2(W / 2, H / 2 + 10),
+                            {
+                                font: "10px 'Monaspace Neon'",
+                                color: "#fab387",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "TAP ANYWHERE OR SPACE TO LAUNCH NEW FIGHTER SHIP",
+                            vec2(W / 2, H / 2 + 35),
+                            {
+                                font: "8.5px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+                    }
+                },
+            });
+
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
+</html>

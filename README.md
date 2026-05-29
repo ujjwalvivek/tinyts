@@ -3,7 +3,7 @@
 [![API Quick Reference](https://echopoint.ujjwalvivek.com/svg/badges/custom?bg=111111&badgeColor=7316e4&textColor=e8e8e8&border=7316e4&borderWidth=2&rx=0&px=2&py=2&logo=docs&leftText=Reference&rightText=CHEATSHEET)](https://tinyts.ujjwalvivek.com/documents/REFERENCE)
 [![Examples Browser](https://echopoint.ujjwalvivek.com/svg/badges/custom?bg=111111&badgeColor=7316e4&textColor=e8e8e8&border=7316e4&borderWidth=2&rx=0&px=2&py=2&logo=game&leftText=Examples&rightText=DEMO)](https://tinyts.ujjwalvivek.com/examples)
 [![Engine API](https://echopoint.ujjwalvivek.com/svg/badges/custom?bg=111111&badgeColor=7316e4&textColor=e8e8e8&border=7316e4&borderWidth=2&rx=0&px=2&py=2&logo=typescript&leftText=ENGINE&rightText=API)](https://tinyts.ujjwalvivek.com)
-[![NPM](https://echopoint.ujjwalvivek.com/svg/badges/custom?bg=111111&badgeColor=7316e4&textColor=e8e8e8&border=7316e4&borderWidth=2&rx=0&px=2&py=2&logo=npm&leftText=%40ujjwalvivek%2Ftinyts&rightText=LATEST)](https://www.npmjs.com/package/@ujjwalvivek/tinyts)
+[![NPM](https://echopoint.ujjwalvivek.com/svg/badges/npm?bg=111111&badgeColor=7316e4&textColor=e8e8e8&border=7316e4&borderWidth=2&rx=0&px=2&py=2&logo=npm&package=tinyts)](https://www.npmjs.com/package/@ujjwalvivek/tinyts)
 
 A tiny, fast, TypeScript-first 2D web game engine.
 

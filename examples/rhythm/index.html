@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="Sequencer-synced rhythm game." />
+        <title>TinyTS - Rhythm</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
+
+            const seq = new Sequencer(130);
+
+            const melodyNotes = [
+                { beat: 0.0, note: 57, duration: 0.4 }, // A3
+                { beat: 0.5, note: 60, duration: 0.4 }, // C4
+                { beat: 1.0, note: 64, duration: 0.4 }, // E4
+                { beat: 1.5, note: 67, duration: 0.4 }, // G4
+                { beat: 2.0, note: 65, duration: 0.4 }, // F4
+                { beat: 2.5, note: 62, duration: 0.4 }, // D4
+                { beat: 3.0, note: 57, duration: 0.8 }, // A3
+                { beat: 4.0, note: 57, duration: 0.4 },
+                { beat: 4.5, note: 60, duration: 0.4 },
+                { beat: 5.0, note: 64, duration: 0.4 },
+                { beat: 5.5, note: 69, duration: 0.4 }, // A4
+                { beat: 6.0, note: 67, duration: 0.4 },
+                { beat: 6.5, note: 64, duration: 0.4 },
+                { beat: 7.0, note: 60, duration: 0.8 },
+            ];
+            seq.addPattern(new Pattern("melody", melodyNotes, 2, 4));
+
+            const bassNotes = [
+                { beat: 0.0, note: 33, duration: 0.8 }, // A1
+                { beat: 1.0, note: 33, duration: 0.8 },
+                { beat: 2.0, note: 41, duration: 0.8 }, // F1
+                { beat: 3.0, note: 38, duration: 0.8 }, // D1
+                { beat: 4.0, note: 33, duration: 0.8 },
+                { beat: 5.0, note: 33, duration: 0.8 },
+                { beat: 6.0, note: 45, duration: 0.8 }, // A2
+                { beat: 7.0, note: 43, duration: 0.8 }, // G2
+            ];
+            seq.addPattern(new Pattern("bass", bassNotes, 2, 4));
+
+            seq.addTrack({ pattern: "melody", wave: "square", volume: 0.14 });
+            seq.addTrack({ pattern: "bass", wave: "sawtooth", volume: 0.12 });
+
+            const laneX = [180, 260, 340, 420];
+            const laneKeys = ["KeyD", "KeyF", "KeyJ", "KeyK"];
+            const laneColors = ["#f38ba8", "#94e2d5", "#a6e3a1", "#89b4fa"];
+            const targetY = 290;
+            const beatSpacing = 85;
+
+            const notes = [];
+            let score = 0;
+            let maxCombo = 0;
+            let combo = 0;
+            let health = 100;
+            let hitFeedback = "";
+            let hitFeedbackTimer = 0;
+            let keyPulse = [0, 0, 0, 0];
+            let gameState = "idle";
+            let absoluteBeat = 0;
+
+            function generateChart() {
+                notes.length = 0;
+                for (let bar = 0; bar < 12; bar++) {
+                    const baseBeat = bar * 8;
+                    for (let step = 0; step < 16; step++) {
+                        const stepSeed = (bar * 17 + step * 7) % 100;
+                        const beat = baseBeat + step * 0.5 + 8.0;
+                        if (stepSeed < 30) {
+                            notes.push({
+                                lane: stepSeed % 4,
+                                beat: beat,
+                                hit: false,
+                                missed: false,
+                            });
+                        } else if (step % 4 === 0 && stepSeed < 65) {
+                            notes.push({
+                                lane: step % 4,
+                                beat: beat,
+                                hit: false,
+                                missed: false,
+                            });
+                        }
+                    }
+                }
+                notes.sort((a, b) => a.beat - b.beat);
+            }
+
+            function startRhythm() {
+                generateChart();
+                score = 0;
+                combo = 0;
+                maxCombo = 0;
+                health = 100;
+                hitFeedback = "";
+                absoluteBeat = 0;
+                gameState = "playing";
+                seq.play();
+                playSound(sfx.powerup());
+            }
+
+            function triggerHitFeedback(text) {
+                hitFeedback = text;
+                hitFeedbackTimer = 0.4;
+            }
+
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
+
+                update(dt) {
+                    updateParticles(dt);
+
+                    if (
+                        gameState === "idle" ||
+                        gameState === "gameover" ||
+                        gameState === "victory"
+                    ) {
+                        if (keyPressed("Space") || mousePressed(0)) {
+                            startRhythm();
+                        }
+                        return;
+                    }
+
+                    seq.update(dt);
+                    if (gameState === "playing") {
+                        absoluteBeat += dt * (130 / 60);
+                    }
+
+                    if (!seq.playing && gameState === "playing") {
+                        seq.play();
+                    }
+
+                    if (hitFeedbackTimer > 0) {
+                        hitFeedbackTimer -= dt;
+                    }
+
+                    for (let l = 0; l < 4; l++) {
+                        if (keyPulse[l] > 0) keyPulse[l] -= dt * 6;
+                        if (keyPressed(laneKeys[l])) {
+                            keyPulse[l] = 1.0;
+
+                            let hitFound = false;
+                            for (const n of notes) {
+                                if (n.lane === l && !n.hit && !n.missed) {
+                                    const diff = Math.abs(
+                                        n.beat - absoluteBeat,
+                                    );
+                                    if (diff < 0.35) {
+                                        hitFound = true;
+                                        n.hit = true;
+
+                                        if (diff < 0.1) {
+                                            triggerHitFeedback("PERFECT!");
+                                            score += 100;
+                                            combo++;
+                                            playSound(
+                                                sfx.coin({
+                                                    volume: 0.15,
+                                                    frequency: 950,
+                                                }),
+                                            );
+                                            emitParticles({
+                                                pos: vec2(
+                                                    laneX[l] + 20,
+                                                    targetY,
+                                                ),
+                                                count: 10,
+                                                life: [0.25, 0.45],
+                                                speed: [40, 100],
+                                                color: ["#94e2d5", "#fff"],
+                                            });
+                                        } else if (diff < 0.22) {
+                                            triggerHitFeedback("GOOD");
+                                            score += 50;
+                                            combo++;
+                                            playSound(
+                                                sfx.coin({
+                                                    volume: 0.1,
+                                                    frequency: 650,
+                                                }),
+                                            );
+                                            emitParticles({
+                                                pos: vec2(
+                                                    laneX[l] + 20,
+                                                    targetY,
+                                                ),
+                                                count: 5,
+                                                life: [0.2, 0.35],
+                                                speed: [30, 70],
+                                                color: ["#fab387", "#f9e2af"],
+                                            });
+                                        } else {
+                                            triggerHitFeedback("BAD");
+                                            score += 10;
+                                            combo = 0;
+                                            playSound(
+                                                sfx.blip({
+                                                    volume: 0.1,
+                                                    pitch: 0.7,
+                                                }),
+                                            );
+                                        }
+
+                                        if (combo > maxCombo) maxCombo = combo;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (!hitFound) {
+                                playSound(
+                                    sfx.blip({ volume: 0.05, pitch: 1.8 }),
+                                );
+                            }
+                        }
+                    }
+
+                    for (const n of notes) {
+                        if (
+                            !n.hit &&
+                            !n.missed &&
+                            absoluteBeat > n.beat + 0.35
+                        ) {
+                            n.missed = true;
+                            combo = 0;
+                            health -= 8;
+                            triggerHitFeedback("MISS");
+                            playSound(sfx.hit({ volume: 0.2, pitch: 0.5 }));
+
+                            if (health <= 0) {
+                                gameState = "gameover";
+                                seq.stop();
+                                playSound(sfx.death());
+                            }
+                        }
+                    }
+
+                    if (gameState === "playing" && absoluteBeat > 108.0) {
+                        gameState = "victory";
+                        seq.stop();
+                        playSound(sfx.teleport({ volume: 0.2, pitch: 1.2 }));
+                    }
+                },
+
+                render() {
+                    clear("#11111b");
+
+                    for (let y = 0; y < H; y += 30) {
+                        drawLine(
+                            vec2(0, y),
+                            vec2(W, y),
+                            "rgba(49, 50, 68, 0.08)",
+                        );
+                    }
+
+                    for (let l = 0; l < 4; l++) {
+                        const lx = laneX[l];
+                        drawRect(
+                            vec2(lx, 40),
+                            vec2(40, targetY - 40),
+                            "rgba(30, 30, 46, 0.35)",
+                        );
+                        drawLine(
+                            vec2(lx, 40),
+                            vec2(lx, targetY),
+                            "rgba(49, 50, 68, 0.2)",
+                        );
+                        drawLine(
+                            vec2(lx + 40, 40),
+                            vec2(lx + 40, targetY),
+                            "rgba(49, 50, 68, 0.2)",
+                        );
+
+                        const pulseVal = keyPulse[l];
+                        const recColor = Color.fromHex(laneColors[l]).lerp(
+                            Color.fromHex("#1e1e2e"),
+                            0.7 - pulseVal * 0.7,
+                        );
+                        drawRect(
+                            vec2(lx + 2, targetY - 4),
+                            vec2(36, 8),
+                            recColor,
+                        );
+                        drawRectOutline(
+                            vec2(lx + 1, targetY - 5),
+                            vec2(38, 10),
+                            laneColors[l],
+                            1.5,
+                        );
+                    }
+
+                    drawLine(vec2(0, targetY), vec2(W, targetY), "#585b70", 1);
+
+                    if (gameState === "playing") {
+                        for (const n of notes) {
+                            if (n.hit || n.missed) continue;
+
+                            const ny =
+                                targetY - (n.beat - absoluteBeat) * beatSpacing;
+
+                            if (ny > 35 && ny < targetY + 20) {
+                                const lx = laneX[n.lane];
+                                drawRect(
+                                    vec2(lx + 3, ny - 6),
+                                    vec2(34, 12),
+                                    laneColors[n.lane],
+                                );
+                                drawRect(
+                                    vec2(lx + 5, ny - 4),
+                                    vec2(30, 2),
+                                    "rgba(255, 255, 255, 0.45)",
+                                );
+                                drawRectOutline(
+                                    vec2(lx + 2, ny - 7),
+                                    vec2(36, 14),
+                                    "#fff",
+                                    1,
+                                );
+                            }
+                        }
+                    }
+
+                    renderParticles();
+
+                    if (hitFeedbackTimer > 0 && gameState === "playing") {
+                        const fontCol =
+                            hitFeedback === "PERFECT!"
+                                ? "#94e2d5"
+                                : hitFeedback === "GOOD"
+                                  ? "#fab387"
+                                  : "#f38ba8";
+                        drawText(hitFeedback, vec2(W / 2, 120), {
+                            font: "bold 20px 'Monaspace Neon'",
+                            color: fontCol,
+                            align: "center",
+                        });
+                        if (combo > 1) {
+                            drawText(`${combo} COMBO`, vec2(W / 2, 145), {
+                                font: "bold 11px 'Monaspace Neon'",
+                                color: "#cba6f7",
+                                align: "center",
+                            });
+                        }
+                    }
+
+                    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
+                    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+
+                    drawText(`SCORE: ${score}`, vec2(16, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#fab387",
+                    });
+                    drawText(`MAX COMBO: ${maxCombo}`, vec2(130, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#cba6f7",
+                    });
+
+                    drawText("INTEGRITY:", vec2(W - 160, 10), {
+                        font: "9px 'Monaspace Neon'",
+                        color: "#a6adc8",
+                    });
+                    drawRect(vec2(W - 90, 11), vec2(74, 8), "#313244");
+                    drawRect(
+                        vec2(W - 90, 11),
+                        vec2(74 * (health / 100), 8),
+                        "#f38ba8",
+                    );
+
+                    for (let l = 0; l < 4; l++) {
+                        const keyLabel = ["D", "F", "J", "K"][l];
+                        const activeColor =
+                            keyPulse[l] > 0.1 ? "#fff" : "#585b70";
+                        drawText(keyLabel, vec2(laneX[l] + 20, targetY + 25), {
+                            font: "bold 12px 'Monaspace Neon'",
+                            color: activeColor,
+                            align: "center",
+                        });
+                    }
+
+                    if (gameState === "idle") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.85)",
+                        );
+                        drawText(
+                            "BEATGRID SYNC // CHIPTUNE DANCE",
+                            vec2(W / 2, H / 2 - 20),
+                            {
+                                font: "bold 18px 'Monaspace Neon'",
+                                color: "#cba6f7",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "PRESS SPACE TO DEPLOY SEQUENCE",
+                            vec2(W / 2, H / 2 + 10),
+                            {
+                                font: "10px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "USE D, F, J, K KEYS ON TARGET RECEPTORS",
+                            vec2(W / 2, H / 2 + 35),
+                            {
+                                font: "8px 'Monaspace Neon'",
+                                color: "#585b70",
+                                align: "center",
+                            },
+                        );
+                    } else if (gameState === "gameover") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.9)",
+                        );
+                        drawText(
+                            "SYNCHRONIZATION TERMINATED // FAILED",
+                            vec2(W / 2, H / 2 - 15),
+                            {
+                                font: "bold 14px 'Monaspace Neon'",
+                                color: "#f38ba8",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            `FINAL SCORE: ${score}  // MAX COMBO: ${maxCombo}`,
+                            vec2(W / 2, H / 2 + 10),
+                            {
+                                font: "10px 'Monaspace Neon'",
+                                color: "#fab387",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "PRESS SPACE OR CLICK TO REDEPLOY",
+                            vec2(W / 2, H / 2 + 35),
+                            {
+                                font: "9px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+                    } else if (gameState === "victory") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.95)",
+                        );
+                        drawText(
+                            "SYNCHRONIZATION ESTABLISHED // SUCCESS",
+                            vec2(W / 2, H / 2 - 15),
+                            {
+                                font: "bold 14px 'Monaspace Neon'",
+                                color: "#a6e3a1",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            `FINAL SCORE: ${score}  // MAX COMBO: ${maxCombo}`,
+                            vec2(W / 2, H / 2 + 10),
+                            {
+                                font: "10px 'Monaspace Neon'",
+                                color: "#fab387",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "PRESS SPACE OR CLICK TO RUN AGAIN",
+                            vec2(W / 2, H / 2 + 35),
+                            {
+                                font: "9px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+                    }
+                },
+            });
+
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
+</html>
