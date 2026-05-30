@@ -156,12 +156,17 @@ export class ParticleSystem {
     private _rSize = new Vec2(0, 0);
     private _rColor = new Color(1, 1, 1, 1);
 
+    /** Free-list of indices of inactive particles in the pool. */
+    private _freeList: number[] = [];
+
     // ── Pool ──────────────────────────────────────────────────────────
 
     private _alloc(): Particle {
-        for (const p of this.pool) {
-            if (!p.active) return p;
-        }
+        // Reuse an inactive particle via free-list (O(1))
+        const idx = this._freeList.pop();
+        if (idx !== undefined) return this.pool[idx];
+
+        // No inactive particles — create a new one
         const p: Particle = {
             emitter: null,
             x: 0,
@@ -226,10 +231,12 @@ export class ParticleSystem {
     /** Remove an emitter and kill all its particles. */
     removeEmitter(e: Emitter): void {
         e.kill();
-        for (const p of this.pool) {
+        for (let i = 0; i < this.pool.length; i++) {
+            const p = this.pool[i];
             if (p.emitter === e && p.active) {
                 p.active = false;
                 p.emitter = null;
+                this._freeList.push(i);
             }
         }
         e._activeCount = 0;
@@ -366,9 +373,11 @@ export class ParticleSystem {
 
     /** Immediately kill all emitters and particles. */
     clear(): void {
-        for (const p of this.pool) {
-            p.active = false;
-            p.emitter = null;
+        this._freeList.length = 0;
+        for (let i = 0; i < this.pool.length; i++) {
+            this.pool[i].active = false;
+            this.pool[i].emitter = null;
+            this._freeList.push(i);
         }
         for (const e of this.emitters) {
             e._activeCount = 0;
@@ -486,6 +495,7 @@ export class ParticleSystem {
             if (!p.active) continue;
             if (!p.emitter) {
                 p.active = false;
+                this._freeList.push(i);
                 continue;
             }
 
@@ -494,6 +504,7 @@ export class ParticleSystem {
                 p.active = false;
                 p.emitter._activeCount--;
                 p.emitter = null;
+                this._freeList.push(i);
                 continue;
             }
 
