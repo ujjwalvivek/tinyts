@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { playSound } from "../../../dist/tinyts.esm.js";
+import { playSound } from "../../index.ts";
 
 // Stub AudioContext so playSound doesn't throw in Node.js
 if (typeof globalThis.AudioContext === "undefined") {
@@ -65,7 +65,7 @@ if (typeof globalThis.AudioContext === "undefined") {
 // through the sfx namespace by checking the public API.
 
 test("audio presets are exported via sfx namespace", async () => {
-    const mod = await import("../../../dist/tinyts.esm.js");
+    const mod = await import("../../index.ts");
 
     // The bundle should expose the sfx namespace
     assert.ok(mod.sfx !== undefined, "sfx namespace is exported");

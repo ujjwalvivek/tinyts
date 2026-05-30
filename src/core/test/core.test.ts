@@ -11,7 +11,7 @@ import {
     rect,
     rgb,
     vec2,
-} from "../../../dist/tinyts.esm.js";
+} from "../../index.ts";
 
 test("vec2 mutating operations are chainable and predictable", () => {
     const v = vec2(3, 4);

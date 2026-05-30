@@ -134,7 +134,7 @@ function createFakeDom({ dpr = 1 } = {}) {
 
 async function setupEngine(config = {}, domOptions = {}) {
   const dom = createFakeDom(domOptions);
-  const mod = await import(`../../../dist/tinyts.esm.js?renderer=${Math.random()}`);
+  const mod = await import(`../../index.ts?renderer=${Math.random()}`);
   mod.engineStart({ size: { width: 640, height: 360 }, ...config });
   return { dom, mod };
 }
@@ -202,7 +202,7 @@ test('Canvas2D framebuffer clear uses framebuffer dimensions', async () => {
 });
 
 test('procedural drawing functions invoke correct canvas 2d methods', async () => {
-  const mod = await import('../../../dist/tinyts.esm.js');
+  const mod = await import('../../index.ts');
   const canvas = {
     width: 100,
     height: 100,

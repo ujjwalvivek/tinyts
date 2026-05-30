@@ -6,7 +6,7 @@ import {
   tilemapFromString,
   vec2,
   moveTilemap,
-} from '../../../dist/tinyts.esm.js';
+} from '../../index.ts';
 
 function makeMap() {
   return tilemapFromString(`

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   noise2D,
   fractalNoise2D,
-} from '../../../dist/tinyts.esm.js';
+} from '../../index.ts';
 
 test('noise2D returns values in [0, 1] range', () => {
   for (let x = 0; x < 10; x++) {

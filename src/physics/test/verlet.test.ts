@@ -9,7 +9,7 @@ import {
     verletSolveStick,
     updateVerletRope,
     vec2,
-} from "../../../dist/tinyts.esm.js";
+} from "../../index.ts";
 
 test("createVerletPoint stores position and pin state", () => {
     const p = createVerletPoint(10, 20, true);

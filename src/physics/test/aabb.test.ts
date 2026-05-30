@@ -7,7 +7,7 @@ import {
   aabbOverlapResult,
   moveAABB,
   vec2,
-} from '../../../dist/tinyts.esm.js';
+} from '../../index.ts';
 
 test('aabbOverlap detects intersections but not touching edges', () => {
   assert.equal(

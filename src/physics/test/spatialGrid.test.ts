@@ -5,7 +5,7 @@ import {
   aabb,
   createSpatialGrid,
   vec2,
-} from '../../../dist/tinyts.esm.js';
+} from '../../index.ts';
 
 function sorted(set) {
   return [...set].sort((a, b) => a - b);

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { Timer, engineStart, engineStop } from "../../../dist/tinyts.esm.js";
+import { Timer, engineStart, engineStop } from "../../index.ts";
 
 // Create a minimal engine so Timer's engine-time mode has something to reference
 test.before(() => {

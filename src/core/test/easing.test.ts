@@ -9,7 +9,7 @@ import {
   quadOut,
   tween,
   updateTweens,
-} from '../../../dist/tinyts.esm.js';
+} from '../../index.ts';
 
 test('basic easing functions preserve endpoints', () => {
   for (const easing of [linear, quadIn, quadOut]) {

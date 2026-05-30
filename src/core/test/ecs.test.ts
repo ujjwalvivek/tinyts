@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Registry, Parent, Children } from '../../../dist/tinyts.esm.js';
+import { Registry, Parent, Children } from '../../index.ts';
 
 class Position {
   constructor(x, y) {

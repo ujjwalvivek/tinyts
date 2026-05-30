@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { SpriteAnimation } from '../../../dist/tinyts.esm.js';
+import { SpriteAnimation } from '../../index.ts';
 
 test('SpriteAnimation loops and updates frames correctly', () => {
   const anim = new SpriteAnimation({

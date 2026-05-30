@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { Pattern, Sequencer, midiToFreq } from "../../../dist/tinyts.esm.js";
+import { Pattern, Sequencer, midiToFreq } from "../../index.ts";
 
 // Stub AudioContext so playSound calls don't crash in Node.js
 if (typeof globalThis.AudioContext === "undefined") {

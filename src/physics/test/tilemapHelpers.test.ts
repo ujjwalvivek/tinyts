@@ -8,7 +8,7 @@ import {
   drawCircleTiles,
   stampTiles,
   stampTilemap,
-} from '../../../dist/tinyts.esm.js';
+} from '../../index.ts';
 
 function emptyMap(w, h) {
   return tilemapFromString(
