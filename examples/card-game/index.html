@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="Tactical card battle game." />
+        <title>TinyTS - Card Battle</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
+
+            const deckPos = vec2(W - 80, H - 90);
+            const hand = [];
+            let playedCards = [];
+            let gold = 3;
+            let turn = 1;
+            let bossHp = 50;
+            let bossMaxHp = 50;
+            let playerHp = 30;
+            let playerMaxHp = 30;
+            let playerShield = 0;
+            let gameState = "playing";
+
+            let draggedCard = null;
+            let dragOffset = vec2(0, 0);
+
+            bindAction("click", ["Mouse0"]);
+
+            const cardTypes = [
+                {
+                    name: "PLASMA BEAM",
+                    type: "attack",
+                    val: 6,
+                    cost: 1,
+                    desc: "Deal 6 dmg",
+                    color: "#f38ba8",
+                },
+                {
+                    name: "SHIELD MATRIX",
+                    type: "defense",
+                    val: 5,
+                    cost: 1,
+                    desc: "Gain 5 block",
+                    color: "#89b4fa",
+                },
+                {
+                    name: "NANO SWARM",
+                    type: "attack",
+                    val: 12,
+                    cost: 2,
+                    desc: "Deal 12 dmg",
+                    color: "#cba6f7",
+                },
+                {
+                    name: "OVERCHARGE",
+                    type: "power",
+                    val: 2,
+                    cost: 0,
+                    desc: "Gain 2 energy",
+                    color: "#a6e3a1",
+                },
+            ];
+
+            function drawCard() {
+                if (hand.length >= 7) return;
+                const type = choose(cardTypes);
+
+                hand.push({
+                    ...type,
+                    pos: deckPos.clone(),
+                    targetPos: vec2(0, 0),
+                    size: vec2(66, 96),
+                    isHovered: false,
+                });
+                playSound(sfx.dash({ volume: 0.15 }));
+            }
+
+            function initHand() {
+                hand.length = 0;
+                playedCards = [];
+                bossHp = 50;
+                playerHp = 30;
+                playerShield = 0;
+                gold = 3;
+                gameState = "playing";
+
+                for (let i = 0; i < 4; i++) {
+                    setTimeout(drawCard, i * 180);
+                }
+            }
+
+            function updateHandTargetPositions() {
+                const count = hand.length;
+                if (count === 0) return;
+
+                const spacing = 72;
+                const startX = W / 2 - ((count - 1) * spacing) / 2;
+
+                for (let i = 0; i < count; i++) {
+                    const card = hand[i];
+                    if (card === draggedCard) continue;
+
+                    const x = startX + i * spacing;
+                    const mid = (count - 1) / 2;
+                    const yOffset = Math.pow(i - mid, 2) * 3;
+                    const y = H - 100 + yOffset;
+
+                    card.targetPos.set(x, y);
+                }
+            }
+
+            function drawCardArtwork(card, cx, cy, w, h) {
+                drawRect(vec2(cx + 6, cy + 24), vec2(w - 12, 32), "#11111b");
+                drawRectOutline(
+                    vec2(cx + 6, cy + 24),
+                    vec2(w - 12, 32),
+                    "#313244",
+                    1,
+                );
+
+                const artCenter = vec2(cx + w / 2, cy + 40);
+                if (card.type === "attack") {
+                    drawCircle(artCenter, 8, "rgba(243, 139, 168, 0.15)");
+                    drawLine(
+                        vec2(artCenter.x - 10, artCenter.y + 8),
+                        vec2(artCenter.x + 10, artCenter.y - 8),
+                        card.color,
+                        2,
+                    );
+                    drawLine(
+                        vec2(artCenter.x - 4, artCenter.y + 3),
+                        vec2(artCenter.x + 9, artCenter.y - 7),
+                        "#fff",
+                        1,
+                    );
+                    drawCircle(artCenter, 2.5, "#fff");
+                } else if (card.type === "defense") {
+                    drawCircle(artCenter, 8, "rgba(137, 180, 250, 0.15)");
+                    drawCircleOutline(artCenter, 6, card.color, 1.5);
+                    drawRectOutline(
+                        vec2(artCenter.x - 4, artCenter.y - 4),
+                        vec2(8, 8),
+                        "#fff",
+                        1,
+                    );
+                } else if (card.type === "power") {
+                    drawCircle(artCenter, 8, "rgba(166, 227, 161, 0.15)");
+                    drawLine(
+                        vec2(artCenter.x, artCenter.y - 8),
+                        vec2(artCenter.x - 3, artCenter.y + 1),
+                        card.color,
+                        2,
+                    );
+                    drawLine(
+                        vec2(artCenter.x - 3, artCenter.y + 1),
+                        vec2(artCenter.x + 3, artCenter.y - 1),
+                        "#fff",
+                        1.5,
+                    );
+                    drawLine(
+                        vec2(artCenter.x + 3, artCenter.y - 1),
+                        vec2(artCenter.x, artCenter.y + 8),
+                        card.color,
+                        2,
+                    );
+                }
+            }
+
+            initHand();
+
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
+
+                update(dt) {
+                    updateParticles(dt);
+
+                    if (gameState !== "playing") {
+                        if (mousePressed(0)) {
+                            initHand();
+                        }
+                        return;
+                    }
+
+                    updateHandTargetPositions();
+
+                    for (const card of hand) {
+                        if (card !== draggedCard) {
+                            card.pos.lerp(card.targetPos, 8 * dt);
+                        }
+                    }
+
+                    const mp = mousePos();
+                    const mx = mp.x;
+                    const my = mp.y;
+
+                    if (!draggedCard) {
+                        for (let i = hand.length - 1; i >= 0; i--) {
+                            const card = hand[i];
+
+                            const xOverlap =
+                                mx >= card.pos.x - card.size.x / 2 &&
+                                mx <= card.pos.x + card.size.x / 2;
+                            const yOverlap =
+                                my >= card.pos.y - card.size.y / 2 &&
+                                my <= card.pos.y + card.size.y / 2;
+
+                            if (xOverlap && yOverlap) {
+                                card.isHovered = true;
+
+                                if (mousePressed(0)) {
+                                    draggedCard = card;
+                                    dragOffset.set(
+                                        card.pos.x - mx,
+                                        card.pos.y - my,
+                                    );
+                                    playSound(sfx.blip({ volume: 0.15 }));
+                                    break;
+                                }
+                            } else {
+                                card.isHovered = false;
+                            }
+                        }
+                    } else {
+                        draggedCard.pos.set(
+                            mx + dragOffset.x,
+                            my + dragOffset.y,
+                        );
+
+                        if (!mouseDown(0)) {
+                            const onBoard = draggedCard.pos.y < H - 140;
+
+                            if (onBoard && gold >= draggedCard.cost) {
+                                gold -= draggedCard.cost;
+                                playSound(sfx.hit({ volume: 0.25 }));
+
+                                if (draggedCard.type === "attack") {
+                                    bossHp = Math.max(
+                                        0,
+                                        bossHp - draggedCard.val,
+                                    );
+
+                                    emitParticles({
+                                        pos: vec2(W / 2 + 10, 100),
+                                        count: 12,
+                                        life: [0.2, 0.45],
+                                        speed: [45, 110],
+                                        color: [draggedCard.color, "#fff"],
+                                    });
+
+                                    if (bossHp <= 0) {
+                                        gameState = "victory";
+                                        playSound(sfx.powerup());
+                                    }
+                                } else if (draggedCard.type === "defense") {
+                                    playerShield += draggedCard.val;
+
+                                    emitParticles({
+                                        pos: vec2(W / 2 - 170, 180),
+                                        count: 8,
+                                        life: [0.2, 0.45],
+                                        speed: [30, 80],
+                                        color: ["#89b4fa", "#fff"],
+                                    });
+                                } else if (draggedCard.type === "power") {
+                                    gold = Math.min(6, gold + draggedCard.val);
+                                    emitParticles({
+                                        pos: draggedCard.pos.clone(),
+                                        count: 8,
+                                        life: [0.2, 0.4],
+                                        speed: [20, 60],
+                                        color: ["#a6e3a1", "#fff"],
+                                    });
+                                }
+
+                                const idx = hand.indexOf(draggedCard);
+                                if (idx !== -1) hand.splice(idx, 1);
+                            } else {
+                                playSound(sfx.menuCancel({ volume: 0.15 }));
+                            }
+
+                            draggedCard = null;
+                        }
+                    }
+
+                    if (
+                        mousePressed(0) &&
+                        mx > W - 100 &&
+                        my > 130 &&
+                        my < 165
+                    ) {
+                        const dmg = Math.max(0, 8 - playerShield);
+                        playerShield = Math.max(0, playerShield - 8);
+                        playerHp = Math.max(0, playerHp - dmg);
+                        playSound(sfx.explosion({ volume: 0.2, pitch: 0.8 }));
+
+                        emitParticles({
+                            pos: vec2(W / 2 - 170, 180),
+                            count: 10,
+                            life: [0.3, 0.55],
+                            speed: [40, 100],
+                            color: ["#f38ba8", "#fab387"],
+                        });
+
+                        if (playerHp <= 0) {
+                            gameState = "gameover";
+                            playSound(sfx.death());
+                        } else {
+                            gold = 3;
+                            for (let i = 0; i < 3; i++) {
+                                setTimeout(drawCard, i * 150);
+                            }
+                        }
+                    }
+                },
+
+                render() {
+                    clear("#11111b");
+
+                    for (let x = 0; x < W; x += 40) {
+                        drawLine(
+                            vec2(x, 0),
+                            vec2(x, H),
+                            "rgba(49, 50, 68, 0.08)",
+                        );
+                    }
+
+                    drawRect(vec2(W - 105, 130), vec2(90, 32), "#313244");
+                    drawRectOutline(
+                        vec2(W - 105, 130),
+                        vec2(90, 32),
+                        "#cba6f7",
+                        1,
+                    );
+                    drawText("END TURN", vec2(W - 60, 148), {
+                        font: "bold 9px 'Monaspace Neon'",
+                        color: "#cdd6f4",
+                        align: "center",
+                        baseline: "middle",
+                    });
+
+                    drawLine(vec2(0, H - 150), vec2(W, H - 150), "#313244", 1);
+                    drawText(
+                        "BOARD ZONE // RELEASE CARD HERE TO ACTIVATE",
+                        vec2(20, H - 162),
+                        { font: "7px 'Monaspace Neon'", color: "#585b70" },
+                    );
+
+                    const bossX = W / 2 + 10;
+                    const bossY = 100;
+                    drawCircle(vec2(bossX, bossY), 24, "#181825");
+                    drawCircleOutline(vec2(bossX, bossY), 24, "#f38ba8", 2);
+                    drawCircle(
+                        vec2(bossX, bossY),
+                        8 + Math.sin(time * 4) * 2,
+                        "#f38ba8",
+                    );
+                    drawText("MATRIX OVERLORD", vec2(bossX, bossY - 34), {
+                        font: "bold 9px 'Monaspace Neon'",
+                        color: "#f38ba8",
+                        align: "center",
+                    });
+
+                    const bossBarW = 100;
+                    drawRect(
+                        vec2(bossX - bossBarW / 2, bossY + 32),
+                        vec2(bossBarW, 6),
+                        "#313244",
+                    );
+                    drawRect(
+                        vec2(bossX - bossBarW / 2, bossY + 32),
+                        vec2(bossBarW * (bossHp / bossMaxHp), 6),
+                        "#f38ba8",
+                    );
+                    drawText(
+                        `${bossHp}/${bossMaxHp} HP`,
+                        vec2(bossX, bossY + 52),
+                        {
+                            font: "8px 'Monaspace Neon'",
+                            color: "#a6adc8",
+                            align: "center",
+                        },
+                    );
+
+                    const playX = W / 2 - 170;
+                    const playY = 180;
+                    drawCircle(vec2(playX, playY), 16, "#89b4fa");
+                    drawText("CORE ENERGY", vec2(playX, playY - 24), {
+                        font: "bold 9px 'Monaspace Neon'",
+                        color: "#89b4fa",
+                        align: "center",
+                    });
+
+                    const playBarW = 80;
+                    drawRect(
+                        vec2(playX - playBarW / 2, playY + 22),
+                        vec2(playBarW, 6),
+                        "#313244",
+                    );
+                    drawRect(
+                        vec2(playX - playBarW / 2, playY + 22),
+                        vec2(playBarW * (playerHp / playerMaxHp), 6),
+                        "#a6e3a1",
+                    );
+                    drawText(
+                        `${playerHp}/${playerMaxHp} HP`,
+                        vec2(playX, playY + 40),
+                        {
+                            font: "8px 'Monaspace Neon'",
+                            color: "#a6adc8",
+                            align: "center",
+                        },
+                    );
+
+                    if (playerShield > 0) {
+                        drawText(
+                            `BLOCK: +${playerShield}`,
+                            vec2(playX, playY + 52),
+                            {
+                                font: "bold 8px 'Monaspace Neon'",
+                                color: "#89b4fa",
+                                align: "center",
+                            },
+                        );
+                    }
+
+                    for (const card of hand) {
+                        if (card === draggedCard) continue;
+
+                        const px = card.pos.x;
+                        const py = card.pos.y;
+                        const cx = px - card.size.x / 2;
+                        const cy = py - card.size.y / 2;
+
+                        drawRect(vec2(cx, cy), card.size, "#1e1e2e");
+                        drawRect(
+                            vec2(cx, cy),
+                            vec2(card.size.x, 18),
+                            card.color,
+                        );
+                        drawText(card.name, vec2(cx + 4, cy + 12), {
+                            font: "bold 6.5px 'Monaspace Neon'",
+                            color: "#11111b",
+                        });
+                        drawCircle(
+                            vec2(cx + card.size.x - 10, cy + 9),
+                            6,
+                            "#11111b",
+                        );
+                        drawText(
+                            `${card.cost}`,
+                            vec2(cx + card.size.x - 10, cy + 9),
+                            {
+                                font: "bold 7px 'Monaspace Neon'",
+                                color: "#f9e2af",
+                                align: "center",
+                                baseline: "middle",
+                            },
+                        );
+                        drawCardArtwork(card, cx, cy, card.size.x, card.size.y);
+                        drawText(card.desc, vec2(cx + 6, cy + 72), {
+                            font: "6.5px 'Monaspace Neon'",
+                            color: "#a6adc8",
+                        });
+
+                        const borderCol = card.isHovered ? "#fff" : "#313244";
+                        drawRectOutline(
+                            vec2(cx, cy),
+                            card.size,
+                            borderCol,
+                            card.isHovered ? 1.5 : 1,
+                        );
+                    }
+
+                    if (draggedCard) {
+                        const card = draggedCard;
+                        const px = card.pos.x;
+                        const py = card.pos.y;
+                        const cx = px - card.size.x / 2;
+                        const cy = py - card.size.y / 2;
+
+                        const sizeScale = vec2(
+                            card.size.x * 1.05,
+                            card.size.y * 1.05,
+                        );
+
+                        drawRect(vec2(cx, cy), sizeScale, "#181825");
+                        drawRect(
+                            vec2(cx, cy),
+                            vec2(sizeScale.x, 20),
+                            card.color,
+                        );
+                        drawText(card.name, vec2(cx + 5, cy + 13), {
+                            font: "bold 7px 'Monaspace Neon'",
+                            color: "#11111b",
+                        });
+
+                        drawCircle(
+                            vec2(cx + sizeScale.x - 10, cy + 10),
+                            6.5,
+                            "#11111b",
+                        );
+                        drawText(
+                            `${card.cost}`,
+                            vec2(cx + sizeScale.x - 10, cy + 10),
+                            {
+                                font: "bold 7.5px 'Monaspace Neon'",
+                                color: "#f9e2af",
+                                align: "center",
+                                baseline: "middle",
+                            },
+                        );
+
+                        drawCardArtwork(card, cx, cy, sizeScale.x, sizeScale.y);
+
+                        drawText(card.desc, vec2(cx + 6, cy + 78), {
+                            font: "7px 'Monaspace Neon'",
+                            color: "#cdd6f4",
+                        });
+                        drawRectOutline(vec2(cx, cy), sizeScale, "#fff", 2);
+                    }
+
+                    renderParticles();
+
+                    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
+                    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+
+                    drawText(`ENERGY: ${gold} / 3`, vec2(16, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#f9e2af",
+                    });
+                    drawText(
+                        "DRAG CARDS UP TO ENGAGE OPPONENT",
+                        vec2(W / 2, 10),
+                        {
+                            font: "9px 'Monaspace Neon'",
+                            color: "#a6adc8",
+                            align: "center",
+                        },
+                    );
+                    drawText(`DECK DEPLOYED`, vec2(W - 16, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#cba6f7",
+                        align: "right",
+                    });
+
+                    if (gameState === "gameover") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.85)",
+                        );
+                        drawText(
+                            "CORE ENERGY DEPLETED // DEFEATED",
+                            vec2(W / 2, H / 2 - 15),
+                            {
+                                font: "bold 16px 'Monaspace Neon'",
+                                color: "#f38ba8",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "TAP ANYWHERE TO RESTART DEAL",
+                            vec2(W / 2, H / 2 + 25),
+                            {
+                                font: "9px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+                    } else if (gameState === "victory") {
+                        drawRect(
+                            vec2(0, 0),
+                            vec2(W, H),
+                            "rgba(17, 17, 27, 0.85)",
+                        );
+                        drawText(
+                            "MATRIX SYSTEM BYPASSED // VICTORY",
+                            vec2(W / 2, H / 2 - 15),
+                            {
+                                font: "bold 16px 'Monaspace Neon'",
+                                color: "#a6e3a1",
+                                align: "center",
+                            },
+                        );
+                        drawText(
+                            "TAP ANYWHERE TO CARVE A NEW BATTLE",
+                            vec2(W / 2, H / 2 + 25),
+                            {
+                                font: "9px 'Monaspace Neon'",
+                                color: "#a6adc8",
+                                align: "center",
+                            },
+                        );
+                    }
+                },
+            });
+
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
+</html>
