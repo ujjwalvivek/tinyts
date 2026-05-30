@@ -38,9 +38,10 @@
         "docs": "typedoc && cp -r examples docs/examples && cp -r dist docs/dist"
     },
     "devDependencies": {
+        "@types/node": "^25.9.1",
         "esbuild": "^0.25.0",
+        "tsx": "^4.22.3",
         "typedoc": "^0.28.19",
-        "typescript": "^5.7.0",
-        "tsx": "^4.22.3"
+        "typescript": "^5.7.0"
     }
 }
