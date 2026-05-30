@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="Idle upgrade clicking game." />
+        <title>TinyTS - Idle Clicker</title>
+        <style>
+            @font-face {
+                font-family: "Monaspace Neon";
+                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                    format("woff2");
+                font-weight: 100 900;
+                font-style: normal;
+                font-display: block;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #1e1e2e;
+                color: #cdd6f4;
+                font-family: "Monaspace Neon", monospace;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100vw;
+                height: 100vh;
+            }
+            #canvas-container {
+                width: 100%;
+                height: 100%;
+                position: relative;
+                background: #11111b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #canvas-container canvas {
+                position: absolute !important;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                max-width: 95% !important;
+                max-height: 95% !important;
+                width: auto !important;
+                height: auto !important;
+                aspect-ratio: 16/9 !important;
+                border: 2px dashed #cba6f7;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container"></div>
+        <script src="../../dist/tinyts.js"></script>
+        <script>
+            const W = 640,
+                H = 360;
+
+            let credits = 0;
+            let clickPower = 1;
+            let planetBaseRadius = 55;
+            let planetRadius = 55;
+            let planetAngle = 0;
+
+            const upgrades = [
+                {
+                    name: "AUTO-DRONE",
+                    cost: 15,
+                    count: 0,
+                    income: 0.8,
+                    desc: "+0.8 cr/sec",
+                    color: "#f38ba8",
+                },
+                {
+                    name: "THERMAL CORE",
+                    cost: 100,
+                    count: 0,
+                    income: 5,
+                    desc: "+5.0 cr/sec",
+                    color: "#fab387",
+                },
+                {
+                    name: "SOLAR FARM",
+                    cost: 600,
+                    count: 0,
+                    income: 32,
+                    desc: "+32.0 cr/sec",
+                    color: "#f9e2af",
+                },
+                {
+                    name: "DYSON SHELL",
+                    cost: 4000,
+                    count: 0,
+                    income: 240,
+                    desc: "+240 cr/sec",
+                    color: "#cba6f7",
+                },
+            ];
+
+            const floatingTexts = [];
+
+            bindAction("click", ["Mouse0"]);
+
+            function spawnFloatText(text, x, y) {
+                floatingTexts.push({
+                    pos: vec2(x, y),
+                    text: text,
+                    alpha: 1.0,
+                    speed: rand(40, 70),
+                    angle: rand(-Math.PI * 0.6, -Math.PI * 0.4),
+                });
+            }
+
+            const engine = engineStart({
+                size: { width: W, height: H },
+                pixelated: true,
+
+                update(dt) {
+                    updateParticles(dt);
+
+                    planetAngle += dt * 0.45;
+
+                    planetRadius = lerp(planetRadius, planetBaseRadius, 8 * dt);
+
+                    let totalIncome = 0;
+                    for (const upg of upgrades) {
+                        totalIncome += upg.count * upg.income;
+                    }
+                    credits += totalIncome * dt;
+
+                    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                        const f = floatingTexts[i];
+                        f.pos.x += Math.cos(f.angle) * f.speed * dt;
+                        f.pos.y += Math.sin(f.angle) * f.speed * dt;
+                        f.alpha -= dt * 1.5;
+                        if (f.alpha <= 0) {
+                            floatingTexts.splice(i, 1);
+                        }
+                    }
+
+                    if (mousePressed(0)) {
+                        const mp = mousePos();
+                        const mx = mp.x;
+                        const my = mp.y;
+
+                        const planetCenter = vec2(220, H / 2 + 10);
+                        const mouseDist = planetCenter.distanceTo(vec2(mx, my));
+
+                        if (mouseDist <= planetRadius) {
+                            credits += clickPower;
+                            planetRadius = planetBaseRadius * 1.15;
+                            playSound(
+                                sfx.coin({
+                                    volume: 0.16,
+                                    frequency: 800 + clickPower * 5,
+                                }),
+                            );
+                            spawnFloatText(`+${clickPower}`, mx, my);
+
+                            emitParticles({
+                                pos: vec2(mx, my),
+                                count: 5,
+                                life: [0.15, 0.3],
+                                speed: [30, 80],
+                                color: ["#89b4fa", "#fff"],
+                            });
+                        }
+
+                        const shopX = W - 180;
+                        if (mx >= shopX + 10 && mx <= W - 10) {
+                            for (let i = 0; i < upgrades.length; i++) {
+                                const upg = upgrades[i];
+                                const itemY = 60 + i * 65;
+
+                                if (my >= itemY && my <= itemY + 50) {
+                                    if (credits >= upg.cost) {
+                                        credits -= upg.cost;
+                                        upg.count++;
+                                        upg.cost = Math.floor(upg.cost * 1.16);
+
+                                        playSound(
+                                            sfx.powerup({
+                                                volume: 0.22,
+                                                pitch: 1.1 + i * 0.1,
+                                            }),
+                                        );
+
+                                        if (i === 1) clickPower += 1;
+                                        if (i === 2) clickPower += 5;
+                                        if (i === 3) clickPower += 25;
+
+                                        emitParticles({
+                                            pos: vec2(mx, my),
+                                            count: 12,
+                                            life: [0.25, 0.45],
+                                            speed: [35, 90],
+                                            color: [upg.color, "#fff"],
+                                        });
+                                    } else {
+                                        playSound(
+                                            sfx.menuCancel({ volume: 0.15 }),
+                                        );
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                },
+
+                render() {
+                    clear("#11111b");
+
+                    for (let x = 0; x < W - 180; x += 40) {
+                        drawLine(
+                            vec2(x, 0),
+                            vec2(x, H),
+                            "rgba(49, 50, 68, 0.08)",
+                        );
+                    }
+
+                    const px = 220;
+                    const py = H / 2 + 10;
+                    const center = vec2(px, py);
+
+                    drawCircle(
+                        center,
+                        planetRadius + 10 + Math.sin(time * 3) * 3,
+                        "rgba(137, 180, 250, 0.08)",
+                    );
+                    drawCircle(center, planetRadius + 4, "#1e1e2e");
+                    drawCircleOutline(center, planetRadius + 4, "#89b4fa", 2);
+
+                    for (let i = 0; i < 8; i++) {
+                        const angle = planetAngle + (i / 8) * Math.PI * 2;
+                        const wx = px + Math.cos(angle) * (planetRadius - 8);
+                        const wy = py + Math.sin(angle) * (planetRadius - 8);
+                        drawCircle(vec2(wx, wy), 5, "#cba6f7");
+                    }
+                    drawCircle(center, planetRadius - 16, "#181825");
+                    drawCircle(center, planetRadius - 26, "#89b4fa");
+
+                    drawText("TAP CORE", vec2(px, py), {
+                        font: "bold 9px 'Monaspace Neon'",
+                        color: "#11111b",
+                        align: "center",
+                        baseline: "middle",
+                    });
+
+                    for (const f of floatingTexts) {
+                        drawText(f.text, f.pos, {
+                            font: "bold 12px 'Monaspace Neon'",
+                            color: `rgba(205, 214, 244, ${f.alpha})`,
+                            align: "center",
+                        });
+                    }
+
+                    renderParticles();
+
+                    const shopX = W - 180;
+                    drawRect(vec2(shopX, 30), vec2(180, H - 30), "#181825");
+                    drawLine(vec2(shopX, 30), vec2(shopX, H), "#313244", 2);
+
+                    drawText("CORE LAB UPGRADES", vec2(shopX + 15, 46), {
+                        font: "bold 8.5px 'Monaspace Neon'",
+                        color: "#cba6f7",
+                    });
+
+                    for (let i = 0; i < upgrades.length; i++) {
+                        const upg = upgrades[i];
+                        const itemY = 60 + i * 65;
+
+                        const activeColor =
+                            credits >= upg.cost ? "#313244" : "#1e1e2e";
+                        drawRect(
+                            vec2(shopX + 10, itemY),
+                            vec2(160, 50),
+                            activeColor,
+                        );
+                        drawRectOutline(
+                            vec2(shopX + 10, itemY),
+                            vec2(160, 50),
+                            upg.color,
+                            credits >= upg.cost ? 1.5 : 1,
+                        );
+
+                        drawText(upg.name, vec2(shopX + 18, itemY + 12), {
+                            font: "bold 9px 'Monaspace Neon'",
+                            color: "#cdd6f4",
+                        });
+                        drawText(upg.desc, vec2(shopX + 18, itemY + 24), {
+                            font: "7.5px 'Monaspace Neon'",
+                            color: "#a6adc8",
+                        });
+                        drawText(
+                            `COST: $${upg.cost}`,
+                            vec2(shopX + 18, itemY + 38),
+                            {
+                                font: "bold 7px 'Monaspace Neon'",
+                                color: "#f9e2af",
+                            },
+                        );
+
+                        drawText(
+                            `x${upg.count}`,
+                            vec2(shopX + 155, itemY + 12),
+                            {
+                                font: "bold 9px 'Monaspace Neon'",
+                                color: "#a6e3a1",
+                                align: "right",
+                            },
+                        );
+                    }
+
+                    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
+                    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+
+                    let totalIncome = 0;
+                    for (const upg of upgrades) {
+                        totalIncome += upg.count * upg.income;
+                    }
+
+                    drawText(`CREDITS: $${Math.floor(credits)}`, vec2(16, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#f9e2af",
+                    });
+                    drawText(
+                        `RATE: $${totalIncome.toFixed(1)}/S`,
+                        vec2(210, 10),
+                        {
+                            font: "bold 10px 'Monaspace Neon'",
+                            color: "#a6e3a1",
+                        },
+                    );
+                    drawText(`CLICK POWER: +${clickPower}`, vec2(340, 10), {
+                        font: "bold 10px 'Monaspace Neon'",
+                        color: "#89b4fa",
+                    });
+                },
+            });
+
+            document
+                .getElementById("canvas-container")
+                .appendChild(engine.canvasManager.canvas);
+            if (engine.overlayCanvas) {
+                document
+                    .getElementById("canvas-container")
+                    .appendChild(engine.overlayCanvas);
+            }
+        </script>
+    </body>
+</html>
