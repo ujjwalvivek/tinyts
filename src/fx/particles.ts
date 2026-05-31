@@ -166,7 +166,6 @@ export class ParticleSystem {
         const idx = this._freeList.pop();
         if (idx !== undefined) return this.pool[idx];
 
-        // No inactive particles — create a new one
         const p: Particle = {
             emitter: null,
             x: 0,

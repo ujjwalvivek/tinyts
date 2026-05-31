@@ -48,7 +48,9 @@ export class Registry {
     private readonly freeList: Entity[] = [];
     private readonly entities = new Set<Entity>();
     private readonly components = new Map<number, Map<Entity, any>>();
-    private readonly viewCache = new Map<string, Entity[]>();
+    private readonly viewCache = new Map<string, Set<Entity>>();
+    private readonly viewCacheSnapshot = new Map<string, Entity[]>();
+    private readonly viewCacheDirty = new Set<string>();
     private readonly viewQueries = new Map<
         string,
         { with: any[]; without?: any[] }
@@ -124,10 +126,9 @@ export class Registry {
         }
 
         // 3. Remove from view caches
-        for (const cachedEntities of this.viewCache.values()) {
-            const idx = cachedEntities.indexOf(entity);
-            if (idx !== -1) {
-                cachedEntities.splice(idx, 1);
+        for (const [queryKey, cachedEntities] of this.viewCache.entries()) {
+            if (cachedEntities.delete(entity)) {
+                this.viewCacheDirty.add(queryKey);
             }
         }
 
@@ -363,16 +364,12 @@ export class Registry {
             }
 
             const cached = this.viewCache.get(queryKey)!;
-            const idx = cached.indexOf(entity);
             if (match) {
-                if (idx === -1) {
-                    cached.push(entity);
-                }
+                cached.add(entity);
             } else {
-                if (idx !== -1) {
-                    cached.splice(idx, 1);
-                }
+                cached.delete(entity);
             }
+            this.viewCacheDirty.add(queryKey);
         }
     }
 
@@ -411,10 +408,18 @@ export class Registry {
 
         let cached = this.viewCache.get(queryKey);
         if (cached !== undefined) {
-            return cached;
+            // Return cached snapshot if clean, rebuild if dirty
+            if (this.viewCacheDirty.has(queryKey)) {
+                const arr = [...cached];
+                this.viewCacheSnapshot.set(queryKey, arr);
+                this.viewCacheDirty.delete(queryKey);
+                return arr;
+            }
+            return this.viewCacheSnapshot.get(queryKey)!;
         }
 
-        cached = [];
+        // First query: build Set and snapshot
+        cached = new Set<Entity>();
         this.viewCache.set(queryKey, cached);
         this.viewQueries.set(queryKey, {
             with: withClasses,
@@ -441,12 +446,14 @@ export class Registry {
                     }
                 }
                 if (match) {
-                    cached.push(entity);
+                    cached.add(entity);
                 }
             }
         }
 
-        return cached;
+        const snapshot = [...cached];
+        this.viewCacheSnapshot.set(queryKey, snapshot);
+        return snapshot;
     }
 
     /**
@@ -478,6 +485,8 @@ export class Registry {
         this.entities.clear();
         this.components.clear();
         this.viewCache.clear();
+        this.viewCacheSnapshot.clear();
+        this.viewCacheDirty.clear();
         this.viewQueries.clear();
         this.componentPools.clear();
         this.addListeners.clear();
