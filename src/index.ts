@@ -235,3 +235,5 @@ export { Registry, Parent, Children } from "./core/ecs";
 export type { Entity, Component } from "./core/ecs";
 
 export { Timer } from "./core/timer";
+export { Scene, SceneManager } from "./core/scene";
+export type { SceneRenderMode, SceneManagerConfig } from "./core/scene";
