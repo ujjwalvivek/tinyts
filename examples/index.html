@@ -12,8 +12,8 @@
         <link rel="icon" href="public/favicon.svg" />
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -28,7 +28,7 @@
             }
 
             body {
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 background-color: #1e1e2e;
                 color: #cdd6f4;
                 height: 100vh;
@@ -36,7 +36,7 @@
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
-                font-size: 13px;
+                font-size: 9.1px;
             }
 
             ::-webkit-scrollbar {
@@ -108,7 +108,7 @@
                 border-bottom: 1px solid #313244;
                 padding: 6px 12px;
                 font-weight: bold;
-                font-size: 11px;
+                font-size: 7.7px;
                 letter-spacing: 1px;
                 text-transform: uppercase;
                 display: flex;
@@ -149,8 +149,8 @@
                 color: #585b70;
                 text-align: right;
                 padding: 10px 8px;
-                font-family: "Monaspace Neon", monospace !important;
-                font-size: 12px !important;
+                font-family: "TinyTS", monospace !important;
+                font-size: 8.4px !important;
                 line-height: 18px !important;
                 user-select: none;
                 overflow: hidden;
@@ -170,8 +170,8 @@
                 padding: 10px;
                 width: 100%;
                 height: 100%;
-                font-family: "Monaspace Neon", monospace !important;
-                font-size: 12px !important;
+                font-family: "TinyTS", monospace !important;
+                font-size: 8.4px !important;
                 line-height: 18px !important;
                 tab-size: 2;
                 -moz-tab-size: 2;
@@ -265,7 +265,7 @@
                 color: #cdd6f4;
                 padding: 4px 10px;
                 font-family: inherit;
-                font-size: 11px;
+                font-size: 7.7px;
                 font-weight: bold;
                 cursor: pointer;
             }
@@ -331,7 +331,7 @@
                 color: #cdd6f4;
                 padding: 4px 8px;
                 font-family: inherit;
-                font-size: 12px;
+                font-size: 8.4px;
                 width: 200px;
             }
 
@@ -343,19 +343,19 @@
 
             .list-header {
                 display: grid;
-                grid-template-columns: 80px 180px 100px 110px 1fr;
+                grid-template-columns: 50px 250px 50px 150px 1fr;
                 padding: 4px 8px;
                 color: #cba6f7;
                 font-weight: bold;
                 border-bottom: 1px dashed #313244;
                 margin-bottom: 6px;
                 text-transform: uppercase;
-                font-size: 11px;
+                font-size: 7.7px;
             }
 
             .example-row {
                 display: grid;
-                grid-template-columns: 80px 180px 100px 110px 1fr;
+                grid-template-columns: 50px 250px 50px 150px 1fr;
                 padding: 6px 8px;
                 cursor: pointer;
                 border-bottom: 1px solid #181825;
@@ -409,7 +409,7 @@
                 gap: 6px;
                 cursor: pointer;
                 user-select: none;
-                font-size: 11px;
+                font-size: 7.7px;
                 color: #a6e3a1;
             }
             .checkbox-container input {
@@ -427,10 +427,192 @@
                 content: "X";
                 position: absolute;
                 top: -3px;
-                left: 2px;
-                font-size: 0.9rem;
+                left: 1px;
+                font-size: 0.63rem;
                 font-weight: bold;
                 color: #a6e3a1;
+            }
+
+            @media (max-width: 1110px) {
+                body {
+                    height: 100dvh;
+                    min-height: 100dvh;
+                    overflow: hidden;
+                }
+
+                .header {
+                    flex-shrink: 0;
+                }
+
+                .workspace {
+                    flex: 1;
+                    min-height: 0;
+                    overflow: hidden;
+                }
+
+                .editor-pane {
+                    display: none;
+                }
+
+                .preview-split {
+                    display: flex;
+                    flex-direction: column;
+                    flex: 1;
+                    min-height: 0;
+                    overflow: hidden;
+                }
+
+                .preview-pane {
+                    flex: 0 0 52%;
+                    height: auto;
+                    min-height: 0;
+                    border-right: none;
+                    border-bottom: 2px solid #313244;
+                }
+
+                .explorer-pane {
+                    flex: 1 1 48%;
+                    min-height: 0;
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
+                }
+
+                .explorer-pane .panel-content {
+                    flex: 1;
+                    min-height: 0;
+                    display: flex;
+                    overflow: hidden;
+                }
+
+                .explorer-header {
+                    flex-wrap: wrap;
+                    padding: 8px 10px;
+                    flex-shrink: 0;
+                }
+
+                .filter-input {
+                    width: min(100%, 320px);
+                    flex: 1;
+                }
+
+                .explorer-list {
+                    flex: 1;
+                    height: auto;
+                    max-height: none;
+                    min-height: 0;
+                    padding: 8px;
+                    overflow-y: auto;
+                    -webkit-overflow-scrolling: touch;
+                    overscroll-behavior: contain;
+                    touch-action: pan-y;
+                }
+
+                .list-header {
+                    display: none;
+                }
+
+                .example-row {
+                    grid-template-columns: 42px minmax(0, 1fr) auto;
+                    grid-template-rows: auto auto;
+                    gap: 4px 8px;
+                    padding: 8px;
+                }
+
+                .example-row > span:nth-child(2) {
+                    min-width: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
+                .row-level {
+                    text-align: right;
+                    margin-left: 3.2rem;
+                }
+
+                .row-desc {
+                    grid-column: 1 / -1;
+                    line-height: 1.5;
+                }
+            }
+
+            @media (max-width: 560px) {
+                body {
+                    font-size: 8.4px;
+                }
+
+                .title-main {
+                    width: 100%;
+                    line-height: 1.5;
+                }
+
+                .nav-links {
+                    gap: 10px;
+                }
+
+                .editor-pane {
+                    height: 34dvh;
+                    min-height: 240px;
+                }
+
+                .panel-titlebar {
+                    gap: 8px;
+                    padding: 6px 8px;
+                }
+
+                .line-numbers {
+                    width: 34px;
+                    padding: 8px 5px;
+                    font-size: 7.7px !important;
+                }
+
+                .code-textarea,
+                .code-highlight {
+                    padding: 8px;
+                    font-size: 7.7px !important;
+                    line-height: 16px !important;
+                }
+
+                .editor-statusbar {
+                    flex-wrap: wrap;
+                    gap: 6px;
+                    padding: 6px 8px;
+                }
+
+                .editor-statusbar > div {
+                    flex-wrap: wrap;
+                    width: 100%;
+                }
+
+                .editor-btn {
+                    padding: 5px 7px;
+                    font-size: 7px;
+                }
+
+                .preview-pane {
+                    flex-basis: 50%;
+                    height: auto;
+                    min-height: 0;
+                }
+
+                .example-row {
+                    grid-template-columns: 36px minmax(0, 1fr);
+                }
+
+                .row-type,
+                .row-level {
+                    grid-column: 2;
+                    text-align: left;
+                }
+
+                .row-desc {
+                    grid-column: 1 / -1;
+                }
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>

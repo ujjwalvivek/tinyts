@@ -12,8 +12,8 @@
         <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -27,7 +27,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -55,6 +55,10 @@
                 height: auto !important;
                 aspect-ratio: 16/9 !important;
                 border: 2px dashed #cba6f7;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -179,40 +183,38 @@
                     );
                     camera.end();
 
-                    if (!window._fb) {
-                        window._fb = createFrameBuffer(W, H);
-                        bindFrameBuffer(window._fb);
-                        clear("#11111b");
-                        camera.apply();
-                        for (let x = 0; x < WORLD_W; x += 40)
-                            drawLine(
-                                vec2(x, 0),
-                                vec2(x, WORLD_H),
-                                "rgba(49,50,68,0.15)",
-                            );
-                        for (let y = 0; y < WORLD_H; y += 40)
-                            drawLine(
-                                vec2(0, y),
-                                vec2(WORLD_W, y),
-                                "rgba(49,50,68,0.15)",
-                            );
-                        for (const r of rocks)
-                            drawRect(vec2(r.x, r.y), vec2(r.w, r.h), r.color);
-                        for (const t of trees)
-                            drawCircle(vec2(t.x, t.y), t.r, t.shade);
-                        for (const d of dots)
-                            drawCircle(vec2(d.x, d.y), 4, d.color);
-                        drawRect(
-                            vec2(
-                                player.x - player.size / 2,
-                                player.y - player.size / 2,
-                            ),
-                            vec2(player.size, player.size),
-                            "#cdd6f4",
+                    if (!window._fb) window._fb = createFrameBuffer(W, H);
+                    bindFrameBuffer(window._fb);
+                    clear("#11111b");
+                    camera.apply();
+                    for (let x = 0; x < WORLD_W; x += 40)
+                        drawLine(
+                            vec2(x, 0),
+                            vec2(x, WORLD_H),
+                            "rgba(49,50,68,0.15)",
                         );
-                        camera.end();
-                        bindFrameBuffer(null);
-                    }
+                    for (let y = 0; y < WORLD_H; y += 40)
+                        drawLine(
+                            vec2(0, y),
+                            vec2(WORLD_W, y),
+                            "rgba(49,50,68,0.15)",
+                        );
+                    for (const r of rocks)
+                        drawRect(vec2(r.x, r.y), vec2(r.w, r.h), r.color);
+                    for (const t of trees)
+                        drawCircle(vec2(t.x, t.y), t.r, t.shade);
+                    for (const d of dots)
+                        drawCircle(vec2(d.x, d.y), 4, d.color);
+                    drawRect(
+                        vec2(
+                            player.x - player.size / 2,
+                            player.y - player.size / 2,
+                        ),
+                        vec2(player.size, player.size),
+                        "#cdd6f4",
+                    );
+                    camera.end();
+                    bindFrameBuffer(null);
 
                     const mmW = 130;
                     const mmH = Math.round(mmW * (H / W)); // maintain aspect ratio
@@ -231,7 +233,7 @@
                     );
                     drawText("MINIMAP", vec2(W - mmW / 2 - 10, H - mmH - 8), {
                         color: "#cba6f7",
-                        size: 7,
+                        size: 4.9,
                         align: "center",
                     });
 
@@ -241,18 +243,18 @@
 
                     drawText("FRAMEBUFFER", vec2(W / 2, 14), {
                         color: "#cba6f7",
-                        size: 10,
+                        size: 7,
                         weight: "bold",
                         align: "center",
                     });
                     drawText(
                         "Scene captured once to off-screen buffer → drawn as minimap",
                         vec2(W / 2, 28),
-                        { color: "#a6adc8", size: 7, align: "center" },
+                        { color: "#a6adc8", size: 4.9, align: "center" },
                     );
                     drawText("ARROWS / WASD to explore", vec2(W / 2, 42), {
                         color: "#585b70",
-                        size: 7,
+                        size: 4.9,
                         align: "center",
                     });
                 },
@@ -264,6 +266,13 @@
                 document
                     .getElementById("canvas-container")
                     .appendChild(engine.overlayCanvas);
-        </script>
+        
+            addTouchControls({
+                left: 'ArrowLeft',
+                right: 'ArrowRight',
+                up: 'ArrowUp',
+                down: 'ArrowDown',
+            });
+</script>
     </body>
 </html>

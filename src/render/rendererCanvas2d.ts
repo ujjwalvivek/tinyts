@@ -1,7 +1,8 @@
 import type { Vec2 } from '../core/math';
 import { getCanvasState } from '../core/canvas';
 import { Color } from './color';
-import type { Renderer, SpriteOptions, TextOptions, FrameBuffer } from './types';
+import { defaultTextFont, ensureDefaultFontFace } from './font';
+import type { Renderer, SpriteOptions, TextOptions, FrameBuffer, RendererStats } from './types';
 
 function resolveColor(c: string | Color): string {
   return c instanceof Color ? c.toString() : c;
@@ -18,6 +19,15 @@ export class Canvas2DRenderer implements Renderer {
 
   private transformStack: number;
   private offscreenCtx: CanvasRenderingContext2D | null = null;
+  private stats: RendererStats = {
+    drawCalls: 0,
+    batchFlushes: 0,
+    textureSwitches: 0,
+    shapeSwitches: 0,
+    quads: 0,
+    overlayLineCalls: 0,
+    overlayTextCalls: 0,
+  };
 
   /**
    * Create a Canvas2D renderer.
@@ -50,6 +60,7 @@ export class Canvas2DRenderer implements Renderer {
 
   /** Begin a new render frame. */
   begin(): void {
+    this.resetStats();
     this.transformStack = 0;
     this.applyBaseTransform();
   }
@@ -77,6 +88,21 @@ export class Canvas2DRenderer implements Renderer {
   /** Return the Canvas2D context. */
   getContext(): CanvasRenderingContext2D {
     return this.ctx;
+  }
+
+  /** Return per-frame renderer instrumentation counters. */
+  getStats(): RendererStats {
+    return { ...this.stats };
+  }
+
+  private resetStats(): void {
+    this.stats.drawCalls = 0;
+    this.stats.batchFlushes = 0;
+    this.stats.textureSwitches = 0;
+    this.stats.shapeSwitches = 0;
+    this.stats.quads = 0;
+    this.stats.overlayLineCalls = 0;
+    this.stats.overlayTextCalls = 0;
   }
 
   /** Set the camera transform. */
@@ -177,10 +203,11 @@ export class Canvas2DRenderer implements Renderer {
 
   /** Draw text at a position. */
   drawText(text: string, pos: Vec2, options?: TextOptions): void {
+    ensureDefaultFontFace();
     const ctx = this.getDrawCtx();
     const size = options?.size ?? 16;
     ctx.fillStyle = options?.color ? resolveColor(options.color) : '#fff';
-    ctx.font = options?.font ?? `${size}px 'Courier New', Courier, monospace`;
+    ctx.font = options?.font ?? defaultTextFont(size);
     ctx.textAlign = options?.align ?? 'left';
     ctx.textBaseline = options?.baseline ?? 'top';
     ctx.fillText(text, pos.x, pos.y);

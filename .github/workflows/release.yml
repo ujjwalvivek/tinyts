@@ -52,7 +52,7 @@ jobs:
 
             - name: Create Release Archive
               run: |
-                  zip -r tinyts-release-${{ github.ref_name }}.zip dist/ examples/ README.md LICENSE REFERENCE.md
+                  zip -r tinyts-release-${{ github.ref_name }}.zip dist/ examples/ README.md LICENSE REFERENCE.md TUTORIAL.md
 
             - name: Create GitHub Release
               run: |

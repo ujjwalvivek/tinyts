@@ -1,6 +1,8 @@
-# TinyTS v0.1.2 - Release Notes
+# TinyTS v0.1.3 - Release Notes
 
-- Added 2 new examples to the `examples/` directory.
-- Added free-list index to Particle scanning, improving memory efficiency.
-- ECS view cache is now hybrid, does O(1) and zero allocations, improving fps.
-- Engine now supports a stack-based scene management system.
+- added TinyTS default font loading and bundle font assets.
+- added renderer stats instrumentation and debug overlay counters.
+- batched WebGL2 lines on GPU and raise quad batch capacity to 8192.
+- added on-screen touch controls and touch-to-mouse input support.
+- refreshed examples with mobile controls, responsive layout fixes, HUD/code/font updates.
+- improved procedural textures and platformer/metroidvania tile rendering.

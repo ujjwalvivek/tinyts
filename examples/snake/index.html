@@ -7,8 +7,8 @@
         <title>TinyTS - Snake</title>
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -22,7 +22,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -50,6 +50,10 @@
                 height: auto !important;
                 aspect-ratio: 16/9 !important;
                 border: 2px dashed #cba6f7;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -267,16 +271,16 @@
                     drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
 
                     drawText(`SCORE: ${score}`, vec2(16, 10), {
-                        font: "bold 10px 'Monaspace Neon'",
+                        font: "bold 7px 'TinyTS'",
                         color: "#a6e3a1",
                     });
                     drawText(`HIGH: ${highScore}`, vec2(W - 16, 10), {
-                        font: "bold 10px 'Monaspace Neon'",
+                        font: "bold 7px 'TinyTS'",
                         color: "#fab387",
                         align: "right",
                     });
                     drawText("WASD / ARROW KEYS TO SLITHER", vec2(W / 2, 10), {
-                        font: "9px 'Monaspace Neon'",
+                        font: "6.3px 'TinyTS'",
                         color: "#a6adc8",
                         align: "center",
                     });
@@ -291,7 +295,7 @@
                             "SNAKE CORE CRITICAL FAILURE",
                             vec2(W / 2, H / 2 - 15),
                             {
-                                font: "bold 16px 'Monaspace Neon'",
+                                font: "bold 11.2px 'TinyTS'",
                                 color: "#f38ba8",
                                 align: "center",
                             },
@@ -300,7 +304,7 @@
                             `FINAL SCORE: ${score}`,
                             vec2(W / 2, H / 2 + 10),
                             {
-                                font: "10px 'Monaspace Neon'",
+                                font: "7px 'TinyTS'",
                                 color: "#a6e3a1",
                                 align: "center",
                             },
@@ -309,7 +313,7 @@
                             "PRESS SPACE TO REDEPLOY",
                             vec2(W / 2, H / 2 + 35),
                             {
-                                font: "9px 'Monaspace Neon'",
+                                font: "6.3px 'TinyTS'",
                                 color: "#a6adc8",
                                 align: "center",
                             },
@@ -326,6 +330,13 @@
                     .getElementById("canvas-container")
                     .appendChild(engine.overlayCanvas);
             }
-        </script>
+        
+            addTouchControls({
+                left: 'ArrowLeft',
+                right: 'ArrowRight',
+                up: 'ArrowUp',
+                down: 'ArrowDown',
+            });
+</script>
     </body>
 </html>

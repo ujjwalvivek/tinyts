@@ -7,6 +7,7 @@ import { consumeGlobalTweenManager, TweenManager } from './easing';
 import { processTextInput, stopTextInput } from './textInput';
 import { consumeGlobalAudioManager, AudioManager } from '../audio/audio';
 import { ParticleSystem } from '../fx/particles';
+import { loadDefaultFontFace } from '../render/font';
 
 /** Lifecycle hooks for extending the engine. */
 export interface EnginePlugin {
@@ -156,7 +157,11 @@ export class Engine {
     window.addEventListener('keydown', processTextInput);
 
     this.loop = this.loop.bind(this);
-    this.rafId = requestAnimationFrame(this.loop);
+    void loadDefaultFontFace().then(() => {
+      if (!this.running) return;
+      this.lastTime = performance.now();
+      this.rafId = requestAnimationFrame(this.loop);
+    });
   }
 
   private loop(now: number): void {

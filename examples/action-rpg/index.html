@@ -10,8 +10,8 @@
         <title>TinyTS - Action RPG Adventure</title>
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -25,7 +25,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -53,6 +53,10 @@
                 height: auto !important;
                 aspect-ratio: 16/9 !important;
                 border: 2px dashed #cba6f7;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -626,45 +630,6 @@
 
                     camera.end();
 
-                    const hudX = 20;
-                    const hudY = 46;
-
-                    for (let i = 0; i < player.maxHp; i++) {
-                        const heartX = hudX + i * 16;
-                        const col = i < player.hp ? "#f38ba8" : "#313244";
-                        const points = [
-                            vec2(heartX + 6, hudY),
-                            vec2(heartX + 12, hudY + 5),
-                            vec2(heartX + 6, hudY + 11),
-                            vec2(heartX, hudY + 5),
-                        ];
-                        drawProceduralPolygon(
-                            getContext(),
-                            points,
-                            col,
-                            "#11111b",
-                            1,
-                        );
-                    }
-
-                    drawText(
-                        `KEYS: ${player.keys}`,
-                        vec2(hudX + 60, hudY + 8),
-                        {
-                            font: "bold 8.5px 'Monaspace Neon'",
-                            color: "#fab387",
-                        },
-                    );
-
-                    drawText(
-                        `COINS: ${player.coins}`,
-                        vec2(hudX + 130, hudY + 8),
-                        {
-                            font: "bold 8.5px 'Monaspace Neon'",
-                            color: "#f9e2af",
-                        },
-                    );
-
                     if (bannerTimer > 0) {
                         drawRect(
                             vec2(W / 2 - 160, H - 55),
@@ -678,7 +643,7 @@
                             1,
                         );
                         drawText(bannerMessage, vec2(W / 2, H - 45), {
-                            font: "bold 7.5px 'Monaspace Neon'",
+                            font: "bold 5.25px 'TinyTS'",
                             color: "#a6e3a1",
                             align: "center",
                             baseline: "middle",
@@ -691,11 +656,41 @@
                         "DUNGEON ADVENTURE PROTOCOL // SECTOR MAZE",
                         vec2(W / 2, 10),
                         {
-                            font: "bold 9.5px 'Monaspace Neon'",
+                            font: "bold 6.65px 'TinyTS'",
                             color: "#cba6f7",
                             align: "center",
                         },
                     );
+
+                    const hudX = 18;
+                    const hudY = 8;
+                    for (let i = 0; i < player.maxHp; i++) {
+                        const heartX = hudX + i * 13;
+                        const col = i < player.hp ? "#f38ba8" : "#313244";
+                        const points = [
+                            vec2(heartX + 5, hudY),
+                            vec2(heartX + 10, hudY + 4),
+                            vec2(heartX + 5, hudY + 9),
+                            vec2(heartX, hudY + 4),
+                        ];
+                        drawProceduralPolygon(
+                            getContext(),
+                            points,
+                            col,
+                            "#11111b",
+                            1,
+                        );
+                    }
+
+                    drawText(`KEYS: ${player.keys}`, vec2(W - 120, 10), {
+                        font: "bold 5.95px 'TinyTS'",
+                        color: "#fab387",
+                    });
+
+                    drawText(`COINS: ${player.coins}`, vec2(W - 58, 10), {
+                        font: "bold 5.95px 'TinyTS'",
+                        color: "#f9e2af",
+                    });
 
                     if (gameState === "gameover") {
                         drawRect(
@@ -707,7 +702,7 @@
                             "KNIGHT ENERGY DEPLETED // GAME OVER",
                             vec2(W / 2, H / 2 - 12),
                             {
-                                font: "bold 13px 'Monaspace Neon'",
+                                font: "bold 9.1px 'TinyTS'",
                                 color: "#f38ba8",
                                 align: "center",
                             },
@@ -716,7 +711,7 @@
                             "TAP ANYWHERE OR SPACE TO GENERATE NEW MAP LINKS",
                             vec2(W / 2, H / 2 + 15),
                             {
-                                font: "9px 'Monaspace Neon'",
+                                font: "6.3px 'TinyTS'",
                                 color: "#a6adc8",
                                 align: "center",
                             },
@@ -731,7 +726,7 @@
                             "DUNGEON STABILIZED // ALL COIN SECURED // VICTORY",
                             vec2(W / 2, H / 2 - 12),
                             {
-                                font: "bold 13px 'Monaspace Neon'",
+                                font: "bold 9.1px 'TinyTS'",
                                 color: "#a6e3a1",
                                 align: "center",
                             },
@@ -740,7 +735,7 @@
                             `FINAL LOOT COLLECTED: ${player.coins} COINS`,
                             vec2(W / 2, H / 2 + 10),
                             {
-                                font: "10px 'Monaspace Neon'",
+                                font: "7px 'TinyTS'",
                                 color: "#fab387",
                                 align: "center",
                             },
@@ -749,7 +744,7 @@
                             "TAP ANYWHERE OR SPACE TO BOOT NEXT DUNGEON ROOM",
                             vec2(W / 2, H / 2 + 32),
                             {
-                                font: "9px 'Monaspace Neon'",
+                                font: "6.3px 'TinyTS'",
                                 color: "#a6adc8",
                                 align: "center",
                             },
@@ -766,6 +761,14 @@
                     .getElementById("canvas-container")
                     .appendChild(engine.overlayCanvas);
             }
-        </script>
+        
+            addTouchControls({
+                left: 'ArrowLeft',
+                right: 'ArrowRight',
+                up: 'ArrowUp',
+                down: 'ArrowDown',
+                buttons: [{ id: 'attack', label: 'ATK', keys: 'Space' }],
+            });
+</script>
     </body>
 </html>

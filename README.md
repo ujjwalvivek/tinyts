@@ -180,10 +180,13 @@ TinyTS implements a highly disciplined engine design thats fun to work with:
 
 - **Zero memory leaks on restart** - `engineStop()` truly dismantles everything.
 - **Embeddable** - can run inside an iframe or component without polluting the host page.
-- **Quad batching** - 2000-quad batch buffer with pre-built index buffer
+- **Quad batching** - 8192-quad batch buffer with pre-built index buffer
 - **State-cached uniforms** - texture, shape, and shape params are tracked to avoid redundant GL calls
-- **Canvas2D overlay** - text and lines fall through to a synchronized Canvas2D layer
+- **GPU-batched lines** - `drawLine()` renders through the WebGL2 batcher as transformed quads
+- **Canvas2D overlay** - text and debug overlays use a synchronized Canvas2D layer
 - **Sprite batching** - rotated/flipped sprites are pre-transformed on CPU and batched, avoiding per-sprite draw calls
+- **Renderer stats** - `getRendererStats()` and the debug overlay expose draw calls, batch flushes, switches, quads, and overlay calls
+- **Default font** - ships and loads the MIT-licensed TinyTS font from `dist/font/tinyTS.woff2`
 - **View caching** with reactive `updateEntityInCaches` on add/remove
 - **Component pooling** via `obtain()` with `init()`/`reset()` hooks
 - **Entity free list** for ID recycling
@@ -220,7 +223,7 @@ npm run serve      # Start a local HTTP utility server to test examples
 | Pixel art games with integer scaling                    | ✅ Yes                                         |
 | Smooth HD games with fractional scaling                 | ✅ Yes                                         |
 | Start/stop/restart engine multiple times                | ✅ Yes, zero leaks                             |
-| Mobile browser with touch                               | ✅ Yes, touch-to-mouse mapping works           |
+| Mobile browser with touch                               | ✅ Yes, on-screen touch controls work          |
 | Gamepad support                                         | ✅ Yes, with deadzone                          |
 | WebGL2 not available                                    | ✅ Yes, auto-falls back to Canvas2D            |
 | Mix Canvas2D calls with engine rendering                | ✅ Yes, `getContext()` exposes the raw context |
@@ -244,8 +247,10 @@ npm run serve      # Start a local HTTP utility server to test examples
 | WebGL2 quad batching (single draw call per texture+shape) | ✅       |
 | Pre-allocated batch Float32Array (no per-frame alloc)     | ✅       |
 | Pre-built static index buffer                             | ✅       |
+| GPU-batched lines                                         | ✅       |
 | Texture caching                                           | ✅       |
 | State-cached uniforms (avoid redundant GL calls)          | ✅       |
+| Renderer instrumentation counters                         | ✅       |
 | Object pooling (particles, ECS components)                | ✅       |
 | SDF shapes (no per-circle geometry)                       | ✅       |
 | `imageSmoothingEnabled = false` for pixel art             | ✅       |

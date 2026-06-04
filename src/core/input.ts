@@ -3,6 +3,29 @@ import { activeEngine } from "./engine";
 
 const globalActionMap: Record<string, string[]> = {};
 
+export type TouchControlsVisibility = "auto" | "always" | "never";
+
+export interface TouchControlButtonConfig {
+    id?: string;
+    label: string;
+    keys: string | string[];
+}
+
+export interface TouchControlsConfig {
+    left?: string | string[];
+    right?: string | string[];
+    up?: string | string[];
+    down?: string | string[];
+    buttons?: TouchControlButtonConfig[];
+    visibility?: TouchControlsVisibility;
+}
+
+interface TouchControlButtonInternal {
+    el: HTMLElement;
+    keys: string[];
+    activePointers: Set<number>;
+}
+
 /** Manages keyboard, mouse, touch, and gamepad input states. */
 export class InputManager {
     readonly canvasManager: CanvasManager;
@@ -28,6 +51,10 @@ export class InputManager {
     /** Active gamepad index, or -1 if none. */
     gamepadIndex = -1;
 
+    private touchControlsRoot: HTMLElement | null = null;
+    private touchControlButtons: TouchControlButtonInternal[] = [];
+    private touchCodeCounts: Record<string, number> = {};
+    private removeTouchResizeListener: (() => void) | null = null;
     private onKeyDownBound: (e: KeyboardEvent) => void;
     private onKeyUpBound: (e: KeyboardEvent) => void;
     private onMouseMoveBound: (e: MouseEvent) => void;
@@ -37,6 +64,7 @@ export class InputManager {
     private onTouchStartBound: (e: TouchEvent) => void;
     private onTouchMoveBound: (e: TouchEvent) => void;
     private onTouchEndBound: (e: TouchEvent) => void;
+    private onBlurBound: () => void;
 
     constructor(canvasManager: CanvasManager) {
         this.canvasManager = canvasManager;
@@ -53,57 +81,46 @@ export class InputManager {
         this.onTouchStartBound = (e) => this.onTouchStart(e);
         this.onTouchMoveBound = (e) => this.onTouchMove(e);
         this.onTouchEndBound = (e) => this.onTouchEnd(e);
+        this.onBlurBound = () => this.reset();
 
         window.addEventListener("keydown", this.onKeyDownBound);
         window.addEventListener("keyup", this.onKeyUpBound);
+        window.addEventListener("blur", this.onBlurBound);
 
         const canvas = this.canvasManager.canvas;
+        if (
+            typeof canvas.hasAttribute !== "function" ||
+            !canvas.hasAttribute("tabindex")
+        ) {
+            canvas.tabIndex = 0;
+        }
+        canvas.style.outline = "none";
         canvas.addEventListener("mousemove", this.onMouseMoveBound);
         canvas.addEventListener("mousedown", this.onMouseDownBound);
         canvas.addEventListener("mouseup", this.onMouseUpBound);
         canvas.addEventListener("wheel", this.onWheelBound, { passive: true });
 
         canvas.addEventListener("touchstart", this.onTouchStartBound, {
-            passive: true,
+            passive: false,
         });
         canvas.addEventListener("touchmove", this.onTouchMoveBound, {
-            passive: true,
+            passive: false,
         });
         canvas.addEventListener("touchend", this.onTouchEndBound);
         canvas.addEventListener("touchcancel", this.onTouchEndBound);
     }
 
     private onKeyDown(e: KeyboardEvent): void {
+        if (!this.shouldHandleKeyboardEvent(e)) return;
+        if (this.shouldPreventBrowserDefault(e)) e.preventDefault();
         if (e.repeat) return;
-        const code = e.code;
-        const wasDown = (this.keyboardState[code] ?? 0) & 1;
-        this.keyboardState[code] =
-            wasDown
-                ? (this.keyboardState[code] ?? 0) | 1
-                : (this.keyboardState[code] ?? 0) | 3;
-
-        // Update actions
-        for (const name of Object.keys(this.actionMap)) {
-            if (this.actionMap[name].includes(code)) {
-                this.actionState[name] =
-                    wasDown
-                        ? (this.actionState[name] ?? 0) | 1
-                        : (this.actionState[name] ?? 0) | 3;
-            }
-        }
+        this.pressCode(e.code);
     }
 
     private onKeyUp(e: KeyboardEvent): void {
-        const code = e.code;
-        this.keyboardState[code] = (this.keyboardState[code] ?? 0) & ~1;
-        this.keyboardState[code] = (this.keyboardState[code] ?? 0) | 4;
-
-        for (const name of Object.keys(this.actionMap)) {
-            if (this.actionMap[name].includes(code)) {
-                this.actionState[name] = (this.actionState[name] ?? 0) & ~1;
-                this.actionState[name] = (this.actionState[name] ?? 0) | 4;
-            }
-        }
+        if (!this.shouldHandleKeyboardEvent(e)) return;
+        if (this.shouldPreventBrowserDefault(e)) e.preventDefault();
+        this.releaseCode(e.code);
     }
 
     private onMouseMove(e: MouseEvent): void {
@@ -113,6 +130,8 @@ export class InputManager {
     }
 
     private onMouseDown(e: MouseEvent): void {
+        this.focusCanvas();
+        e.preventDefault();
         const btn = e.button;
         if (!(this.mouseBtnDown & (1 << btn))) {
             this.mouseBtnPressed |= 1 << btn;
@@ -120,17 +139,7 @@ export class InputManager {
         this.mouseBtnDown |= 1 << btn;
 
         const code = `Mouse${btn}`;
-        const wasDown = (this.keyboardState[code] ?? 0) & 1;
-        this.keyboardState[code] = wasDown
-            ? (this.keyboardState[code] ?? 0) | 1
-            : (this.keyboardState[code] ?? 0) | 3;
-        for (const name of Object.keys(this.actionMap)) {
-            if (this.actionMap[name].includes(code)) {
-                this.actionState[name] = wasDown
-                    ? (this.actionState[name] ?? 0) | 1
-                    : (this.actionState[name] ?? 0) | 3;
-            }
-        }
+        this.pressCode(code);
     }
 
     private onMouseUp(e: MouseEvent): void {
@@ -139,14 +148,7 @@ export class InputManager {
         this.mouseBtnReleased |= 1 << btn;
 
         const code = `Mouse${btn}`;
-        this.keyboardState[code] = (this.keyboardState[code] ?? 0) & ~1;
-        this.keyboardState[code] = (this.keyboardState[code] ?? 0) | 4;
-        for (const name of Object.keys(this.actionMap)) {
-            if (this.actionMap[name].includes(code)) {
-                this.actionState[name] = (this.actionState[name] ?? 0) & ~1;
-                this.actionState[name] = (this.actionState[name] ?? 0) | 4;
-            }
-        }
+        this.releaseCode(code);
     }
 
     private onWheel(e: WheelEvent): void {
@@ -154,6 +156,7 @@ export class InputManager {
     }
 
     private onTouchStart(e: TouchEvent): void {
+        this.focusCanvas();
         const touch = e.touches[0];
         if (!touch) return;
         this.touchActive = true;
@@ -166,6 +169,7 @@ export class InputManager {
         this.touchY = pos.y;
 
         if (this.touchMappedToMouse) {
+            e.preventDefault();
             this.mouseX = this.touchX;
             this.mouseY = this.touchY;
             if (!(this.mouseBtnDown & 1)) {
@@ -187,6 +191,7 @@ export class InputManager {
         this.touchY = pos.y;
 
         if (this.touchMappedToMouse) {
+            e.preventDefault();
             this.mouseX = this.touchX;
             this.mouseY = this.touchY;
         }
@@ -201,6 +206,273 @@ export class InputManager {
             this.mouseBtnDown &= ~1;
             this.mouseBtnReleased |= 1;
         }
+    }
+
+    addTouchControls(config: TouchControlsConfig): () => void {
+        this.removeTouchControls();
+
+        const root = document.createElement("div");
+        root.className = "tinyts-touch-controls";
+        root.style.cssText = [
+            "position:absolute",
+            "pointer-events:none",
+            "z-index:50",
+            "display:flex",
+            "align-items:flex-end",
+            "justify-content:space-between",
+            "box-sizing:border-box",
+            "padding:12px",
+            "touch-action:none",
+            "user-select:none",
+            "-webkit-user-select:none",
+        ].join(";");
+
+        const visibility = config.visibility ?? "auto";
+        if (visibility === "never") root.style.display = "none";
+        else if (visibility === "auto") {
+            root.style.display = this.isLikelyTouchDevice() ? "flex" : "none";
+        }
+
+        const leftGroup = document.createElement("div");
+        leftGroup.className = "tinyts-touch-dpad";
+        leftGroup.style.cssText = [
+            "display:grid",
+            "grid-template-columns:42px 42px 42px",
+            "grid-template-rows:42px 42px 42px",
+            "gap:6px",
+            "pointer-events:none",
+        ].join(";");
+
+        const rightGroup = document.createElement("div");
+        rightGroup.className = "tinyts-touch-actions";
+        rightGroup.style.cssText = [
+            "display:flex",
+            "align-items:flex-end",
+            "gap:8px",
+            "pointer-events:none",
+        ].join(";");
+
+        root.appendChild(leftGroup);
+        root.appendChild(rightGroup);
+
+        const dpad = [
+            { label: "UP", keys: config.up, col: 2, row: 1 },
+            { label: "LT", keys: config.left, col: 1, row: 2 },
+            { label: "RT", keys: config.right, col: 3, row: 2 },
+            { label: "DN", keys: config.down, col: 2, row: 3 },
+        ];
+
+        for (const item of dpad) {
+            if (!item.keys) continue;
+            const button = this.createTouchButton(item.label, item.keys);
+            button.el.style.gridColumn = String(item.col);
+            button.el.style.gridRow = String(item.row);
+            leftGroup.appendChild(button.el);
+            this.touchControlButtons.push(button);
+        }
+
+        for (const item of config.buttons ?? []) {
+            const button = this.createTouchButton(item.label, item.keys);
+            button.el.dataset.touchControl = item.id ?? item.label;
+            button.el.style.minWidth = "54px";
+            button.el.style.height = "54px";
+            rightGroup.appendChild(button.el);
+            this.touchControlButtons.push(button);
+        }
+
+        const parent = this.canvasManager.canvas.parentElement ?? document.body;
+        if (
+            typeof getComputedStyle === "function" &&
+            getComputedStyle(parent).position === "static"
+        ) {
+            parent.style.position = "relative";
+        }
+        parent.appendChild(root);
+        this.touchControlsRoot = root;
+        this.syncTouchControlsRoot();
+        this.removeTouchResizeListener = this.canvasManager.addResizeListener(
+            () => this.syncTouchControlsRoot(),
+        );
+
+        return () => this.removeTouchControls();
+    }
+
+    removeTouchControls(): void {
+        for (const button of this.touchControlButtons) {
+            this.releaseTouchButton(button);
+        }
+        this.touchControlButtons = [];
+        this.touchCodeCounts = {};
+        if (this.removeTouchResizeListener) {
+            this.removeTouchResizeListener();
+            this.removeTouchResizeListener = null;
+        }
+        this.touchControlsRoot?.remove();
+        this.touchControlsRoot = null;
+    }
+
+    private createTouchButton(
+        label: string,
+        keys: string | string[],
+    ): TouchControlButtonInternal {
+        const el = document.createElement("button");
+        el.type = "button";
+        el.textContent = label;
+        el.style.cssText = [
+            "width:42px",
+            "height:42px",
+            "display:inline-flex",
+            "align-items:center",
+            "justify-content:center",
+            "pointer-events:auto",
+            "border:1px solid rgba(205,214,244,0.75)",
+            "background:rgba(17,17,27,0.55)",
+            "color:#cdd6f4",
+            "font:700 8px TinyTS, monospace",
+            "padding:0",
+            "margin:0",
+            "border-radius:0",
+            "touch-action:none",
+            "user-select:none",
+            "-webkit-user-select:none",
+        ].join(";");
+
+        const button: TouchControlButtonInternal = {
+            el,
+            keys: normalizeKeys(keys),
+            activePointers: new Set(),
+        };
+
+        el.addEventListener("pointerdown", (e) => {
+            e.preventDefault();
+            this.focusCanvas();
+            button.activePointers.add(e.pointerId);
+            if (typeof el.setPointerCapture === "function") {
+                el.setPointerCapture(e.pointerId);
+            }
+            el.style.background = "rgba(137,180,250,0.72)";
+            for (const code of button.keys) this.pressTouchCode(code);
+        });
+
+        const release = (e: PointerEvent) => {
+            if (!button.activePointers.has(e.pointerId)) return;
+            e.preventDefault();
+            button.activePointers.delete(e.pointerId);
+            if (button.activePointers.size === 0) {
+                el.style.background = "rgba(17,17,27,0.55)";
+            }
+            for (const code of button.keys) this.releaseTouchCode(code);
+        };
+
+        el.addEventListener("pointerup", release);
+        el.addEventListener("pointercancel", release);
+        el.addEventListener("lostpointercapture", release);
+
+        return button;
+    }
+
+    private syncTouchControlsRoot(): void {
+        if (!this.touchControlsRoot) return;
+        const canvas = this.canvasManager.canvas;
+        const parent =
+            this.touchControlsRoot.parentElement ?? document.body;
+        const canvasRect = canvas.getBoundingClientRect();
+        const parentRect = parent.getBoundingClientRect();
+        this.touchControlsRoot.style.left = `${canvasRect.left - parentRect.left}px`;
+        this.touchControlsRoot.style.top = `${canvasRect.top - parentRect.top}px`;
+        this.touchControlsRoot.style.width = `${canvasRect.width}px`;
+        this.touchControlsRoot.style.height = `${canvasRect.height}px`;
+    }
+
+    private releaseTouchButton(button: TouchControlButtonInternal): void {
+        const count = button.activePointers.size;
+        button.activePointers.clear();
+        button.el.style.background = "rgba(17,17,27,0.55)";
+        for (let i = 0; i < count; i++) {
+            for (const code of button.keys) this.releaseTouchCode(code);
+        }
+    }
+
+    private pressTouchCode(code: string): void {
+        this.touchCodeCounts[code] = (this.touchCodeCounts[code] ?? 0) + 1;
+        if (this.touchCodeCounts[code] === 1) {
+            this.pressCode(code);
+        }
+    }
+
+    private releaseTouchCode(code: string): void {
+        const count = this.touchCodeCounts[code] ?? 0;
+        if (count <= 1) {
+            delete this.touchCodeCounts[code];
+            this.releaseCode(code);
+        } else {
+            this.touchCodeCounts[code] = count - 1;
+        }
+    }
+
+    private pressCode(code: string): void {
+        const wasDown = (this.keyboardState[code] ?? 0) & 1;
+        this.keyboardState[code] =
+            wasDown
+                ? (this.keyboardState[code] ?? 0) | 1
+                : (this.keyboardState[code] ?? 0) | 3;
+
+        for (const name of Object.keys(this.actionMap)) {
+            if (this.actionMap[name].includes(code)) {
+                this.actionState[name] =
+                    wasDown
+                        ? (this.actionState[name] ?? 0) | 1
+                        : (this.actionState[name] ?? 0) | 3;
+            }
+        }
+    }
+
+    private releaseCode(code: string): void {
+        this.keyboardState[code] = (this.keyboardState[code] ?? 0) & ~1;
+        this.keyboardState[code] = (this.keyboardState[code] ?? 0) | 4;
+
+        for (const name of Object.keys(this.actionMap)) {
+            if (this.actionMap[name].includes(code)) {
+                this.actionState[name] = (this.actionState[name] ?? 0) & ~1;
+                this.actionState[name] = (this.actionState[name] ?? 0) | 4;
+            }
+        }
+    }
+
+    private isLikelyTouchDevice(): boolean {
+        return (
+            typeof matchMedia === "function" &&
+            matchMedia("(pointer: coarse)").matches
+        );
+    }
+
+    private focusCanvas(): void {
+        const canvas = this.canvasManager.canvas;
+        if (document.activeElement !== canvas && typeof canvas.focus === "function") {
+            canvas.focus({ preventScroll: true });
+        }
+    }
+
+    private shouldHandleKeyboardEvent(e: KeyboardEvent): boolean {
+        const target = e.target as HTMLElement | null;
+        if (target && target !== this.canvasManager.canvas) {
+            const tag = target.tagName;
+            if (
+                tag === "INPUT" ||
+                tag === "TEXTAREA" ||
+                tag === "SELECT" ||
+                target.isContentEditable
+            ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private shouldPreventBrowserDefault(e: KeyboardEvent): boolean {
+        if (e.altKey || e.ctrlKey || e.metaKey) return false;
+        if (document.activeElement !== this.canvasManager.canvas) return false;
+        return true;
     }
 
     /** Update gamepad button and axis states. */
@@ -235,6 +507,11 @@ export class InputManager {
 
     /** Reset all input states. */
     reset(): void {
+        for (const button of this.touchControlButtons) {
+            button.activePointers.clear();
+            button.el.style.background = "rgba(17,17,27,0.55)";
+        }
+        this.touchCodeCounts = {};
         for (const code in this.keyboardState) delete this.keyboardState[code];
         for (const name in this.actionState) delete this.actionState[name];
         this.mouseX = 0;
@@ -266,6 +543,7 @@ export class InputManager {
     destroy(): void {
         window.removeEventListener("keydown", this.onKeyDownBound);
         window.removeEventListener("keyup", this.onKeyUpBound);
+        window.removeEventListener("blur", this.onBlurBound);
 
         const canvas = this.canvasManager.canvas;
         canvas.removeEventListener("mousemove", this.onMouseMoveBound);
@@ -277,6 +555,7 @@ export class InputManager {
         canvas.removeEventListener("touchmove", this.onTouchMoveBound);
         canvas.removeEventListener("touchend", this.onTouchEndBound);
         canvas.removeEventListener("touchcancel", this.onTouchEndBound);
+        this.removeTouchControls();
         this.reset();
     }
 }
@@ -343,10 +622,11 @@ export function mouseWheel(): number {
  * Bind an action name to a set of keys or buttons.
  * @param keys - Key or button codes.
  */
-export function bindAction(name: string, keys: string[]): void {
-    globalActionMap[name] = keys;
+export function bindAction(name: string, keys: string | string[]): void {
+    const list = normalizeKeys(keys);
+    globalActionMap[name] = list;
     if (activeEngine?.inputManager) {
-        activeEngine.inputManager.actionMap[name] = keys;
+        activeEngine.inputManager.actionMap[name] = list;
     }
 }
 
@@ -479,8 +759,24 @@ export function setTouchMappedToMouse(enabled: boolean): void {
     }
 }
 
+/** Add on-screen touch controls mapped to normal key/action input. */
+export function addTouchControls(config: TouchControlsConfig): () => void {
+    const mgr = activeEngine?.inputManager;
+    if (!mgr) return () => {};
+    return mgr.addTouchControls(config);
+}
+
+/** Remove active on-screen touch controls. */
+export function removeTouchControls(): void {
+    activeEngine?.inputManager?.removeTouchControls();
+}
+
 function mouseButtonFromCode(code: string): number | null {
     if (!code.startsWith("Mouse")) return null;
     const button = Number(code.slice(5));
     return Number.isInteger(button) && button >= 0 ? button : null;
+}
+
+function normalizeKeys(keys: string | string[]): string[] {
+    return Array.isArray(keys) ? keys : [keys];
 }

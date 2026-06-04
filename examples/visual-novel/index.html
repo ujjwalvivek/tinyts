@@ -10,8 +10,8 @@
         <title>TinyTS - Visual Novel</title>
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -25,7 +25,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -53,6 +53,10 @@
                 height: auto !important;
                 aspect-ratio: 16/9 !important;
                 border: 2px dashed #cba6f7;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -403,7 +407,7 @@
                     const speakerColor =
                         node.speaker === "SERAPHINA" ? "#cba6f7" : "#fab387";
                     drawText(node.speaker, vec2(boxX + 16, boxY + 18), {
-                        font: "bold 9.5px 'Monaspace Neon'",
+                        font: "bold 6.65px 'TinyTS'",
                         color: speakerColor,
                     });
                     drawLine(
@@ -430,7 +434,7 @@
                             lines[i],
                             vec2(boxX + 16, boxY + 44 + i * 15),
                             {
-                                font: "8.5px 'Monaspace Neon'",
+                                font: "5.95px 'TinyTS'",
                                 color: "#cdd6f4",
                             },
                         );
@@ -470,7 +474,7 @@
                                 choice.text,
                                 vec2(btnX + btnW / 2, btnY + btnH / 2 + 1),
                                 {
-                                    font: "bold 8.5px 'Monaspace Neon'",
+                                    font: "bold 5.95px 'TinyTS'",
                                     color: textCol,
                                     align: "center",
                                     baseline: "middle",
@@ -493,7 +497,7 @@
                         "MAINFRAME INTERACTIVE CHAT // DECISION ENGINE",
                         vec2(W / 2, 10),
                         {
-                            font: "bold 9.5px 'Monaspace Neon'",
+                            font: "bold 6.65px 'TinyTS'",
                             color: "#cba6f7",
                             align: "center",
                         },
@@ -509,6 +513,8 @@
                     .getElementById("canvas-container")
                     .appendChild(engine.overlayCanvas);
             }
-        </script>
+        
+            setTouchMappedToMouse(true);
+</script>
     </body>
 </html>

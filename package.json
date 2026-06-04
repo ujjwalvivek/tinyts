@@ -24,18 +24,21 @@
         "dist/"
     ],
     "scripts": {
-        "build": "npm run build:esm && npm run build:global && npm run build:min && npm run docs",
+        "build": "npm run build:esm && npm run build:global && npm run build:min && npm run build:fonts && npm run docs",
         "build:esm": "esbuild src/index.ts --bundle --format=esm --outfile=dist/tinyts.esm.js",
         "build:global": "esbuild src/index.ts --bundle --format=iife --global-name=tinyts --footer:js=\"for(var _k in tinyts)globalThis[_k]=tinyts[_k]\" --outfile=dist/tinyts.js",
         "build:cjs": "esbuild src/index.ts --bundle --format=cjs --outfile=dist/tinyts.cjs",
         "build:min": "esbuild src/index.ts --bundle --format=iife --global-name=tinyts --minify --footer:js=\"for(var _k in tinyts)globalThis[_k]=tinyts[_k]\" --outfile=dist/tinyts.min.js && esbuild src/index.ts --bundle --format=esm --minify --outfile=dist/tinyts.esm.min.js",
+        "build:fonts": "mkdir -p dist/font && cp src/font/tinyTS.woff2 dist/font/tinyTS.woff2",
         "build:types": "tsc --emitDeclarationOnly --outDir dist",
         "build:all": "npm run build && npm run build:cjs && npm run build:types && npm run size",
+        "game:build": "cd game && npm run build",
+        "game:dev": "cd game && npm run dev",
         "test": "tsx --test",
         "check": "npm exec tsc -- --noEmit && npm run build:all && npm test",
         "size": "esbuild src/index.ts --bundle --format=esm --minify --outfile=/dev/null 2>&1 || true",
         "serve": "python3 -m http.server 8000",
-        "docs": "typedoc && cp -r examples docs/examples && cp -r dist docs/dist"
+        "docs": "typedoc && mkdir -p docs/examples docs/dist && cp -r examples/. docs/examples/ && cp -r dist/. docs/dist/"
     },
     "devDependencies": {
         "@types/node": "^25.9.1",

@@ -10,8 +10,8 @@
         <title>TinyTS - Asteroids</title>
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -25,7 +25,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -53,6 +53,10 @@
                 height: auto !important;
                 aspect-ratio: 16/9 !important;
                 border: 2px dashed #cba6f7;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -87,6 +91,35 @@
             bindAction("rotateRight", ["KeyD", "ArrowRight"]);
             bindAction("thrust", ["KeyW", "ArrowUp"]);
             bindAction("shoot", ["Space"]);
+
+            function drawPixelHeart(x, y, filled) {
+                const color = filled ? "#f38ba8" : "#313244";
+                const pixels = [
+                    [1, 0],
+                    [3, 0],
+                    [0, 1],
+                    [1, 1],
+                    [2, 1],
+                    [3, 1],
+                    [4, 1],
+                    [0, 2],
+                    [1, 2],
+                    [2, 2],
+                    [3, 2],
+                    [4, 2],
+                    [1, 3],
+                    [2, 3],
+                    [3, 3],
+                    [2, 4],
+                ];
+                for (const p of pixels) {
+                    drawRect(
+                        vec2(x + p[0] * 2, y + p[1] * 2),
+                        vec2(2, 2),
+                        color,
+                    );
+                }
+            }
 
             function createAsteroidPoints(radius, numPoints = 8) {
                 const points = [];
@@ -430,22 +463,22 @@
                     drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
 
                     drawText(`SCORE: ${score}`, vec2(16, 10), {
-                        font: "bold 10px 'Monaspace Neon'",
+                        font: "bold 7px 'TinyTS'",
                         color: "#89b4fa",
                     });
                     drawText(`HIGH: ${highScore}`, vec2(W - 16, 10), {
-                        font: "bold 10px 'Monaspace Neon'",
+                        font: "bold 7px 'TinyTS'",
                         color: "#fab387",
                         align: "right",
                     });
 
-                    let livesStr = "";
-                    for (let i = 0; i < ship.lives; i++) livesStr += "▲ ";
-                    drawText(`LIVES: ${livesStr}`, vec2(W / 2, 10), {
-                        font: "10px 'Monaspace Neon'",
-                        color: "#f38ba8",
-                        align: "center",
+                    drawText("LIVES:", vec2(W / 2 - 42, 10), {
+                        font: "7px 'TinyTS'",
+                        color: "#a6adc8",
                     });
+                    for (let i = 0; i < 3; i++) {
+                        drawPixelHeart(W / 2 + 10 + i * 13, 8, i < ship.lives);
+                    }
 
                     if (gameState === "gameover") {
                         drawRect(
@@ -457,7 +490,7 @@
                             "SPACE ARMOR FAILURE // DEFEATED",
                             vec2(W / 2, H / 2 - 15),
                             {
-                                font: "bold 14px 'Monaspace Neon'",
+                                font: "bold 9.8px 'TinyTS'",
                                 color: "#f38ba8",
                                 align: "center",
                             },
@@ -466,7 +499,7 @@
                             `FINAL SCORE: ${score}`,
                             vec2(W / 2, H / 2 + 10),
                             {
-                                font: "10px 'Monaspace Neon'",
+                                font: "7px 'TinyTS'",
                                 color: "#89b4fa",
                                 align: "center",
                             },
@@ -475,7 +508,7 @@
                             "PRESS SPACE TO REDEPLOY",
                             vec2(W / 2, H / 2 + 35),
                             {
-                                font: "9px 'Monaspace Neon'",
+                                font: "6.3px 'TinyTS'",
                                 color: "#a6adc8",
                                 align: "center",
                             },
@@ -492,6 +525,13 @@
                     .getElementById("canvas-container")
                     .appendChild(engine.overlayCanvas);
             }
-        </script>
+        
+            addTouchControls({
+                left: 'ArrowLeft',
+                right: 'ArrowRight',
+                up: 'ArrowUp',
+                buttons: [{ id: 'shoot', label: 'FIRE', keys: 'Space' }],
+            });
+</script>
     </body>
 </html>

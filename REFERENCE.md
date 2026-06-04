@@ -73,8 +73,8 @@ Defined in [input.ts](src/core/input.ts)
   Checks if a mouse button was released during the current frame.
 - **`mouseWheel(): number`**
   Returns the mouse scroll wheel vertical delta.
-- **`bindAction(name: string, keys: string[]): void`**
-  Maps a logical action name to an array of keyboard key codes.
+- **`bindAction(name: string, keys: string | string[]): void`**
+  Maps a logical action name to one or more keyboard, mouse, or gamepad codes.
 - **`actionDown(name: string): boolean`**
   Checks if any key bound to the action is currently held down.
 - **`actionPressed(name: string): boolean`**
@@ -90,7 +90,19 @@ Defined in [input.ts](src/core/input.ts)
 - **`touchPos(): Vec2`**
   Returns the active touch coordinates in logical game space.
 - **`setTouchMappedToMouse(enabled: boolean): void`**
-  Enables or disables mapping primary touch coordinates directly to the mouse cursor variables.
+  Enables or disables mapping primary touch coordinates to `mousePos()` and primary touch press/release to left mouse button state.
+- **`addTouchControls(config: TouchControlsConfig): () => void`**
+  Adds an on-screen touch control overlay attached to the active engine canvas. D-pad and button presses feed the normal keyboard/action state, so existing `keyDown()`, `keyPressed()`, `actionDown()`, and `actionPressed()` checks keep working. Returns a cleanup function.
+- **`removeTouchControls(): void`**
+  Removes the active on-screen touch controls and releases any held touch buttons.
+- **`TouchControlsVisibility`**
+  Visibility mode for on-screen controls: `"auto"` shows on coarse-pointer devices, `"always"` forces display, and `"never"` keeps the overlay hidden.
+- **`TouchControlButtonConfig`**
+  Action button configuration:
+  `{ id?: string, label: string, keys: string | string[] }`
+- **`TouchControlsConfig`**
+  Touch overlay configuration:
+  `{ left?: string | string[], right?: string | string[], up?: string | string[], down?: string | string[], buttons?: TouchControlButtonConfig[], visibility?: TouchControlsVisibility }`
 
 ### Text Input
 
@@ -228,7 +240,7 @@ Defined in [renderer2d.ts](src/render/renderer2d.ts)
 - **`drawSprite(image: HTMLImageElement | HTMLCanvasElement, pos: Vec2, size: Vec2, options?: SpriteOptions): void`**
   Draws an image or sprite region. Supports source framing (`sourceX`, `sourceY`, `sourceWidth`, `sourceHeight`), `angle` rotation in radians, scale flipping (`flipX`, `flipY`), and rendering `color` tint overrides.
 - **`drawText(text: string, pos: Vec2, options?: TextOptions): void`**
-  Draws typographic text. Options specify `size`, `font`, `color`, `align` (left/center/right), `baseline`, `outlineColor`, and `outlineThickness`.
+  Draws typographic text. Options specify `size`, `font`, `color`, `align` (left/center/right), `baseline`, `outlineColor`, and `outlineThickness`. When `TextOptions.font` is omitted, TinyTS uses the bundled TinyTS font.
 - **`setRenderTransform(pos: Vec2, zoom: number): void`**
   Transforms drawing operations into world/camera space.
 - **`resetRenderTransform(): void`**
@@ -239,6 +251,11 @@ Defined in [renderer2d.ts](src/render/renderer2d.ts)
   Binds a framebuffer as the active drawing destination (pass `null` to return to screen).
 - **`drawFrameBuffer(fb: FrameBuffer, pos: Vec2, size: Vec2): void`**
   Draws the contents of a framebuffer to the screen.
+- **`getRendererStats(): RendererStats`**
+  Returns per-frame renderer instrumentation counters for the active renderer.
+- **`RendererStats`**
+  Renderer instrumentation snapshot:
+  `{ drawCalls: number, batchFlushes: number, textureSwitches: number, shapeSwitches: number, quads: number, overlayLineCalls: number, overlayTextCalls: number }`
 
 ### Color
 

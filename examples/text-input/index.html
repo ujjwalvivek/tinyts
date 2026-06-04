@@ -12,8 +12,8 @@
         <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -27,7 +27,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -55,6 +55,10 @@
                 height: auto !important;
                 aspect-ratio: 16/9 !important;
                 border: 2px dashed #cba6f7;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -142,12 +146,12 @@
                     );
                     drawText("TEXT INPUT", vec2(18, 16), {
                         color: "#cba6f7",
-                        size: 8,
+                        size: 5.6,
                         weight: "bold",
                     });
                     drawText("/help for commands", vec2(W - 18, 16), {
                         color: "#45475a",
-                        size: 7,
+                        size: 4.9,
                         align: "right",
                     });
 
@@ -157,7 +161,7 @@
                         drawText(
                             messages[i].text,
                             vec2(18, 32 + (i - start) * 20),
-                            { color: messages[i].color, size: 8 },
+                            { color: messages[i].color, size: 5.6 },
                         );
                     }
 
@@ -172,14 +176,14 @@
 
                     drawText(">", vec2(20, iy + 11), {
                         color: "#a6e3a1",
-                        size: 9,
+                        size: 6.3,
                         baseline: "middle",
                     });
                     const display =
                         inputValue || (isActive ? "" : "press ENTER to type");
                     drawText(display, vec2(30, iy + 11), {
                         color: isActive || inputValue ? "#cdd6f4" : "#45475a",
-                        size: 9,
+                        size: 6.3,
                         baseline: "middle",
                     });
 
@@ -198,7 +202,7 @@
                         vec2(W / 2, H - 6),
                         {
                             color: isActive ? "#a6e3a1" : "#585b70",
-                            size: 6,
+                            size: 4.2,
                             align: "center",
                             baseline: "bottom",
                         },

@@ -7,8 +7,8 @@
         <title>TinyTS - Idle Clicker</title>
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -22,7 +22,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -51,6 +51,10 @@
                 aspect-ratio: 16/9 !important;
                 border: 2px dashed #cba6f7;
             }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
+            }
         </style>
     </head>
     <body>
@@ -65,6 +69,10 @@
             let planetBaseRadius = 55;
             let planetRadius = 55;
             let planetAngle = 0;
+            let overclock = 0;
+            let prestigeCores = 0;
+            let totalClicks = 0;
+            const prestigeThreshold = 50000;
 
             const upgrades = [
                 {
@@ -115,6 +123,33 @@
                 });
             }
 
+            function getMultiplier() {
+                return (1 + prestigeCores * 0.35) * (1 + overclock * 0.6);
+            }
+
+            function prestige() {
+                if (credits < prestigeThreshold) return;
+                prestigeCores++;
+                credits = 0;
+                clickPower = 1 + prestigeCores;
+                overclock = 0;
+                for (const upg of upgrades) {
+                    upg.count = 0;
+                }
+                upgrades[0].cost = 15;
+                upgrades[1].cost = 100;
+                upgrades[2].cost = 600;
+                upgrades[3].cost = 4000;
+                emitParticles({
+                    pos: vec2(220, H / 2 + 10),
+                    count: 80,
+                    life: [0.4, 0.9],
+                    speed: [80, 180],
+                    color: ["#cba6f7", "#89b4fa", "#fff"],
+                });
+                playSound(sfx.powerup({ volume: 0.3, pitch: 0.65 }));
+            }
+
             const engine = engineStart({
                 size: { width: W, height: H },
                 pixelated: true,
@@ -123,6 +158,7 @@
                     updateParticles(dt);
 
                     planetAngle += dt * 0.45;
+                    overclock = Math.max(0, overclock - dt * 0.08);
 
                     planetRadius = lerp(planetRadius, planetBaseRadius, 8 * dt);
 
@@ -130,7 +166,7 @@
                     for (const upg of upgrades) {
                         totalIncome += upg.count * upg.income;
                     }
-                    credits += totalIncome * dt;
+                    credits += totalIncome * getMultiplier() * dt;
 
                     for (let i = floatingTexts.length - 1; i >= 0; i--) {
                         const f = floatingTexts[i];
@@ -151,15 +187,18 @@
                         const mouseDist = planetCenter.distanceTo(vec2(mx, my));
 
                         if (mouseDist <= planetRadius) {
-                            credits += clickPower;
+                            const gain = Math.max(1, Math.floor(clickPower * getMultiplier()));
+                            credits += gain;
+                            totalClicks++;
+                            overclock = Math.min(1, overclock + 0.045);
                             planetRadius = planetBaseRadius * 1.15;
                             playSound(
                                 sfx.coin({
                                     volume: 0.16,
-                                    frequency: 800 + clickPower * 5,
+                                    frequency: 800 + gain * 5,
                                 }),
                             );
-                            spawnFloatText(`+${clickPower}`, mx, my);
+                            spawnFloatText(`+${gain}`, mx, my);
 
                             emitParticles({
                                 pos: vec2(mx, my),
@@ -172,6 +211,11 @@
 
                         const shopX = W - 180;
                         if (mx >= shopX + 10 && mx <= W - 10) {
+                            if (my >= 318 && my <= 348) {
+                                if (credits >= prestigeThreshold) prestige();
+                                else playSound(sfx.menuCancel({ volume: 0.15 }));
+                                return;
+                            }
                             for (let i = 0; i < upgrades.length; i++) {
                                 const upg = upgrades[i];
                                 const itemY = 60 + i * 65;
@@ -241,19 +285,36 @@
                         const wy = py + Math.sin(angle) * (planetRadius - 8);
                         drawCircle(vec2(wx, wy), 5, "#cba6f7");
                     }
+                    for (let i = 0; i < prestigeCores; i++) {
+                        const angle = -planetAngle * 1.6 + (i / Math.max(1, prestigeCores)) * Math.PI * 2;
+                        const wx = px + Math.cos(angle) * (planetRadius + 22);
+                        const wy = py + Math.sin(angle) * (planetRadius + 22);
+                        drawRect(vec2(wx - 4, wy - 4), vec2(8, 8), "#f9e2af");
+                    }
                     drawCircle(center, planetRadius - 16, "#181825");
                     drawCircle(center, planetRadius - 26, "#89b4fa");
 
                     drawText("TAP CORE", vec2(px, py), {
-                        font: "bold 9px 'Monaspace Neon'",
+                        font: "bold 6.3px 'TinyTS'",
                         color: "#11111b",
                         align: "center",
                         baseline: "middle",
                     });
+                    drawRect(vec2(px - 60, py + 76), vec2(120, 5), "#313244");
+                    drawRect(
+                        vec2(px - 60, py + 76),
+                        vec2(120 * overclock, 5),
+                        "#f38ba8",
+                    );
+                    drawText("OVERCLOCK", vec2(px, py + 92), {
+                        font: "5.25px 'TinyTS'",
+                        color: "#a6adc8",
+                        align: "center",
+                    });
 
                     for (const f of floatingTexts) {
                         drawText(f.text, f.pos, {
-                            font: "bold 12px 'Monaspace Neon'",
+                            font: "bold 8.4px 'TinyTS'",
                             color: `rgba(205, 214, 244, ${f.alpha})`,
                             align: "center",
                         });
@@ -266,7 +327,7 @@
                     drawLine(vec2(shopX, 30), vec2(shopX, H), "#313244", 2);
 
                     drawText("CORE LAB UPGRADES", vec2(shopX + 15, 46), {
-                        font: "bold 8.5px 'Monaspace Neon'",
+                        font: "bold 5.95px 'TinyTS'",
                         color: "#cba6f7",
                     });
 
@@ -289,18 +350,18 @@
                         );
 
                         drawText(upg.name, vec2(shopX + 18, itemY + 12), {
-                            font: "bold 9px 'Monaspace Neon'",
+                            font: "bold 6.3px 'TinyTS'",
                             color: "#cdd6f4",
                         });
                         drawText(upg.desc, vec2(shopX + 18, itemY + 24), {
-                            font: "7.5px 'Monaspace Neon'",
+                            font: "5.25px 'TinyTS'",
                             color: "#a6adc8",
                         });
                         drawText(
                             `COST: $${upg.cost}`,
                             vec2(shopX + 18, itemY + 38),
                             {
-                                font: "bold 7px 'Monaspace Neon'",
+                                font: "bold 4.9px 'TinyTS'",
                                 color: "#f9e2af",
                             },
                         );
@@ -309,12 +370,33 @@
                             `x${upg.count}`,
                             vec2(shopX + 155, itemY + 12),
                             {
-                                font: "bold 9px 'Monaspace Neon'",
+                                font: "bold 6.3px 'TinyTS'",
                                 color: "#a6e3a1",
                                 align: "right",
                             },
                         );
                     }
+
+                    const canPrestige = credits >= prestigeThreshold;
+                    drawRect(
+                        vec2(shopX + 10, 318),
+                        vec2(160, 30),
+                        canPrestige ? "#313244" : "#1e1e2e",
+                    );
+                    drawRectOutline(
+                        vec2(shopX + 10, 318),
+                        vec2(160, 30),
+                        "#cba6f7",
+                        canPrestige ? 1.5 : 1,
+                    );
+                    drawText("PRESTIGE CORE", vec2(shopX + 18, 329), {
+                        font: "bold 5.6px 'TinyTS'",
+                        color: "#cdd6f4",
+                    });
+                    drawText("$50K RESET // +35% MULT", vec2(shopX + 18, 340), {
+                        font: "4.2px 'TinyTS'",
+                        color: "#a6adc8",
+                    });
 
                     drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
                     drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
@@ -323,22 +405,27 @@
                     for (const upg of upgrades) {
                         totalIncome += upg.count * upg.income;
                     }
+                    totalIncome *= getMultiplier();
 
                     drawText(`CREDITS: $${Math.floor(credits)}`, vec2(16, 10), {
-                        font: "bold 10px 'Monaspace Neon'",
+                        font: "bold 7px 'TinyTS'",
                         color: "#f9e2af",
                     });
                     drawText(
                         `RATE: $${totalIncome.toFixed(1)}/S`,
                         vec2(210, 10),
                         {
-                            font: "bold 10px 'Monaspace Neon'",
+                            font: "bold 7px 'TinyTS'",
                             color: "#a6e3a1",
                         },
                     );
                     drawText(`CLICK POWER: +${clickPower}`, vec2(340, 10), {
-                        font: "bold 10px 'Monaspace Neon'",
+                        font: "bold 7px 'TinyTS'",
                         color: "#89b4fa",
+                    });
+                    drawText(`CORES: ${prestigeCores}`, vec2(520, 10), {
+                        font: "bold 7px 'TinyTS'",
+                        color: "#cba6f7",
                     });
                 },
             });
@@ -351,6 +438,8 @@
                     .getElementById("canvas-container")
                     .appendChild(engine.overlayCanvas);
             }
-        </script>
+        
+            setTouchMappedToMouse(true);
+</script>
     </body>
 </html>

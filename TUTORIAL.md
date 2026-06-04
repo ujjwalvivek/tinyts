@@ -521,25 +521,37 @@ if (engine.overlayCanvas) {
 
 `engine.canvasManager.canvas` is the WebGL2 canvas used for all batch-drawn shapes. `engine.overlayCanvas` is the Canvas2D overlay used for text and debug overlays.
 
+For mobile-friendly examples, add an on-screen control overlay after the canvas is attached. The controls emit normal key/action state, so the same `bindAction()` code works on keyboard and touch:
+
+```js
+addTouchControls({
+    left: "ArrowLeft",
+    right: "ArrowRight",
+    buttons: [{ id: "launch", label: "GO", keys: "Space" }],
+});
+```
+
+For click-first games, `setTouchMappedToMouse(true)` maps the primary touch point to `mousePos()` and the left mouse button state.
+
 ## Complete Source
 
 The full, working example lives at [`examples/breakout/index.html`](https://github.com/ujjwalvivek/tinyts/blob/main/examples/breakout/index.html).
 
 ### What You Learned
 
-| Concept          | TinyTS API                                                                                        |
-| ---------------- | ------------------------------------------------------------------------------------------------- |
-| Engine lifecycle | `engineStart({ size, update, render })`                                                           |
-| Input            | `bindAction()`, `actionDown()`, `actionPressed()`, `mousePos()`, `mousePressed()`, `keyPressed()` |
-| Camera           | `createCamera()`, `camera.apply()`, `camera.end()`, `camera.shake()`, `camera.update()`           |
-| Drawing          | `clear()`, `drawRect()`, `drawText()`                                                             |
-| Color            | `Color.fromHex()`, `Color.lerp()`, `Color.darken()`                                               |
-| Vectors          | `vec2()`, `clamp()`, `lerp()`, `mapRange()`                                                       |
-| Collision        | `aabb()`, `aabbOverlap()`, `aabbOverlapResult()`                                                  |
-| Particles        | `emitParticles()`, `updateParticles()`, `renderParticles()`                                       |
-| Audio            | `unlockAudio()`, `playSound()`                                                                    |
-| Tweens           | `addTween()`, `bounceOut`                                                                         |
-| Utilities        | `rand()`, `choose()`, `time`, `stats.fps`                                                         |
+| Concept          | TinyTS API                                                                                                              |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Engine lifecycle | `engineStart({ size, update, render })`                                                                                 |
+| Input            | `bindAction()`, `actionDown()`, `actionPressed()`, `mousePos()`, `mousePressed()`, `keyPressed()`, `addTouchControls()` |
+| Camera           | `createCamera()`, `camera.apply()`, `camera.end()`, `camera.shake()`, `camera.update()`                                 |
+| Drawing          | `clear()`, `drawRect()`, `drawText()`                                                                                   |
+| Color            | `Color.fromHex()`, `Color.lerp()`, `Color.darken()`                                                                     |
+| Vectors          | `vec2()`, `clamp()`, `lerp()`, `mapRange()`                                                                             |
+| Collision        | `aabb()`, `aabbOverlap()`, `aabbOverlapResult()`                                                                        |
+| Particles        | `emitParticles()`, `updateParticles()`, `renderParticles()`                                                             |
+| Audio            | `unlockAudio()`, `playSound()`                                                                                          |
+| Tweens           | `addTween()`, `bounceOut`                                                                                               |
+| Utilities        | `rand()`, `choose()`, `time`, `stats.fps`                                                                               |
 
 ## Next Steps
 

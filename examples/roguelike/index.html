@@ -10,8 +10,8 @@
         <title>TinyTS - Roguelike</title>
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -25,7 +25,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -53,6 +53,10 @@
                 height: auto !important;
                 aspect-ratio: 16/9 !important;
                 border: 2px dashed #cba6f7;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -498,7 +502,7 @@
                     drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.85)");
                     drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
                     drawText("DUNGEON CRAWLER // PROC_GEN ECS", vec2(16, 10), {
-                        font: "bold 10px 'Monaspace Neon'",
+                        font: "bold 7px 'TinyTS'",
                         color: "#cba6f7",
                     });
 
@@ -546,7 +550,7 @@
                             const py =
                                 mapOffsetY + gp.y * TILE_SZ + TILE_SZ / 2;
                             drawText(spr.char, vec2(px, py), {
-                                font: "bold 12px 'Monaspace Neon'",
+                                font: "bold 8.4px 'TinyTS'",
                                 color: spr.color,
                                 align: "center",
                                 baseline: "middle",
@@ -573,13 +577,13 @@
                             1,
                         );
                         drawText("STATUS", vec2(15 + paneW / 2, 52), {
-                            font: "bold 8px 'Monaspace Neon'",
+                            font: "bold 5.6px 'TinyTS'",
                             color: "#fab387",
                             align: "center",
                         });
 
                         drawText("HP", vec2(15 + paneW / 2, 70), {
-                            font: "8px 'Monaspace Neon'",
+                            font: "5.6px 'TinyTS'",
                             color: "#a6adc8",
                             align: "center",
                         });
@@ -587,19 +591,19 @@
                             `${pCom.hp}/${pCom.maxHp}`,
                             vec2(15 + paneW / 2, 82),
                             {
-                                font: "bold 10px 'Monaspace Neon'",
+                                font: "bold 7px 'TinyTS'",
                                 color: "#f38ba8",
                                 align: "center",
                             },
                         );
 
                         drawText("ATK", vec2(15 + paneW / 2, 102), {
-                            font: "8px 'Monaspace Neon'",
+                            font: "5.6px 'TinyTS'",
                             color: "#a6adc8",
                             align: "center",
                         });
                         drawText(`${pCom.atk}`, vec2(15 + paneW / 2, 114), {
-                            font: "bold 10px 'Monaspace Neon'",
+                            font: "bold 7px 'TinyTS'",
                             color: "#a6e3a1",
                             align: "center",
                         });
@@ -619,7 +623,7 @@
                     for (let i = 0; i < logs.length; i++) {
                         const ly = H - 48 + i * 12;
                         drawText(`> ${logs[i]}`, vec2(25, ly), {
-                            font: "8px 'Monaspace Neon'",
+                            font: "5.6px 'TinyTS'",
                             color:
                                 i === logs.length - 1 ? "#a6e3a1" : "#585b70",
                         });
@@ -635,7 +639,7 @@
                             "YOU PERISHED IN THE DEPTHS",
                             vec2(W / 2, H / 2 - 10),
                             {
-                                font: "bold 14px 'Monaspace Neon'",
+                                font: "bold 9.8px 'TinyTS'",
                                 color: "#f38ba8",
                                 align: "center",
                             },
@@ -644,7 +648,7 @@
                             "PRESS SPACE TO RESPAWN",
                             vec2(W / 2, H / 2 + 15),
                             {
-                                font: "9px 'Monaspace Neon'",
+                                font: "6.3px 'TinyTS'",
                                 color: "#a6adc8",
                                 align: "center",
                             },
@@ -659,7 +663,7 @@
                             "PORTAL ESCAPED // MAZE CONQUERED",
                             vec2(W / 2, H / 2 - 10),
                             {
-                                font: "bold 14px 'Monaspace Neon'",
+                                font: "bold 9.8px 'TinyTS'",
                                 color: "#a6e3a1",
                                 align: "center",
                             },
@@ -668,7 +672,7 @@
                             "PRESS SPACE TO ENTER NEXT DEPTHS",
                             vec2(W / 2, H / 2 + 15),
                             {
-                                font: "9px 'Monaspace Neon'",
+                                font: "6.3px 'TinyTS'",
                                 color: "#a6adc8",
                                 align: "center",
                             },
@@ -685,6 +689,14 @@
                     .getElementById("canvas-container")
                     .appendChild(engine.overlayCanvas);
             }
-        </script>
+        
+            addTouchControls({
+                left: 'ArrowLeft',
+                right: 'ArrowRight',
+                up: 'ArrowUp',
+                down: 'ArrowDown',
+                buttons: [{ id: 'wait', label: 'WAIT', keys: 'Space' }],
+            });
+</script>
     </body>
 </html>

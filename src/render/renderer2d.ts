@@ -7,7 +7,9 @@ import type {
     SpriteOptions,
     TextOptions,
     FrameBuffer,
+    RendererStats,
 } from "./types";
+import { preloadDefaultFontFace } from "./font";
 import { WebGL2Renderer } from "./rendererWebGL2";
 import { Canvas2DRenderer } from "./rendererCanvas2d";
 
@@ -90,6 +92,8 @@ export function createRenderer(
     overlayCanvas: HTMLCanvasElement | null;
     removeResizeListener: (() => void) | null;
 } {
+    preloadDefaultFontFace();
+
     if (useWebGL) {
         // Probe shaders first, BEFORE creating a WebGL context on the real canvas
         if (!probeWebGL2Shaders()) {
@@ -176,6 +180,11 @@ export function getActiveRenderer(): Renderer | null {
 /** Get the underlying rendering context. */
 export function getContext(): unknown {
     return getRenderer().getContext();
+}
+
+/** Get per-frame renderer instrumentation counters. */
+export function getRendererStats(): RendererStats {
+    return getRenderer().getStats();
 }
 
 /** Begin a new render frame. */

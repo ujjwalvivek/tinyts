@@ -1,11 +1,13 @@
 import type { Vec2 } from "../core/math";
 import { getCanvasState } from "../core/canvas";
 import { Color } from "./color";
+import { defaultTextFont, ensureDefaultFontFace } from "./font";
 import type {
     Renderer,
     SpriteOptions,
     TextOptions,
     FrameBuffer,
+    RendererStats,
 } from "./types";
 
 const VS = `#version 300 es
@@ -89,7 +91,7 @@ void main() {
   fragColor = base;
 }`;
 
-const MAX_QUADS = 2000;
+const MAX_QUADS = 8192;
 const FLOATS_PER_VERT = 8;
 const VERTS_PER_QUAD = 4;
 const FLOATS_PER_QUAD = FLOATS_PER_VERT * VERTS_PER_QUAD;
@@ -159,6 +161,15 @@ export class WebGL2Renderer implements Renderer {
     private currentUseTex = -1;
     private currentShape = -1;
     private currentShapeParams: [number, number, number, number] = [0, 0, 0, 0];
+    private stats: RendererStats = {
+        drawCalls: 0,
+        batchFlushes: 0,
+        textureSwitches: 0,
+        shapeSwitches: 0,
+        quads: 0,
+        overlayLineCalls: 0,
+        overlayTextCalls: 0,
+    };
 
     private camPosX = 0;
     private camPosY = 0;
@@ -191,6 +202,7 @@ export class WebGL2Renderer implements Renderer {
             this.currentShapeParams[3] !== params[3]
         ) {
             this.flush();
+            this.stats.shapeSwitches++;
             this.gl.uniform1i(this.uShape, shape);
             this.gl.uniform4f(
                 this.uShapeParams,
@@ -367,6 +379,11 @@ export class WebGL2Renderer implements Renderer {
         const gl = this.gl;
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+        gl.bufferData(
+            gl.ARRAY_BUFFER,
+            this.batchData.byteLength,
+            gl.DYNAMIC_DRAW,
+        );
         gl.bufferSubData(
             gl.ARRAY_BUFFER,
             0,
@@ -382,6 +399,8 @@ export class WebGL2Renderer implements Renderer {
         );
         gl.bindVertexArray(null);
 
+        this.stats.drawCalls++;
+        this.stats.batchFlushes++;
         this.batchCount = 0;
         this.currentTex = null;
         this.currentShape = -1;
@@ -452,6 +471,7 @@ export class WebGL2Renderer implements Renderer {
         d[vo + 7] = a;
 
         this.batchCount++;
+        this.stats.quads++;
     }
 
     private addTransformedQuad(
@@ -522,10 +542,12 @@ export class WebGL2Renderer implements Renderer {
         d[vo + 7] = a;
 
         this.batchCount++;
+        this.stats.quads++;
     }
 
     /** Begin a new render frame. */
     begin(): void {
+        this.resetStats();
         const state = getCanvasState();
         if (state?.canvas === this.canvas) {
             this.viewWidth = state.logicalWidth;
@@ -590,7 +612,7 @@ export class WebGL2Renderer implements Renderer {
         gl.clearColor(c.r, c.g, c.b, c.a);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        // Clear Canvas2D overlay (used by lines and text)
+        // Clear Canvas2D overlay (used by text)
         this.overlay.save();
         this.overlay.setTransform(1, 0, 0, 1, 0, 0);
         this.overlay.clearRect(
@@ -605,6 +627,26 @@ export class WebGL2Renderer implements Renderer {
     /** Return the WebGL2 rendering context. */
     getContext(): WebGL2RenderingContext {
         return this.gl;
+    }
+
+    /** Return per-frame renderer instrumentation counters. */
+    getStats(): RendererStats {
+        const snapshot = { ...this.stats };
+        if (this.batchCount > 0) {
+            snapshot.drawCalls++;
+            snapshot.batchFlushes++;
+        }
+        return snapshot;
+    }
+
+    private resetStats(): void {
+        this.stats.drawCalls = 0;
+        this.stats.batchFlushes = 0;
+        this.stats.textureSwitches = 0;
+        this.stats.shapeSwitches = 0;
+        this.stats.quads = 0;
+        this.stats.overlayLineCalls = 0;
+        this.stats.overlayTextCalls = 0;
     }
 
     /** Set the camera transform. */
@@ -905,12 +947,13 @@ export class WebGL2Renderer implements Renderer {
     private bindTexture(tex: WebGLTexture | null): void {
         if (tex === this.currentTex) return;
         this.flush();
+        this.stats.textureSwitches++;
         const t = tex || this.whiteTex;
         this.gl.bindTexture(this.gl.TEXTURE_2D, t);
         this.currentTex = tex;
     }
 
-    // ─── Canvas2D overlay (unbatched, for sparse/debug use) ──────
+    // ─── Lines and Canvas2D text overlay ──────
 
     /** Draw a line between two points. */
     drawLine(
@@ -919,20 +962,44 @@ export class WebGL2Renderer implements Renderer {
         color: string | Color,
         thickness: number = 1,
     ): void {
-        this.flush();
-        this.applyCameraToOverlay();
-        this.overlay.strokeStyle =
-            color instanceof Color ? color.toString() : color;
-        this.overlay.lineWidth = thickness;
-        this.overlay.beginPath();
-        this.overlay.moveTo(a.x, a.y);
-        this.overlay.lineTo(b.x, b.y);
-        this.overlay.stroke();
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const len = Math.hypot(dx, dy);
+        if (len <= 0 || thickness <= 0) return;
+
+        const c = color instanceof Color ? color : Color.fromHex(color);
+        const half = thickness / 2;
+        const nx = (-dy / len) * half;
+        const ny = (dx / len) * half;
+
+        this.bindTexture(null);
+        this.setUseTex(0);
+        this.setShape(0, 0, 0, 0, 0);
+        this.addTransformedQuad(
+            a.x - nx,
+            a.y - ny,
+            b.x - nx,
+            b.y - ny,
+            a.x + nx,
+            a.y + ny,
+            b.x + nx,
+            b.y + ny,
+            0,
+            0,
+            1,
+            1,
+            c.r,
+            c.g,
+            c.b,
+            c.a,
+        );
     }
 
     /** Draw text at a position. */
     drawText(text: string, pos: Vec2, options?: TextOptions): void {
         this.flush();
+        this.stats.overlayTextCalls++;
+        ensureDefaultFontFace();
         const size = options?.size ?? 16;
         this.applyCameraToOverlay();
         this.overlay.fillStyle = options?.color
@@ -940,8 +1007,7 @@ export class WebGL2Renderer implements Renderer {
                 ? options.color.toString()
                 : options.color
             : "#fff";
-        this.overlay.font =
-            options?.font ?? `${size}px 'Courier New', Courier, monospace`;
+        this.overlay.font = options?.font ?? defaultTextFont(size);
         this.overlay.textAlign = options?.align ?? "left";
         this.overlay.textBaseline = options?.baseline ?? "top";
         this.overlay.fillText(text, pos.x, pos.y);

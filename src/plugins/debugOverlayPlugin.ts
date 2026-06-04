@@ -60,7 +60,7 @@ export class DebugOverlayPlugin implements EnginePlugin {
         const h = canvasState?.logicalHeight ?? renderer?.canvas.height ?? 360;
 
         const panelW = 190;
-        const panelH = 200;
+        const panelH = 248;
 
         // Panel background
         drawRect(new Vec2(4, 4), new Vec2(panelW, panelH), BG);
@@ -135,6 +135,49 @@ export class DebugOverlayPlugin implements EnginePlugin {
             align: "right",
         });
         y += gap + 2;
+
+        const renderStats = renderer?.getStats();
+        if (renderStats) {
+            drawText(`Draws`, new Vec2(10, y), { color: LABEL, size: fontSize });
+            drawText(`${renderStats.drawCalls}`, new Vec2(panelW - 10, y), {
+                color: VALUE,
+                size: fontSize,
+                align: "right",
+            });
+            y += gap;
+
+            drawText(`Quads`, new Vec2(10, y), { color: LABEL, size: fontSize });
+            drawText(`${renderStats.quads}`, new Vec2(panelW - 10, y), {
+                color: VALUE,
+                size: fontSize,
+                align: "right",
+            });
+            y += gap;
+
+            drawText(`Switch`, new Vec2(10, y), { color: LABEL, size: fontSize });
+            drawText(
+                `T${renderStats.textureSwitches} S${renderStats.shapeSwitches}`,
+                new Vec2(panelW - 10, y),
+                {
+                    color: VALUE,
+                    size: fontSize,
+                    align: "right",
+                },
+            );
+            y += gap;
+
+            drawText(`Overlay`, new Vec2(10, y), { color: LABEL, size: fontSize });
+            drawText(
+                `L${renderStats.overlayLineCalls} T${renderStats.overlayTextCalls}`,
+                new Vec2(panelW - 10, y),
+                {
+                    color: renderStats.overlayLineCalls > 0 ? TITLE : VALUE,
+                    size: fontSize,
+                    align: "right",
+                },
+            );
+            y += gap + 2;
+        }
 
         // Frame time sparkline graph
         this.frameTimeHistory.push(stats.frameMs);

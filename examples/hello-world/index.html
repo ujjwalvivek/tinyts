@@ -9,8 +9,8 @@
         <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -24,7 +24,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -52,6 +52,10 @@
                 height: auto !important;
                 aspect-ratio: 16/9 !important;
                 border: 2px dashed #cba6f7;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -205,13 +209,13 @@
 
                     drawText("HELLO WORLD", vec2(W / 2, 175), {
                         color: "#cdd6f4",
-                        size: 14,
+                        size: 9.8,
                         align: "center",
                         weight: "bold",
                     });
                     drawText("A TINY 2D TYPESCRIPT ENGINE", vec2(W / 2, 195), {
                         color: "#a6adc8",
-                        size: 8,
+                        size: 5.6,
                         align: "center",
                     });
 
@@ -224,7 +228,7 @@
                                 Color.fromHex("#313244"),
                                 pulse * 0.4,
                             ),
-                            size: 9,
+                            size: 6.3,
                             align: "center",
                         },
                     );

@@ -7,8 +7,8 @@
   <title>TinyTS - 2D Fighting Arena</title>
   <style>
     @font-face {
-      font-family: 'Monaspace Neon';
-      src: url('https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2') format('woff2');
+      font-family: 'TinyTS';
+      src: url('../../src/font/tinyTS.woff2') format('woff2');
       font-weight: 100 900;
       font-style: normal;
       font-display: block;
@@ -17,7 +17,7 @@
     body {
       background: #1e1e2e;
       color: #cdd6f4;
-      font-family: 'Monaspace Neon', monospace;
+      font-family: 'TinyTS', monospace;
       overflow: hidden;
       display: flex;
       align-items: center;
@@ -46,15 +46,16 @@
       aspect-ratio: 16/9 !important;
       border: 2px dashed #cba6f7;
     }
-  </style>
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
+            }
+        </style>
 </head>
 <body>
 <div id="canvas-container"></div>
 <script src="../../dist/tinyts.js"></script>
 <script>
-// 2D Fighting Arena (640x360 Canvas)
-// Demonstrates: AABB hitbox/hurtbox overlap checks, jump/physics integration,
-// basic state machine tracking, reactive opponent AI behavior, and status HUD meters.
 
 const W = 640, H = 360;
 const FLOOR_Y = H - 60;
@@ -249,7 +250,6 @@ const engine = engineStart({
       messageTimer -= dt;
     }
 
-    // ── 1. Update Player 1 (Manual Inputs) ──
     if (p1.state !== "hitstun" && p1.state !== "dead") {
       let moveDir = 0;
       if (actionDown("left")) moveDir = -1;
@@ -272,7 +272,6 @@ const engine = engineStart({
       }
     }
 
-    // ── 2. Update Player 2 (Opponent AI Decision loops) ──
     if (p2.state !== "hitstun" && p2.state !== "dead") {
       p2.flipX = p2.pos.x > p1.pos.x;
 
@@ -338,13 +337,11 @@ const engine = engineStart({
 
     // Draw Controls/Instructions inside the floor rect
     drawText("CONTROLS: [A]/[D] or [L/R ARROW] MOVE  |  [W] or [UP] JUMP  |  [J] PUNCH  |  [K] KICK  |  [STAND STILL] TO BLOCK", vec2(W / 2, FLOOR_Y + 30), {
-      font: "bold 7.5px 'Monaspace Neon'",
+      font: "bold 5.25px 'TinyTS'",
       color: "#a6adc8",
       align: "center",
       baseline: "middle"
     });
-
-    // ── Render Fighters ──
 
     // Attacker Hitboxes drawing on active frames for debug view
     function drawFighter(char, bodyColor, detailColor) {
@@ -382,7 +379,6 @@ const engine = engineStart({
     // Sparks particles
     renderParticles();
 
-    // ── HUD Healthbars Overlay (Screen-space top) ──
     const hudY = 46;
     const barW = 200;
     const barH = 16;
@@ -391,36 +387,36 @@ const engine = engineStart({
     drawRect(vec2(40, hudY), vec2(barW, barH), "#181825");
     drawRect(vec2(40, hudY), vec2(barW * (p1.hp / p1.maxHp), barH), "#89b4fa");
     drawRectOutline(vec2(40, hudY), vec2(barW, barH), "#313244", 1.5);
-    drawText("COBALT CORE (P1)", vec2(40, hudY - 8), { font: "bold 8px 'Monaspace Neon'", color: "#89b4fa" });
+    drawText("COBALT CORE (P1)", vec2(40, hudY - 8), { font: "bold 5.6px 'TinyTS'", color: "#89b4fa" });
 
     // Player 2 health
     drawRect(vec2(W - 40 - barW, hudY), vec2(barW, barH), "#181825");
     drawRect(vec2(W - 40 - barW, hudY), vec2(barW * (p2.hp / p2.maxHp), barH), "#f38ba8");
     drawRectOutline(vec2(W - 40 - barW, hudY), vec2(barW, barH), "#313244", 1.5);
-    drawText("CRIMSON BUG (AI)", vec2(W - 40 - barW, hudY - 8), { font: "bold 8px 'Monaspace Neon'", color: "#f38ba8" });
+    drawText("CRIMSON BUG (AI)", vec2(W - 40 - barW, hudY - 8), { font: "bold 5.6px 'TinyTS'", color: "#f38ba8" });
 
     // Center Versus text
-    drawText("VS", vec2(W / 2, hudY + 10), { font: "bold 14px 'Monaspace Neon'", color: "#f9e2af", align: "center", baseline: "middle" });
+    drawText("VS", vec2(W / 2, hudY + 10), { font: "bold 9.8px 'TinyTS'", color: "#f9e2af", align: "center", baseline: "middle" });
 
     // Floating notifications
     if (messageTimer > 0) {
-      drawText(fightMessage, vec2(W / 2, H / 2 - 30), { font: "bold 15px 'Monaspace Neon'", color: "#a6e3a1", align: "center" });
+      drawText(fightMessage, vec2(W / 2, H / 2 - 30), { font: "bold 10.5px 'TinyTS'", color: "#a6e3a1", align: "center" });
     }
 
     // Top Header Stats Bar
     drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
     drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
-    drawText("SECURITY PROTOCOL // 2D COMBAT SIMULATOR", vec2(W / 2, 10), { font: "bold 9.5px 'Monaspace Neon'", color: "#cba6f7", align: "center" });
+    drawText("SECURITY PROTOCOL // 2D COMBAT SIMULATOR", vec2(W / 2, 10), { font: "bold 6.65px 'TinyTS'", color: "#cba6f7", align: "center" });
 
     // Game Over states overlay
     if (matchState === "p1_win") {
       drawRect(vec2(0, 0), vec2(W, H), "rgba(17, 17, 27, 0.85)");
-      drawText("COBALT CORE VICTORIOUS // SECURITY MAINTAINED", vec2(W / 2, H / 2 - 12), { font: "bold 13px 'Monaspace Neon'", color: "#a6e3a1", align: "center" });
-      drawText("TAP ANYWHERE OR SPACE TO BOOT NEXT STAGE", vec2(W / 2, H / 2 + 15), { font: "9px 'Monaspace Neon'", color: "#a6adc8", align: "center" });
+      drawText("COBALT CORE VICTORIOUS // SECURITY MAINTAINED", vec2(W / 2, H / 2 - 12), { font: "bold 9.1px 'TinyTS'", color: "#a6e3a1", align: "center" });
+      drawText("TAP ANYWHERE OR SPACE TO BOOT NEXT STAGE", vec2(W / 2, H / 2 + 15), { font: "6.3px 'TinyTS'", color: "#a6adc8", align: "center" });
     } else if (matchState === "p2_win") {
       drawRect(vec2(0, 0), vec2(W, H), "rgba(17, 17, 27, 0.85)");
-      drawText("CRIMSON BUG DOMINATED // SECURITY OVERRUN // FAILURE", vec2(W / 2, H / 2 - 12), { font: "bold 13px 'Monaspace Neon'", color: "#f38ba8", align: "center" });
-      drawText("TAP ANYWHERE OR SPACE TO RETRY COMBAT LOGS", vec2(W / 2, H / 2 + 15), { font: "9px 'Monaspace Neon'", color: "#a6adc8", align: "center" });
+      drawText("CRIMSON BUG DOMINATED // SECURITY OVERRUN // FAILURE", vec2(W / 2, H / 2 - 12), { font: "bold 9.1px 'TinyTS'", color: "#f38ba8", align: "center" });
+      drawText("TAP ANYWHERE OR SPACE TO RETRY COMBAT LOGS", vec2(W / 2, H / 2 + 15), { font: "6.3px 'TinyTS'", color: "#a6adc8", align: "center" });
     }
   }
 });
@@ -429,6 +425,16 @@ document.getElementById('canvas-container').appendChild(engine.canvasManager.can
 if (engine.overlayCanvas) {
   document.getElementById('canvas-container').appendChild(engine.overlayCanvas);
 }
+
+addTouchControls({
+  left: 'ArrowLeft',
+  right: 'ArrowRight',
+  up: 'ArrowUp',
+  buttons: [
+    { id: 'punch', label: 'PCH', keys: 'KeyJ' },
+    { id: 'kick', label: 'KIK', keys: 'KeyK' },
+  ],
+});
 </script>
 </body>
 </html>

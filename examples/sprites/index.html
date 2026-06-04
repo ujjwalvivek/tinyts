@@ -7,8 +7,8 @@
         <title>TinyTS - Sprites</title>
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -22,7 +22,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -50,6 +50,10 @@
                 height: auto !important;
                 aspect-ratio: 16/9 !important;
                 border: 2px dashed #cba6f7;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -203,19 +207,19 @@
                     }
 
                     drawText("PROCEDURAL SPRITE SHOWCASE", vec2(30, 25), {
-                        font: "bold 14px 'Monaspace Neon'",
+                        font: "bold 9.8px 'TinyTS'",
                         color: "#cba6f7",
                     });
                     drawText(
                         "Render slices dynamically from a compiled offscreen canvas texture sheet",
                         vec2(30, 42),
-                        { font: "9px 'Monaspace Neon'", color: "#a6adc8" },
+                        { font: "6.3px 'TinyTS'", color: "#a6adc8" },
                     );
 
                     const colY = 75;
 
                     drawText("TEXTURE SHEET (64x64)", vec2(30, colY), {
-                        font: "bold 9px 'Monaspace Neon'",
+                        font: "bold 6.3px 'TinyTS'",
                         color: "#fab387",
                     });
                     drawRectOutline(
@@ -230,25 +234,25 @@
                         vec2(100, 100),
                     ); // Scaled up slightly for retro look
                     drawText("Row 0: Character", vec2(30, colY + 130), {
-                        font: "7px 'Monaspace Neon'",
+                        font: "4.9px 'TinyTS'",
                         color: "#585b70",
                     });
                     drawText("Row 1: Coin Spin", vec2(30, colY + 142), {
-                        font: "7px 'Monaspace Neon'",
+                        font: "4.9px 'TinyTS'",
                         color: "#585b70",
                     });
                     drawText("Row 2: Fire Heart", vec2(30, colY + 154), {
-                        font: "7px 'Monaspace Neon'",
+                        font: "4.9px 'TinyTS'",
                         color: "#585b70",
                     });
                     drawText("Row 3: Energy Orbs", vec2(30, colY + 166), {
-                        font: "7px 'Monaspace Neon'",
+                        font: "4.9px 'TinyTS'",
                         color: "#585b70",
                     });
 
                     const col2X = 165;
                     drawText("SLICES & TINTS", vec2(col2X, colY), {
-                        font: "bold 9px 'Monaspace Neon'",
+                        font: "bold 6.3px 'TinyTS'",
                         color: "#a6e3a1",
                     });
 
@@ -290,18 +294,18 @@
                         );
                     }
                     drawText("RAW WALK CYCLE (Y=0)", vec2(col2X, colY + 54), {
-                        font: "7px 'Monaspace Neon'",
+                        font: "4.9px 'TinyTS'",
                         color: "#94e2d5",
                     });
                     drawText(
                         "TINTED ANIMATIONS (A/B)",
                         vec2(col2X, colY + 104),
-                        { font: "7px 'Monaspace Neon'", color: "#94e2d5" },
+                        { font: "4.9px 'TinyTS'", color: "#94e2d5" },
                     );
 
                     const col3X = 350;
                     drawText("TRANSFORMS & ROTATIONS", vec2(col3X, colY), {
-                        font: "bold 9px 'Monaspace Neon'",
+                        font: "bold 6.3px 'TinyTS'",
                         color: "#89b4fa",
                     });
 
@@ -317,7 +321,7 @@
                         },
                     );
                     drawText("COIN SPIN", vec2(col3X, colY + 54), {
-                        font: "7px 'Monaspace Neon'",
+                        font: "4.9px 'TinyTS'",
                         color: "#f9e2af",
                     });
 
@@ -334,7 +338,7 @@
                         },
                     );
                     drawText("FLIP_X", vec2(col3X + 50, colY + 54), {
-                        font: "7px 'Monaspace Neon'",
+                        font: "4.9px 'TinyTS'",
                         color: "#a6adc8",
                     });
 
@@ -351,7 +355,7 @@
                         },
                     );
                     drawText("FLIP_Y", vec2(col3X + 100, colY + 54), {
-                        font: "7px 'Monaspace Neon'",
+                        font: "4.9px 'TinyTS'",
                         color: "#a6adc8",
                     });
 
@@ -368,7 +372,7 @@
                         },
                     );
                     drawText("ROT_ANGLE", vec2(col3X + 150, colY + 54), {
-                        font: "7px 'Monaspace Neon'",
+                        font: "4.9px 'TinyTS'",
                         color: "#a6e3a1",
                     });
 
@@ -384,7 +388,7 @@
                         },
                     );
                     drawText("HEART PULSE", vec2(col3X, colY + 114), {
-                        font: "7px 'Monaspace Neon'",
+                        font: "4.9px 'TinyTS'",
                         color: "#f5c2e7",
                     });
 
@@ -404,10 +408,10 @@
                     drawText(
                         "GLOW ORB ROW (Y=48)",
                         vec2(col3X + 60, colY + 114),
-                        { font: "7px 'Monaspace Neon'", color: "#f5c2e7" },
+                        { font: "4.9px 'TinyTS'", color: "#f5c2e7" },
                     );
 
-                    const arenaY = 205;
+                    const arenaY = 200;
                     drawRectOutline(
                         vec2(25, arenaY),
                         vec2(W - 50, H - arenaY - 15),
@@ -416,8 +420,8 @@
                     );
                     drawText(
                         "INTERACTIVE PROVING GROUND (WASD / ARROW KEYS)",
-                        vec2(35, arenaY + 12),
-                        { font: "bold 9px 'Monaspace Neon'", color: "#f9e2af" },
+                        vec2(320, arenaY + 12),
+                        { font: "bold 6.3px 'TinyTS'", color: "#f9e2af" },
                     );
 
                     drawSprite(sheetCanvas, player.pos, vec2(32, 32), {
@@ -438,6 +442,13 @@
                     .getElementById("canvas-container")
                     .appendChild(engine.overlayCanvas);
             }
-        </script>
+        
+            addTouchControls({
+                left: 'ArrowLeft',
+                right: 'ArrowRight',
+                up: 'ArrowUp',
+                down: 'ArrowDown',
+            });
+</script>
     </body>
 </html>

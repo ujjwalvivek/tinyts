@@ -35,6 +35,24 @@ export interface TextOptions {
   baseline?: CanvasTextBaseline;
 }
 
+/** Per-frame renderer instrumentation counters. */
+export interface RendererStats {
+  /** GPU draw calls submitted by the renderer this frame. */
+  drawCalls: number;
+  /** Number of non-empty batch flushes this frame. */
+  batchFlushes: number;
+  /** Number of texture binding changes this frame. */
+  textureSwitches: number;
+  /** Number of shape uniform/state changes this frame. */
+  shapeSwitches: number;
+  /** Number of quads queued this frame. */
+  quads: number;
+  /** Number of line calls that used the Canvas2D overlay this frame. */
+  overlayLineCalls: number;
+  /** Number of text calls that used the Canvas2D overlay this frame. */
+  overlayTextCalls: number;
+}
+
 /** Offscreen render target. Holds either a Canvas2D surface or a WebGL2 FBO. */
 export interface FrameBuffer {
   /** Canvas element (Canvas2D backend only). */
@@ -66,6 +84,8 @@ export interface Renderer {
   clear(color: string | Color): void;
   /** Return the underlying rendering context (CanvasRenderingContext2D or WebGL2RenderingContext). */
   getContext(): unknown;
+  /** Return per-frame renderer instrumentation counters. */
+  getStats(): RendererStats;
 
   /** Apply camera transform (center position and zoom). */
   setTransform(pos: Vec2, zoom: number): void;

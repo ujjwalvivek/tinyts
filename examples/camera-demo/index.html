@@ -12,8 +12,8 @@
         <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -27,7 +27,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -55,6 +55,10 @@
                 height: auto !important;
                 aspect-ratio: 16/9 !important;
                 border: 2px dashed #cba6f7;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -170,27 +174,27 @@
                     drawText(
                         "ARROW KEYS / WASD to move • SPACE to shake",
                         vec2(W / 2, 14),
-                        { color: "#a6adc8", size: 8, align: "center" },
+                        { color: "#a6adc8", size: 5.6, align: "center" },
                     );
                     drawText(
                         `CAMERA: (${Math.round(camera.pos.x)}, ${Math.round(camera.pos.y)})`,
                         vec2(10, H - 40),
-                        { color: "#585b70", size: 7 },
+                        { color: "#585b70", size: 4.9 },
                     );
                     drawText(
                         `PLAYER: (${Math.round(player.x)}, ${Math.round(player.y)})`,
                         vec2(10, H - 28),
-                        { color: "#585b70", size: 7 },
+                        { color: "#585b70", size: 4.9 },
                     );
                     drawText(
                         `ZOOM: ${camera.zoom.toFixed(2)}`,
                         vec2(10, H - 16),
-                        { color: "#585b70", size: 7 },
+                        { color: "#585b70", size: 4.9 },
                     );
                     if (camera.shakeIntensity > 0) {
                         drawText("SHAKING!", vec2(W - 10, H - 16), {
                             color: "#f38ba8",
-                            size: 9,
+                            size: 6.3,
                             align: "right",
                         });
                     }
@@ -200,7 +204,7 @@
                         vec2(W / 2, H - 10),
                         {
                             color: "#45475a",
-                            size: 7,
+                            size: 4.9,
                             align: "center",
                             baseline: "bottom",
                         },
@@ -214,6 +218,14 @@
                 document
                     .getElementById("canvas-container")
                     .appendChild(engine.overlayCanvas);
-        </script>
+        
+            addTouchControls({
+                left: 'ArrowLeft',
+                right: 'ArrowRight',
+                up: 'ArrowUp',
+                down: 'ArrowDown',
+                buttons: [{ id: 'shake', label: 'SHAKE', keys: 'Space' }],
+            });
+</script>
     </body>
 </html>

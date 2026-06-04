@@ -12,8 +12,8 @@
         <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -27,7 +27,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -55,6 +55,10 @@
                 height: auto !important;
                 aspect-ratio: 16/9 !important;
                 border: 2px dashed #cba6f7;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -96,9 +100,6 @@
             reg.registerComponentType("Velocity", Velocity);
             reg.registerComponentType("Health", Health);
             reg.registerComponentType("Sprite", Sprite);
-
-            const query = reg.view(Position, Sprite);
-            const moving = reg.view(Position, Velocity);
 
             function spawn(pos, vel, spr, hp) {
                 const e = reg.createEntity();
@@ -179,7 +180,7 @@
                         if (actionDown("right")) pv.vx = 120;
                     }
 
-                    for (const e of moving) {
+                    for (const e of reg.view(Position, Velocity)) {
                         const pos = reg.getComponent(e, Position);
                         const vel = reg.getComponent(e, Velocity);
                         if (pos && vel) {
@@ -233,7 +234,8 @@
                 render() {
                     clear("#11111b");
 
-                    for (const e of query) {
+                    const drawable = reg.view(Position, Sprite);
+                    for (const e of drawable) {
                         const pos = reg.getComponent(e, Position);
                         const spr = reg.getComponent(e, Sprite);
                         if (pos && spr) {
@@ -271,27 +273,27 @@
                     const allPos = reg.view(Position);
                     drawText(`ENTITIES: ${allPos.length}`, vec2(10, 14), {
                         color: "#a6adc8",
-                        size: 8,
+                        size: 5.6,
                     });
                     drawText(
-                        `VIEW (Sprite): ${query.length} drawn`,
+                        `VIEW (Sprite): ${drawable.length} drawn`,
                         vec2(10, 26),
-                        { color: "#585b70", size: 7 },
+                        { color: "#585b70", size: 4.9 },
                     );
                     drawText(`FPS: ${stats.fps}`, vec2(10, 38), {
                         color: "#45475a",
-                        size: 7,
+                        size: 4.9,
                     });
 
                     if (serializedLen > 0) {
                         drawText("SERIALIZED (X)", vec2(W - 10, 14), {
                             color: "#a6e3a1",
-                            size: 8,
+                            size: 5.6,
                             align: "right",
                         });
                         drawText(`${serializedLen} chars`, vec2(W - 10, 26), {
                             color: "#585b70",
-                            size: 7,
+                            size: 4.9,
                             align: "right",
                         });
                     }
@@ -301,7 +303,7 @@
                         vec2(W / 2, H - 10),
                         {
                             color: "#45475a",
-                            size: 7,
+                            size: 4.9,
                             align: "center",
                             baseline: "bottom",
                         },
@@ -311,7 +313,7 @@
                         vec2(W / 2, 14),
                         {
                             color: "#585b70",
-                            size: 7,
+                            size: 4.9,
                             align: "center",
                             baseline: "top",
                         },
@@ -325,6 +327,14 @@
                 document
                     .getElementById("canvas-container")
                     .appendChild(engine.overlayCanvas);
-        </script>
+        
+            addTouchControls({
+                left: 'ArrowLeft',
+                right: 'ArrowRight',
+                up: 'ArrowUp',
+                down: 'ArrowDown',
+                buttons: [{ id: 'spawn', label: 'SPAWN', keys: 'Space' }],
+            });
+</script>
     </body>
 </html>

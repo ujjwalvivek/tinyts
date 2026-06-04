@@ -10,8 +10,8 @@
         <title>TinyTS - Side-Scrolling Shmup</title>
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -25,7 +25,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -53,6 +53,10 @@
                 height: auto !important;
                 aspect-ratio: 16/9 !important;
                 border: 2px dashed #cba6f7;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -398,7 +402,7 @@
                         drawCircle(p.pos, 5, "#f9e2af");
                         drawCircleOutline(p.pos, 5, "#fff", 1);
                         drawText("W", p.pos, {
-                            font: "bold 6.5px 'Monaspace Neon'",
+                            font: "bold 4.55px 'TinyTS'",
                             color: "#11111b",
                             align: "center",
                             baseline: "middle",
@@ -483,19 +487,31 @@
 
                     mainCamera.end();
 
-                    const hudY = 46;
+                    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
+                    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
+                    drawText(
+                        "GALAXY DEFENDER // HORIZONTAL SHMUP PROTOCOL",
+                        vec2(W / 2, 10),
+                        {
+                            font: "bold 6.65px 'TinyTS'",
+                            color: "#cba6f7",
+                            align: "center",
+                        },
+                    );
 
-                    drawText("HP MATRIX: ", vec2(20, hudY), {
-                        font: "bold 8px 'Monaspace Neon'",
+                    const hudY = 10;
+
+                    drawText("HP", vec2(18, hudY), {
+                        font: "bold 5.6px 'TinyTS'",
                         color: "#a6adc8",
                     });
                     for (let i = 0; i < player.maxHp; i++) {
-                        const shipX = 80 + i * 16;
+                        const shipX = 42 + i * 13;
                         const col = i < player.hp ? "#a6e3a1" : "#313244";
                         const points = [
-                            vec2(shipX, hudY - 5),
-                            vec2(shipX + 8, hudY - 2),
-                            vec2(shipX, hudY + 1),
+                            vec2(shipX, hudY - 2),
+                            vec2(shipX + 8, hudY + 1),
+                            vec2(shipX, hudY + 4),
                         ];
                         drawProceduralPolygon(
                             getContext(),
@@ -506,27 +522,18 @@
                         );
                     }
 
-                    drawText(
-                        `LASER TECH: Lvl ${player.weaponLevel}`,
-                        vec2(180, hudY),
-                        { font: "bold 8px 'Monaspace Neon'", color: "#fab387" },
-                    );
+                    drawText(`LASER ${player.weaponLevel}`, vec2(122, hudY), {
+                        font: "bold 5.6px 'TinyTS'",
+                        color: "#fab387",
+                    });
 
                     drawText(
-                        `SCORE: ${player.score.toString().padStart(6, "0")}`,
-                        vec2(W - 140, hudY),
-                        { font: "bold 9px 'Monaspace Neon'", color: "#cba6f7" },
-                    );
-
-                    drawRect(vec2(0, 0), vec2(W, 30), "rgba(24, 24, 37, 0.95)");
-                    drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
-                    drawText(
-                        "GALAXY DEFENDER // HORIZONTAL SHMUP PROTOCOL",
-                        vec2(W / 2, 10),
+                        `SCORE ${player.score.toString().padStart(6, "0")}`,
+                        vec2(W - 16, hudY),
                         {
-                            font: "bold 9.5px 'Monaspace Neon'",
+                            font: "bold 6.3px 'TinyTS'",
                             color: "#cba6f7",
-                            align: "center",
+                            align: "right",
                         },
                     );
 
@@ -540,7 +547,7 @@
                             "SHIP STRUCTURAL COLLAPSE // GAME OVER",
                             vec2(W / 2, H / 2 - 12),
                             {
-                                font: "bold 13px 'Monaspace Neon'",
+                                font: "bold 9.1px 'TinyTS'",
                                 color: "#f38ba8",
                                 align: "center",
                             },
@@ -549,7 +556,7 @@
                             `FINAL SCORE ARCHIVE: ${player.score}`,
                             vec2(W / 2, H / 2 + 10),
                             {
-                                font: "10px 'Monaspace Neon'",
+                                font: "7px 'TinyTS'",
                                 color: "#fab387",
                                 align: "center",
                             },
@@ -558,7 +565,7 @@
                             "TAP ANYWHERE OR SPACE TO LAUNCH NEW FIGHTER SHIP",
                             vec2(W / 2, H / 2 + 35),
                             {
-                                font: "8.5px 'Monaspace Neon'",
+                                font: "5.95px 'TinyTS'",
                                 color: "#a6adc8",
                                 align: "center",
                             },
@@ -575,6 +582,14 @@
                     .getElementById("canvas-container")
                     .appendChild(engine.overlayCanvas);
             }
-        </script>
+        
+            addTouchControls({
+                left: 'ArrowLeft',
+                right: 'ArrowRight',
+                up: 'ArrowUp',
+                down: 'ArrowDown',
+                buttons: [{ id: 'shoot', label: 'FIRE', keys: 'Space' }],
+            });
+</script>
     </body>
 </html>

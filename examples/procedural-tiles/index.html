@@ -6,8 +6,8 @@
         <title>TinyTS - Procedural Tile Designer</title>
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -21,7 +21,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 min-height: 100vh;
                 display: flex;
                 flex-direction: column;
@@ -59,14 +59,14 @@
                 border: 1px solid #313244;
             }
             .preview-label {
-                font-size: 10px;
+                font-size: 7px;
                 color: #a6adc8;
                 margin-top: 8px;
                 text-transform: uppercase;
                 letter-spacing: 1px;
             }
             .preview-size {
-                font-size: 18px;
+                font-size: 12.6px;
                 color: #cdd6f4;
                 margin-top: 2px;
             }
@@ -82,15 +82,15 @@
                 flex-direction: column;
             }
             .code-panel .label {
-                font-size: 11px;
+                font-size: 7.7px;
                 color: #b4befe;
                 text-transform: uppercase;
                 letter-spacing: 1px;
                 margin-bottom: 12px;
             }
             .code-panel pre {
-                font-family: "Monaspace Neon", monospace;
-                font-size: 12px;
+                font-family: "TinyTS", monospace;
+                font-size: 8.4px;
                 line-height: 1.5;
                 color: #cdd6f4;
                 white-space: pre-wrap;
@@ -114,8 +114,8 @@
                 border: 1px solid #313244;
                 color: #a6adc8;
                 padding: 6px 12px;
-                font-family: "Monaspace Neon", monospace;
-                font-size: 11px;
+                font-family: "TinyTS", monospace;
+                font-size: 7.7px;
                 cursor: pointer;
                 border-radius: 0 !important;
                 transition: all 0.15s;
@@ -138,7 +138,7 @@
                 margin: 8px 0 12px;
             }
             .controls label {
-                font-size: 11px;
+                font-size: 7.7px;
                 color: #a6adc8;
                 display: flex;
                 align-items: center;
@@ -163,8 +163,8 @@
                 border: 1px solid #45475a;
                 color: #cdd6f4;
                 padding: 2px 4px;
-                font-family: "Monaspace Neon", monospace;
-                font-size: 11px;
+                font-family: "TinyTS", monospace;
+                font-size: 7.7px;
                 border-radius: 0 !important;
             }
             .controls select {
@@ -172,8 +172,8 @@
                 border: 1px solid #45475a;
                 color: #cdd6f4;
                 padding: 4px 8px;
-                font-family: "Monaspace Neon", monospace;
-                font-size: 11px;
+                font-family: "TinyTS", monospace;
+                font-size: 9.7px;
                 border-radius: 0 !important;
             }
 
@@ -189,8 +189,8 @@
                 border: 1px solid #45475a;
                 color: #cdd6f4;
                 padding: 6px 18px;
-                font-family: "Monaspace Neon", monospace;
-                font-size: 12px;
+                font-family: "TinyTS", monospace;
+                font-size: 8.4px;
                 cursor: pointer;
                 border-radius: 0 !important;
                 transition: all 0.15s;
@@ -212,10 +212,10 @@
                 padding: 12px;
                 background: #181825;
                 border: 2px dashed #cba6f7;
-                font-size: 11px;
+                font-size: 7.7px;
             }
             .layers .label {
-                font-size: 10px;
+                font-size: 7px;
                 color: #a6adc8;
                 margin-bottom: 8px;
                 text-transform: uppercase;
@@ -231,6 +231,10 @@
             .layers .layer-item .del {
                 color: #f38ba8;
                 cursor: pointer;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -673,7 +677,7 @@
                 const el = document.getElementById("layers");
                 if (layers.length === 0) {
                     el.innerHTML =
-                        '<div class="label">Layers</div><div style="color:#555;font-size:11px">No shapes yet - click "Add Shape"</div>';
+                        '<div class="label">Layers</div><div style="color:#555;font-size:7.7px">No shapes yet - click "Add Shape"</div>';
                     return;
                 }
                 let html =

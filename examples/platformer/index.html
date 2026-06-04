@@ -10,8 +10,8 @@
         <title>TinyTS - Platformer</title>
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -25,7 +25,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -81,7 +81,7 @@
                 E: { spawn: "checkpoint" },
             };
 
-            // Map Layout (120 columns wide, 20 columns high)
+            // Map Layout (120 columns wide, 23 rows high)
             const mapStr = `
 ########################################################################################################################
 #                                                                                                                      #
@@ -103,6 +103,8 @@
 #   ====               =========                X    X          - - - -                                       E        #
 #          XX    XX                     ===================              X    X                           =========    #
 #   ===================================                     ============================================================
+#                                                                                                                      #
+#                                                                                                                      #
 ########################################################################################################################
 `;
 
@@ -155,6 +157,7 @@
             }
 
             const camera = createCamera({
+                pos: vec2(W / 2, H / 2),
                 size: vec2(W, H),
                 bounds: {
                     pos: vec2(0, 0),
@@ -166,6 +169,7 @@
                 deadZone: vec2(60, 40),
                 speed: 5,
             });
+            camera.update(0);
 
             bindAction("left", ["KeyA", "ArrowLeft"]);
             bindAction("right", ["KeyD", "ArrowRight"]);
@@ -357,6 +361,12 @@
 
                     camera.apply();
 
+                    drawRect(
+                        vec2(0, 0),
+                        vec2(map.width * TILE_SIZE, map.height * TILE_SIZE),
+                        "#11111b",
+                    );
+
                     const gridSp = 16;
                     for (let x = 0; x < map.width * TILE_SIZE; x += gridSp) {
                         drawLine(
@@ -388,13 +398,28 @@
                                 } else if (def.oneWay) {
                                     drawRect(
                                         vec2(px, py),
-                                        vec2(TILE_SIZE, 4),
-                                        def.color,
+                                        vec2(TILE_SIZE, 5),
+                                        "#2a2238",
+                                    );
+                                    drawRect(
+                                        vec2(px, py),
+                                        vec2(TILE_SIZE, 1),
+                                        "#cba6f7",
                                     );
                                     drawRect(
                                         vec2(px, py + 4),
                                         vec2(TILE_SIZE, 1),
-                                        "rgba(255,255,255,0.06)",
+                                        "#11111b",
+                                    );
+                                    drawRect(
+                                        vec2(px + 3, py + 2),
+                                        vec2(2, 1),
+                                        "#f5c2e7",
+                                    );
+                                    drawRect(
+                                        vec2(px + 11, py + 2),
+                                        vec2(2, 1),
+                                        "#6c7086",
                                     );
                                 } else if (def.color) {
                                     drawRect(
@@ -449,14 +474,14 @@
                     drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
 
                     drawText(`COINS: ${player.score}`, vec2(16, 10), {
-                        font: "bold 10px 'Monaspace Neon'",
+                        font: "bold 7px 'TinyTS'",
                         color: "#f9e2af",
                     });
                     drawText(
                         "A/D OR LEFT/RIGHT TO WALK   SPACE TO JUMP",
                         vec2(W / 2, 10),
                         {
-                            font: "9px 'Monaspace Neon'",
+                            font: "6.3px 'TinyTS'",
                             color: "#a6adc8",
                             align: "center",
                         },
@@ -465,7 +490,7 @@
                     if (exitPos) {
                         const dist = Math.floor(player.pos.distanceTo(exitPos));
                         drawText(`EXIT: ${dist}M`, vec2(W - 16, 10), {
-                            font: "bold 10px 'Monaspace Neon'",
+                            font: "bold 7px 'TinyTS'",
                             color: "#a6e3a1",
                             align: "right",
                         });
@@ -481,6 +506,12 @@
                     .getElementById("canvas-container")
                     .appendChild(engine.overlayCanvas);
             }
-        </script>
+        
+            addTouchControls({
+                left: 'ArrowLeft',
+                right: 'ArrowRight',
+                buttons: [{ id: 'jump', label: 'JUMP', keys: 'Space' }],
+            });
+</script>
     </body>
 </html>

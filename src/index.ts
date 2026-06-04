@@ -47,6 +47,13 @@ export {
     isTouchActive,
     touchPos,
     setTouchMappedToMouse,
+    addTouchControls,
+    removeTouchControls,
+} from "./core/input";
+export type {
+    TouchControlButtonConfig,
+    TouchControlsConfig,
+    TouchControlsVisibility,
 } from "./core/input";
 
 export {
@@ -65,10 +72,11 @@ export {
     createFrameBuffer,
     bindFrameBuffer,
     drawFrameBuffer,
+    getRendererStats,
 } from "./render/renderer2d";
 export { SpriteAnimation } from "./render/spriteAnimation";
 export type { SpriteAnimationConfig } from "./render/spriteAnimation";
-export type { FrameBuffer } from "./render/types";
+export type { FrameBuffer, RendererStats } from "./render/types";
 
 export {
     Color,

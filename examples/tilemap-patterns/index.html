@@ -6,8 +6,8 @@
         <title>TinyTS - Tilemap Pattern Browser</title>
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -21,7 +21,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 min-height: 100vh;
                 display: flex;
                 flex-direction: column;
@@ -50,8 +50,8 @@
                 border: 1px solid #45475a;
                 color: #cdd6f4;
                 padding: 6px 16px;
-                font-family: "Monaspace Neon", monospace;
-                font-size: 12px;
+                font-family: "TinyTS", monospace;
+                font-size: 8.4px;
                 cursor: pointer;
                 border-radius: 0 !important;
                 transition: all 0.15s;
@@ -62,18 +62,18 @@
             }
             .nav .count {
                 color: #a6adc8;
-                font-size: 11px;
+                font-size: 7.7px;
             }
             .nav .name {
                 color: #cdd6f4;
                 font-weight: 700;
-                font-size: 16px;
+                font-size: 11.2px;
                 min-width: 180px;
                 text-align: center;
             }
             .nav .desc {
                 color: #a6adc8;
-                font-size: 12px;
+                font-size: 8.4px;
                 width: 100%;
                 text-align: center;
                 margin-top: 4px;
@@ -114,15 +114,15 @@
                 flex-direction: column;
             }
             .code-panel .label {
-                font-size: 11px;
+                font-size: 7.7px;
                 color: #b4befe;
                 text-transform: uppercase;
                 letter-spacing: 1px;
                 margin-bottom: 12px;
             }
             .code-panel pre {
-                font-family: "Monaspace Neon", monospace;
-                font-size: 12px;
+                font-family: "TinyTS", monospace;
+                font-size: 8.4px;
                 line-height: 1.5;
                 color: #cdd6f4;
                 white-space: pre-wrap;
@@ -161,8 +161,8 @@
                 border: 1px solid #313244;
                 color: #a6adc8;
                 padding: 6px 14px;
-                font-family: "Monaspace Neon", monospace;
-                font-size: 11px;
+                font-family: "TinyTS", monospace;
+                font-size: 7.7px;
                 cursor: pointer;
                 border-radius: 0 !important;
                 transition: all 0.15s;
@@ -183,7 +183,7 @@
                 justify-content: center;
                 flex-wrap: wrap;
                 margin-top: 12px;
-                font-size: 11px;
+                font-size: 7.7px;
                 color: #a6adc8;
             }
             .legend-item {
@@ -201,9 +201,13 @@
                 display: flex;
                 gap: 16px;
                 justify-content: center;
-                font-size: 11px;
+                font-size: 7.7px;
                 color: #a6adc8;
                 margin-top: 8px;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>

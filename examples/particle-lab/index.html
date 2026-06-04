@@ -12,8 +12,8 @@
         <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -25,7 +25,7 @@
                 box-sizing: border-box;
             }
             body {
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 background: #1e1e2e;
                 color: #cdd6f4;
                 overflow: hidden;
@@ -81,7 +81,7 @@
                 flex-shrink: 0;
             }
             #panel-header .badge {
-                font-size: 9px;
+                font-size: 6.3px;
                 background: rgba(166, 227, 161, 0.12);
                 color: #a6e3a1;
                 padding: 2px 7px;
@@ -92,7 +92,7 @@
             }
             #random-btn {
                 font: inherit;
-                font-size: 10px;
+                font-size: 7px;
                 padding: 4px 12px;
                 background: #313244;
                 border: 1px solid #45475a;
@@ -133,7 +133,7 @@
             }
             .preset-btn {
                 font: inherit;
-                font-size: 10px;
+                font-size: 7px;
                 font-weight: 600;
                 padding: 4px 10px;
                 background: #313244;
@@ -160,7 +160,7 @@
                 margin-bottom: 14px;
             }
             .section-title {
-                font-size: 10px;
+                font-size: 7px;
                 font-weight: 700;
                 color: #b4befe;
                 text-transform: uppercase;
@@ -176,7 +176,7 @@
                 margin-bottom: 5px;
             }
             .ctrl-row label {
-                font-size: 11px;
+                font-size: 7.7px;
                 color: #a6adc8;
                 width: 72px;
                 flex-shrink: 0;
@@ -210,7 +210,7 @@
                 border: none;
             }
             .ctrl-val {
-                font-size: 11px;
+                font-size: 7.7px;
                 color: #cdd6f4;
                 min-width: 44px;
                 text-align: right;
@@ -223,7 +223,7 @@
                 margin-bottom: 5px;
             }
             .color-row label {
-                font-size: 11px;
+                font-size: 7.7px;
                 color: #a6adc8;
                 width: 72px;
                 flex-shrink: 0;
@@ -294,7 +294,7 @@
                 left: 18px;
             }
             .toggle-wrap span {
-                font-size: 11px;
+                font-size: 7.7px;
                 color: #a6adc8;
             }
 
@@ -304,7 +304,7 @@
                 border: 1px solid #45475a;
                 color: #cdd6f4;
                 font: inherit;
-                font-size: 11px;
+                font-size: 9.7px;
                 padding: 2px 4px;
                 border-radius: 0 !important;
                 outline: none;
@@ -316,9 +316,10 @@
 
             #code-area {
                 margin-top: 6px;
+                display: block;
             }
             #code-area summary {
-                font-size: 10px;
+                font-size: 7px;
                 font-weight: 700;
                 color: #b4befe;
                 text-transform: uppercase;
@@ -333,7 +334,8 @@
                 background: #11111b;
                 border: 1px solid #313244;
                 padding: 10px 12px;
-                font-size: 11px;
+                display: block;
+                font-size: 12px;
                 line-height: 1.5;
                 color: #cdd6f4;
                 white-space: pre;
@@ -344,7 +346,7 @@
             }
             #copy-btn {
                 font: inherit;
-                font-size: 10px;
+                font-size: 7px;
                 padding: 4px 12px;
                 background: #313244;
                 border: 1px solid #45475a;
@@ -368,7 +370,7 @@
                 position: absolute;
                 top: 12px;
                 left: 14px;
-                font-size: 11px;
+                font-size: 7.7px;
                 color: #a6adc8;
                 pointer-events: none;
                 z-index: 5;
@@ -379,6 +381,10 @@
             }
             #hud span {
                 color: #89b4fa;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -667,7 +673,7 @@
                                 value="#ff4400"
                             />
                             <div class="alpha-wrap">
-                                <span style="font-size: 10px; color: #666"
+                                <span style="font-size: 7px; color: #666"
                                     >a</span
                                 >
                                 <input
@@ -696,7 +702,7 @@
                                 value="#ffcc00"
                             />
                             <div class="alpha-wrap">
-                                <span style="font-size: 10px; color: #666"
+                                <span style="font-size: 7px; color: #666"
                                     >a</span
                                 >
                                 <input
@@ -1298,6 +1304,7 @@
                     e.particleSystem.clear();
                     e.particleSystem.addEmitter(buildConfig());
                     updateHUD();
+                    updateCode();
                 }
 
                 function updateHUD() {
@@ -1397,7 +1404,27 @@
 
                 function updateCode() {
                     $("code-box").textContent = generateCode();
+                    $("code-area").querySelector("details").open = true;
                 }
+
+                const FIELD_IDS = {
+                    lifeMin: "life-min",
+                    lifeMax: "life-max",
+                    speedMin: "speed-min",
+                    speedMax: "speed-max",
+                    sizeMin: "size-min",
+                    sizeMax: "size-max",
+                    sizeEndMin: "sizeEnd-min",
+                    sizeEndMax: "sizeEnd-max",
+                    angularVel: "angularVel",
+                    gravityX: "gravity-x",
+                    gravityY: "gravity-y",
+                    startHex: "start-color",
+                    endHex: "end-color",
+                    startAlpha: "start-alpha",
+                    endAlpha: "end-alpha",
+                    sprite: "show-sprite",
+                };
 
                 function bind(id, valId, fmt) {
                     $(id).addEventListener("input", () => {
@@ -1484,12 +1511,14 @@
                     const p = PRESETS[name];
                     if (!p) return;
                     Object.keys(p).forEach((k) => {
-                        const el = $(k);
+                        C[k] = p[k];
+                        const el = $(FIELD_IDS[k] || k);
                         if (el) {
                             if (el.type === "checkbox") el.checked = p[k];
                             else el.value = p[k];
                         }
-                        const valEl = $(k + "-val");
+                        const valId = (FIELD_IDS[k] || k) + "-val";
+                        const valEl = $(valId);
                         if (valEl) {
                             if (
                                 k === "lifeMin" ||

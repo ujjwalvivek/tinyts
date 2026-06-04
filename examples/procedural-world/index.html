@@ -6,8 +6,8 @@
         <title>TinyTS - Procedural World Generator</title>
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -21,7 +21,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 min-height: 100vh;
                 display: flex;
                 overflow: hidden;
@@ -65,7 +65,7 @@
                 z-index: 10;
             }
             .section-label {
-                font-size: 10px;
+                font-size: 7px;
                 text-transform: uppercase;
                 letter-spacing: 1.5px;
                 color: #b4befe;
@@ -83,7 +83,7 @@
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                font-size: 12px;
+                font-size: 8.4px;
                 color: #cdd6f4;
             }
             .btn {
@@ -93,8 +93,8 @@
                 padding: 8px 18px;
                 cursor: pointer;
                 border-radius: 0 !important;
-                font-family: "Monaspace Neon", monospace;
-                font-size: 13px;
+                font-family: "TinyTS", monospace;
+                font-size: 9.1px;
                 transition: all 0.15s;
                 width: 100%;
             }
@@ -106,10 +106,14 @@
                 color: #f9e2af;
             }
             .info-box {
-                font-size: 11px;
+                font-size: 7.7px;
                 color: #a6adc8;
                 margin-top: 10px;
                 line-height: 1.6;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -129,7 +133,6 @@
                 <div class="section-label">Controls</div>
                 <div class="info-box">
                     WASD / Arrows to move<br />
-                    Space to jump<br />
                     R to regenerate<br />
                     F1 debug overlay
                 </div>
@@ -170,11 +173,9 @@
             const player = {
                 x: 0,
                 y: 0,
-                w: 12,
-                h: 14,
+                r: 7,
                 vx: 0,
                 vy: 0,
-                onGround: false,
                 spawnX: 0,
                 spawnY: 0,
             };
@@ -256,12 +257,8 @@
                         }
                     }
                 }
-                if (bestY + 1 < ROWS && world.tiles[bestY + 1][bestX] === 0) {
-                    world.tiles[bestY + 1][bestX] = 3;
-                }
-
-                player.spawnX = bestX * TILE + TILE / 2 - player.w / 2;
-                player.spawnY = bestY * TILE - player.h;
+                player.spawnX = bestX * TILE + TILE / 2;
+                player.spawnY = bestY * TILE + TILE / 2;
                 player.x = player.spawnX;
                 player.y = player.spawnY;
                 player.vx = 0;
@@ -271,10 +268,7 @@
                 for (let i = 0; i < 12; i++) {
                     const cx = (((seed * (i * 23 + 11)) % (COLS - 4)) + 2) | 0;
                     const cy = (((seed * (i * 19 + 5)) % (ROWS - 4)) + 2) | 0;
-                    if (
-                        world.tiles[cy][cx] === 0 &&
-                        world.tiles[cy + 1][cx] !== 0
-                    ) {
+                    if (world.tiles[cy][cx] !== 1) {
                         coins.push({
                             x: cx * TILE + 2,
                             y: cy * TILE + 2,
@@ -286,67 +280,41 @@
 
             const coins = [];
 
-            const GRAVITY = 600;
-            const JUMP_VEL = -300;
-            const SPEED = 180;
+            const SPEED = 150;
 
             function updatePlayer(dt) {
                 let moveX = 0;
+                let moveY = 0;
                 if (keyDown("ArrowLeft") || keyDown("KeyA")) moveX = -1;
                 if (keyDown("ArrowRight") || keyDown("KeyD")) moveX = 1;
+                if (keyDown("ArrowUp") || keyDown("KeyW")) moveY = -1;
+                if (keyDown("ArrowDown") || keyDown("KeyS")) moveY = 1;
 
-                if (
-                    (keyPressed("Space") ||
-                        keyPressed("ArrowUp") ||
-                        keyPressed("KeyW")) &&
-                    player.onGround
-                ) {
-                    player.vy = JUMP_VEL;
-                }
+                const len = Math.hypot(moveX, moveY) || 1;
+                player.vx = (moveX / len) * SPEED;
+                player.vy = (moveY / len) * SPEED;
 
-                player.vx = moveX * SPEED;
-
-                const hBody = aabb(
-                    vec2(player.x, player.y),
-                    vec2(player.w, player.h),
+                const nextX = clamp(
+                    player.x + player.vx * dt,
+                    player.r,
+                    W - player.r,
                 );
-                const hResult = moveTilemap(
-                    hBody,
-                    vec2(player.vx, 0),
-                    world,
-                    dt,
+                const nextY = clamp(
+                    player.y + player.vy * dt,
+                    player.r,
+                    H - player.r,
                 );
-                player.x = hResult.pos.x;
-                if (hResult.hit) player.vx = 0;
-
-                player.vy += GRAVITY * dt;
-
-                const vBody = aabb(
-                    vec2(player.x, player.y),
-                    vec2(player.w, player.h),
-                );
-                const vResult = moveTilemap(
-                    vBody,
-                    vec2(0, player.vy),
-                    world,
-                    dt,
-                );
-                player.y = vResult.pos.y;
-                player.vy = vResult.velocity.y;
-
-                player.onGround = vResult.touching.bottom;
-
-                if (player.y > ROWS * TILE + 50) {
-                    player.x = player.spawnX;
-                    player.y = player.spawnY;
-                    player.vx = 0;
-                    player.vy = 0;
+                const tileX = clamp((nextX / TILE) | 0, 0, COLS - 1);
+                const tileY = clamp((nextY / TILE) | 0, 0, ROWS - 1);
+                if (world.tiles[tileY][tileX] !== 1) {
+                    player.x = nextX;
+                    player.y = nextY;
                 }
 
                 for (const coin of coins) {
                     if (coin.collected) continue;
-                    const dx = player.x + player.w / 2 - (coin.x + 6);
-                    const dy = player.y + player.h / 2 - (coin.y + 6);
+                    const dx = player.x - (coin.x + 6);
+                    const dy = player.y - (coin.y + 6);
                     if (dx * dx + dy * dy < 12 * 12) coin.collected = true;
                 }
             }
@@ -362,18 +330,16 @@
                     }
                 }
 
-                drawSprite(
-                    texPlayer,
-                    vec2(player.x, player.y),
-                    vec2(player.w, player.h),
-                );
+                drawCircle(vec2(player.x, player.y), player.r + 3, "#11111b");
+                drawCircle(vec2(player.x, player.y), player.r + 1, "#f9e2af");
+                drawCircle(vec2(player.x, player.y), player.r - 2, "#89b4fa");
+                drawRect(vec2(player.x - 2, player.y - 2), vec2(4, 4), "#11111b");
 
                 const collected = coins.filter((c) => c.collected).length;
                 drawText(
                     `${collected}/${coins.length} coins`,
                     vec2(8, 8),
-                    "#cdd6f4",
-                    12,
+                    { color: "#cdd6f4", size: 8.4 },
                 );
             }
 
@@ -408,13 +374,17 @@
                     .appendChild(engine.overlayCanvas);
             }
 
-            texPlayer = assets.makePlayerTexture();
             texCoin = assets.makeCoinTexture();
             generateWorld();
 
             bindAction("regenerate", "KeyR");
-            let prevRegen = false;
-            const origUpdate = engineStart;
+            addTouchControls({
+                left: "ArrowLeft",
+                right: "ArrowRight",
+                up: "ArrowUp",
+                down: "ArrowDown",
+                buttons: [{ id: "regenerate", label: "REGEN", keys: "KeyR" }],
+            });
         </script>
     </body>
 </html>

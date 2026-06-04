@@ -59,7 +59,7 @@ export interface SceneManagerConfig {
  * Stack-based scene manager.
  *
  * Supports push/pop/replace operations with automatic onEnter/onExit lifecycle.
- * Only the topmost scene receives `update()` — call `sm.update(dt)` from your game loop.
+ * Only the topmost scene receives `update()`. call `sm.update(dt)` from your game loop.
  * `render()` behaviour depends on `renderMode`.
  *
  * ```ts

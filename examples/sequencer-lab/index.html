@@ -12,8 +12,8 @@
         <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -25,7 +25,7 @@
                 box-sizing: border-box;
             }
             body {
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 background: #1e1e2e;
                 color: #cdd6f4;
                 min-height: 100vh;
@@ -50,7 +50,7 @@
             }
             #transport .btn {
                 font: inherit;
-                font-size: 11px;
+                font-size: 7.7px;
                 font-weight: 700;
                 padding: 6px 18px;
                 border: 1px solid #45475a;
@@ -78,7 +78,7 @@
                 color: #f38ba8;
             }
             #position {
-                font-size: 14px;
+                font-size: 9.8px;
                 font-weight: 700;
                 color: #89b4fa;
                 letter-spacing: 1px;
@@ -87,7 +87,7 @@
                 font-variant-numeric: tabular-nums;
             }
             #section-tag {
-                font-size: 9px;
+                font-size: 6.3px;
                 padding: 2px 8px;
                 letter-spacing: 0.5px;
                 background: rgba(137, 180, 250, 0.08);
@@ -103,7 +103,7 @@
                 margin-left: auto;
             }
             .ctrl-group label {
-                font-size: 10px;
+                font-size: 0.94rem;
                 color: #a6adc8;
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
@@ -136,7 +136,7 @@
                 border-radius: 0 !important;
             }
             .ctrl-group .val {
-                font-size: 12px;
+                font-size: 8.4px;
                 color: #cdd6f4;
                 min-width: 28px;
                 text-align: right;
@@ -168,12 +168,12 @@
                 margin-bottom: 6px;
             }
             .track-name {
-                font-size: 11px;
+                font-size: 7.7px;
                 font-weight: 700;
                 color: #cdd6f4;
             }
             .track-wave {
-                font-size: 8px;
+                font-size: 5.6px;
                 padding: 1px 6px;
                 letter-spacing: 0.5px;
                 text-transform: uppercase;
@@ -200,7 +200,7 @@
                 color: #cba6f7;
             }
             .track-now {
-                font-size: 12px;
+                font-size: 8.4px;
                 font-weight: 700;
                 color: #89b4fa;
                 min-height: 18px;
@@ -208,7 +208,7 @@
             .track-now .idle {
                 color: #585b70;
                 font-weight: 400;
-                font-size: 10px;
+                font-size: 7px;
             }
 
             #grid-section {
@@ -218,7 +218,7 @@
                 margin-bottom: 14px;
             }
             #grid-section .title {
-                font-size: 10px;
+                font-size: 7px;
                 font-weight: 700;
                 color: #b4befe;
                 text-transform: uppercase;
@@ -242,7 +242,7 @@
                 display: grid;
                 grid-template-columns: 44px repeat(128, 10px);
                 gap: 1px;
-                font-size: 7px;
+                font-size: 4.9px;
             }
             .grid-label {
                 color: #a6adc8;
@@ -257,7 +257,7 @@
                 text-align: center;
                 line-height: 12px;
                 height: 12px;
-                font-size: 6px;
+                font-size: 4.2px;
             }
             .grid-cell {
                 width: 10px;
@@ -295,7 +295,7 @@
                 padding: 12px;
             }
             #code-section summary {
-                font-size: 10px;
+                font-size: 7px;
                 font-weight: 700;
                 color: #b4befe;
                 text-transform: uppercase;
@@ -309,7 +309,7 @@
                 background: #11111b;
                 border: 1px solid #313244;
                 padding: 10px 12px;
-                font-size: 10px;
+                font-size: 12px;
                 line-height: 1.5;
                 color: #cdd6f4;
                 white-space: pre;
@@ -321,7 +321,7 @@
             }
             #copy-btn {
                 font: inherit;
-                font-size: 10px;
+                font-size: 7px;
                 padding: 4px 12px;
                 background: #313244;
                 border: 1px solid #45475a;
@@ -338,6 +338,10 @@
             #copy-btn.copied {
                 border-color: #a6e3a1;
                 color: #a6e3a1;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>

@@ -10,8 +10,8 @@
         <title>TinyTS - Flappy Bird</title>
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -25,7 +25,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -53,6 +53,10 @@
                 height: auto !important;
                 aspect-ratio: 16/9 !important;
                 border: 2px dashed #cba6f7;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -313,11 +317,11 @@
                     drawLine(vec2(0, 30), vec2(W, 30), "#313244", 1);
 
                     drawText(`SCORE: ${score}`, vec2(16, 10), {
-                        font: "bold 10px 'Monaspace Neon'",
+                        font: "bold 7px 'TinyTS'",
                         color: "#f9e2af",
                     });
                     drawText(`HIGH: ${highScore}`, vec2(W - 16, 10), {
-                        font: "bold 10px 'Monaspace Neon'",
+                        font: "bold 7px 'TinyTS'",
                         color: "#fab387",
                         align: "right",
                     });
@@ -329,7 +333,7 @@
                             "rgba(17, 17, 27, 0.5)",
                         );
                         drawText("GRAVITY FLAPPER", vec2(W / 2, H / 2 - 20), {
-                            font: "bold 18px 'Monaspace Neon'",
+                            font: "bold 12.6px 'TinyTS'",
                             color: "#cba6f7",
                             align: "center",
                         });
@@ -337,7 +341,7 @@
                             "PRESS SPACE OR TAP TO FLAP",
                             vec2(W / 2, H / 2 + 10),
                             {
-                                font: "10px 'Monaspace Neon'",
+                                font: "7px 'TinyTS'",
                                 color: "#a6adc8",
                                 align: "center",
                             },
@@ -352,7 +356,7 @@
                             "SYSTEM SHUTDOWN // DESTROYED",
                             vec2(W / 2, H / 2 - 15),
                             {
-                                font: "bold 14px 'Monaspace Neon'",
+                                font: "bold 9.8px 'TinyTS'",
                                 color: "#f38ba8",
                                 align: "center",
                             },
@@ -361,7 +365,7 @@
                             `FINAL SCORE: ${score}`,
                             vec2(W / 2, H / 2 + 10),
                             {
-                                font: "10px 'Monaspace Neon'",
+                                font: "7px 'TinyTS'",
                                 color: "#f9e2af",
                                 align: "center",
                             },
@@ -370,7 +374,7 @@
                             "PRESS SPACE TO REBOOT",
                             vec2(W / 2, H / 2 + 35),
                             {
-                                font: "9px 'Monaspace Neon'",
+                                font: "6.3px 'TinyTS'",
                                 color: "#a6adc8",
                                 align: "center",
                             },
@@ -387,6 +391,10 @@
                     .getElementById("canvas-container")
                     .appendChild(engine.overlayCanvas);
             }
-        </script>
+        
+            addTouchControls({
+                buttons: [{ id: 'flap', label: 'FLAP', keys: 'Space' }],
+            });
+</script>
     </body>
 </html>

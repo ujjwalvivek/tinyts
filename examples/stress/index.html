@@ -6,8 +6,8 @@
         <title>TinyTS - WebGL2 Batching Stress Test</title>
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -19,7 +19,7 @@
                 box-sizing: border-box;
             }
             body {
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 background: #1e1e2e;
                 color: #cdd6f4;
                 min-height: 100vh;
@@ -65,23 +65,23 @@
                 z-index: 10;
             }
             #fps-display {
-                font-size: 32px;
+                font-size: 22.4px;
                 font-weight: 800;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 text-align: center;
                 margin-bottom: 4px;
                 letter-spacing: -1px;
             }
             #fps-label {
                 text-align: center;
-                font-size: 9px;
+                font-size: 6.3px;
                 text-transform: uppercase;
                 letter-spacing: 2px;
                 color: #a6adc8;
                 margin-bottom: 14px;
             }
             .section-label {
-                font-size: 10px;
+                font-size: 7px;
                 text-transform: uppercase;
                 letter-spacing: 1.5px;
                 color: #b4befe;
@@ -99,7 +99,7 @@
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                font-size: 12px;
+                font-size: 8.4px;
                 color: #cdd6f4;
             }
             .btn-group {
@@ -113,8 +113,8 @@
                 padding: 4px 10px;
                 cursor: pointer;
                 border-radius: 0 !important;
-                font-size: 11px;
-                font-family: "Monaspace Neon", monospace;
+                font-size: 7.7px;
+                font-family: "TinyTS", monospace;
                 transition: all 0.15s;
             }
             .btn:hover {
@@ -127,19 +127,19 @@
             #entity-counter {
                 font-weight: 700;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
-                font-size: 13px;
+                font-family: "TinyTS", monospace;
+                font-size: 9.1px;
             }
             .stat-row {
                 display: flex;
                 justify-content: space-between;
-                font-size: 11px;
+                font-size: 7.7px;
                 color: #a6adc8;
                 margin-bottom: 4px;
             }
             .stat-val {
                 color: #89b4fa;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
             }
             select {
                 background: #313244;
@@ -147,8 +147,8 @@
                 color: #cdd6f4;
                 padding: 3px 6px;
                 border-radius: 0 !important;
-                font-size: 11px;
-                font-family: "Monaspace Neon", monospace;
+                font-size: 9.7px;
+                font-family: "TinyTS", monospace;
                 cursor: pointer;
                 outline: none;
             }
@@ -160,12 +160,16 @@
                 accent-color: #cba6f7;
             }
             .info-box {
-                font-size: 10px;
+                font-size: 7px;
                 color: #a6adc8;
                 margin-top: 15px;
                 border-top: 1px solid #313244;
                 padding-top: 10px;
                 line-height: 1.5;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -238,14 +242,30 @@
                     <span class="stat-val" id="stat-draws">0</span>
                 </div>
                 <div class="stat-row">
+                    <span>Batch Flushes:</span>
+                    <span class="stat-val" id="stat-flushes">0</span>
+                </div>
+                <div class="stat-row">
+                    <span>Texture Switches:</span>
+                    <span class="stat-val" id="stat-textures">0</span>
+                </div>
+                <div class="stat-row">
+                    <span>Shape Switches:</span>
+                    <span class="stat-val" id="stat-shapes">0</span>
+                </div>
+                <div class="stat-row">
+                    <span>Overlay:</span>
+                    <span class="stat-val" id="stat-overlay">L0/T0</span>
+                </div>
+                <div class="stat-row">
                     <span>Mode:</span>
                     <span class="stat-val" id="stat-mode">sprites</span>
                 </div>
 
                 <div class="info-box">
                     WebGL2 batched sprite renderer stress test.<br />
-                    "Sorted" groups entities by texture to minimize batch
-                    flushes.<br />
+                    "Sorted" groups entities by texture to minimize texture
+                    switches and batch flushes.<br />
                     Press <strong>[F1]</strong> for engine debug overlay.
                 </div>
             </div>
@@ -266,10 +286,19 @@
                 texHeart;
             const texList = [];
             const entities = [];
+            const BATCH_QUADS = 8192;
             let activeCount = 2000;
             let spriteMode = "sprites-sorted";
 
-            let elFps, elCounter, elFrameMs, elDraws, elStatMode;
+            let elFps,
+                elCounter,
+                elFrameMs,
+                elDraws,
+                elFlushes,
+                elTextures,
+                elShapes,
+                elOverlay,
+                elStatMode;
             let chkRotate, chkColor, chkCollide;
 
             class StressEntity {
@@ -398,6 +427,10 @@
                         elCounter = document.getElementById("entity-counter");
                         elFrameMs = document.getElementById("stat-framems");
                         elDraws = document.getElementById("stat-draws");
+                        elFlushes = document.getElementById("stat-flushes");
+                        elTextures = document.getElementById("stat-textures");
+                        elShapes = document.getElementById("stat-shapes");
+                        elOverlay = document.getElementById("stat-overlay");
                         elStatMode = document.getElementById("stat-mode");
                         chkRotate = document.getElementById("chk-rotate");
                         chkColor = document.getElementById("chk-color");
@@ -442,12 +475,12 @@
                         for (let i = 0, n = entities.length; i < n; i++) {
                             entities[i].renderQuad();
                         }
-                        drawCalls = Math.ceil(entities.length / 2000);
+                        drawCalls = Math.ceil(entities.length / BATCH_QUADS);
                     } else if (mode === "circles") {
                         for (let i = 0, n = entities.length; i < n; i++) {
                             entities[i].renderCircle();
                         }
-                        drawCalls = Math.ceil(entities.length / 2000);
+                        drawCalls = Math.ceil(entities.length / BATCH_QUADS);
                     } else if (mode === "sprites-sorted") {
                         const n = entities.length;
                         for (let i = 0; i < n; i++) {
@@ -455,7 +488,8 @@
                             e.renderSprite(texList[e.texIndex]);
                         }
                         drawCalls =
-                            Math.ceil(entities.length / 2000) + texList.length;
+                            Math.ceil(entities.length / BATCH_QUADS) +
+                            texList.length;
                     } else if (mode === "sprites-mixed") {
                         for (let i = 0, n = entities.length; i < n; i++) {
                             const e = entities[i];
@@ -469,16 +503,31 @@
                             e.renderSprite(texList[e.texIndex]);
                         }
                         drawCalls =
-                            Math.ceil(entities.length / 2000) + texList.length;
+                            Math.ceil(entities.length / BATCH_QUADS) +
+                            texList.length;
                     }
 
                     uiFrame++;
                     if (uiFrame % 10 === 0) {
+                        const renderStats = globalThis.getRendererStats?.();
                         const fps = stats.fps;
                         elFps.innerText = fps;
                         elFps.style.color = fpsColor(fps);
                         elFrameMs.innerText = stats.frameMs.toFixed(1) + "ms";
-                        elDraws.innerText = "~" + drawCalls;
+                        elDraws.innerText = renderStats
+                            ? `${renderStats.drawCalls} (${renderStats.quads}q)`
+                            : "~" + drawCalls;
+                        if (renderStats) {
+                            elFlushes.innerText = renderStats.batchFlushes;
+                            elTextures.innerText = renderStats.textureSwitches;
+                            elShapes.innerText = renderStats.shapeSwitches;
+                            elOverlay.innerText = `L${renderStats.overlayLineCalls}/T${renderStats.overlayTextCalls}`;
+                        } else {
+                            elFlushes.innerText = "~" + drawCalls;
+                            elTextures.innerText = "n/a";
+                            elShapes.innerText = "n/a";
+                            elOverlay.innerText = "n/a";
+                        }
                         elStatMode.innerText = mode;
                     }
                 },

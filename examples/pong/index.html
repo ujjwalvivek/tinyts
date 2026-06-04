@@ -6,8 +6,8 @@
         <title>TinyTS - Pong</title>
         <style>
             @font-face {
-                font-family: "Monaspace Neon";
-                src: url("https://cdn.ujjwalvivek.com/fonts/Monaspace/Neon/Var.woff2")
+                font-family: "TinyTS";
+                src: url("../../src/font/tinyTS.woff2")
                     format("woff2");
                 font-weight: 100 900;
                 font-style: normal;
@@ -21,7 +21,7 @@
             body {
                 background: #1e1e2e;
                 color: #cdd6f4;
-                font-family: "Monaspace Neon", monospace;
+                font-family: "TinyTS", monospace;
                 overflow: hidden;
                 display: flex;
                 align-items: center;
@@ -49,6 +49,10 @@
                 height: auto !important;
                 aspect-ratio: 16/9 !important;
                 border: 2px dashed #cba6f7;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
             }
         </style>
     </head>
@@ -234,19 +238,19 @@
                     drawRect(ball.pos, ball.size, "#cdd6f4");
                     drawText(`${player.score}`, vec2(W / 2 - 40, 20), {
                         color: "#a6adc8",
-                        size: 36,
+                        size: 25.2,
                         align: "center",
                     });
                     drawText(`${ai.score}`, vec2(W / 2 + 40, 20), {
                         color: "#a6adc8",
-                        size: 36,
+                        size: 25.2,
                         align: "center",
                     });
 
                     if (ball.stuck) {
                         drawText("SPACE to serve", vec2(W / 2, H / 2 + 30), {
                             color: "#a6adc8",
-                            size: 16,
+                            size: 11.2,
                             align: "center",
                         });
                     }
@@ -261,12 +265,12 @@
                             player.score >= 5 ? "YOU WIN!" : "AI WINS!";
                         drawText(winner, vec2(W / 2, H / 2 - 20), {
                             color: "#f9e2af",
-                            size: 40,
+                            size: 28,
                             align: "center",
                         });
                         drawText("SPACE to restart", vec2(W / 2, H / 2 + 30), {
                             color: "#a6adc8",
-                            size: 16,
+                            size: 11.2,
                             align: "center",
                         });
 
@@ -288,6 +292,12 @@
                     .getElementById("canvas-container")
                     .appendChild(engine.overlayCanvas);
             }
-        </script>
+        
+            addTouchControls({
+                up: "ArrowUp",
+                down: "ArrowDown",
+                buttons: [{ id: "serve", label: "SERVE", keys: "Space" }],
+            });
+</script>
     </body>
 </html>
