@@ -39,6 +39,10 @@ Defined in [engine.ts](src/core/engine.ts)
 
 - **`engineStart(config: EngineConfig): void`**
   Starts the game loop with fixed-timestep updates and variable rendering.
+- **`EngineConfig`**
+  Engine startup configuration:
+  `{ size: { width: number, height: number }, scaleMode?: ScaleMode, pixelated?: boolean, webgl?: boolean, webgpu?: boolean, fixedHz?: number, maxSteps?: number, maxFrameDt?: number, update?: (dt: number) => void, render?: (alpha: number) => void }`
+  Set `webgpu: true` to try the optimized WebGPU renderer first. If WebGPU is unavailable, TinyTS falls back to WebGL2 when `webgl` is also true, then Canvas2D.
 - **`engineStop(): void`**
   Stops the running game loop and safely cleans up canvas, input, and audio contexts.
 - **`getActiveEngine(): Engine | undefined`**
@@ -256,6 +260,8 @@ Defined in [renderer2d.ts](src/render/renderer2d.ts)
 - **`RendererStats`**
   Renderer instrumentation snapshot:
   `{ drawCalls: number, batchFlushes: number, textureSwitches: number, shapeSwitches: number, quads: number, overlayLineCalls: number, overlayTextCalls: number }`
+- **Render backends**
+  `Renderer.type` can be `"canvas2d"`, `"webgl2"`, or `"webgpu"`. The WebGPU backend is highly optimized (using instanced rendering and a texture atlas) and targets the primary batched canvas path.
 
 ### Color
 

@@ -95,36 +95,48 @@ export class Color {
         return this.toHex();
     }
 
+    /** Cache of parsed hex/rgba color strings to Color instances. */
+    private static hexCache = new Map<string, Color>();
+
     /** Parse a hex string ("#rgb", "#rrggbb", "#rrggbbaa") or "rgba(...)" into a Color. */
     static fromHex(hex: string): Color {
+        const cached = Color.hexCache.get(hex);
+        if (cached) return cached;
+
+        let parsed: Color;
         // Handle rgba(r,g,b,a) format
         let m = hex.match(
             /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/,
         );
         if (m) {
-            return new Color(
+            parsed = new Color(
                 parseInt(m[1]) / 255,
                 parseInt(m[2]) / 255,
                 parseInt(m[3]) / 255,
                 m[4] !== undefined ? parseFloat(m[4]) : 1,
             );
+        } else {
+            // Handle hex format (#rgb, #rrggbb, #rrggbbaa)
+            const cleanHex = hex.replace("#", "");
+            let expandedHex = cleanHex;
+            if (cleanHex.length === 3) {
+                expandedHex = cleanHex[0] + cleanHex[0] + cleanHex[1] + cleanHex[1] + cleanHex[2] + cleanHex[2];
+            }
+            const r = parseInt(expandedHex.substring(0, 2), 16) / 255;
+            const g = parseInt(expandedHex.substring(2, 4), 16) / 255;
+            const b = parseInt(expandedHex.substring(4, 6), 16) / 255;
+            const a =
+                expandedHex.length === 8 ? parseInt(expandedHex.substring(6, 8), 16) / 255 : 1;
+            parsed = new Color(
+                isNaN(r) ? 0 : r,
+                isNaN(g) ? 0 : g,
+                isNaN(b) ? 0 : b,
+                isNaN(a) ? 1 : a,
+            );
         }
-        // Handle hex format (#rgb, #rrggbb, #rrggbbaa)
-        hex = hex.replace("#", "");
-        if (hex.length === 3) {
-            hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-        }
-        const r = parseInt(hex.substring(0, 2), 16) / 255;
-        const g = parseInt(hex.substring(2, 4), 16) / 255;
-        const b = parseInt(hex.substring(4, 6), 16) / 255;
-        const a =
-            hex.length === 8 ? parseInt(hex.substring(6, 8), 16) / 255 : 1;
-        return new Color(
-            isNaN(r) ? 0 : r,
-            isNaN(g) ? 0 : g,
-            isNaN(b) ? 0 : b,
-            isNaN(a) ? 1 : a,
-        );
+
+        Color.hexCache.set(hex, parsed);
+        return parsed;
     }
 
     /**

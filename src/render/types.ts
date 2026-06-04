@@ -53,7 +53,7 @@ export interface RendererStats {
   overlayTextCalls: number;
 }
 
-/** Offscreen render target. Holds either a Canvas2D surface or a WebGL2 FBO. */
+/** Offscreen render target. Holds either a Canvas2D surface, WebGL2 FBO, or backend texture. */
 export interface FrameBuffer {
   /** Canvas element (Canvas2D backend only). */
   canvas?: HTMLCanvasElement;
@@ -63,18 +63,20 @@ export interface FrameBuffer {
   texture?: WebGLTexture;
   /** GL framebuffer object (WebGL2 backend only). */
   fbo?: WebGLFramebuffer;
+  /** GPU texture attachment (WebGPU backend only). */
+  gpuTexture?: unknown;
   /** Width of the framebuffer in pixels. */
   width: number;
   /** Height of the framebuffer in pixels. */
   height: number;
 }
 
-/** Backend-agnostic 2D renderer interface (Canvas2D or WebGL2). */
+/** Backend-agnostic 2D renderer interface. */
 export interface Renderer {
   /** The HTML canvas element used for rendering. */
   readonly canvas: HTMLCanvasElement;
   /** The rendering backend type. */
-  readonly type: 'canvas2d' | 'webgl2';
+  readonly type: 'canvas2d' | 'webgl2' | 'webgpu';
 
   /** Begin a new render frame. */
   begin(): void;

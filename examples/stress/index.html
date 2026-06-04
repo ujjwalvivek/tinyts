@@ -418,6 +418,7 @@
 
             const engine = engineStart({
                 size: { width: W, height: H },
+                webgpu: true,
                 webgl: true,
                 update(dt) {
                     if (!initialized) {
@@ -528,7 +529,8 @@
                             elShapes.innerText = "n/a";
                             elOverlay.innerText = "n/a";
                         }
-                        elStatMode.innerText = mode;
+                        const rType = typeof getActiveEngine === "function" ? getActiveEngine()?.renderer?.type : "unknown";
+                        elStatMode.innerText = `${mode} (${rType})`;
                     }
                 },
             });

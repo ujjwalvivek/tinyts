@@ -33,6 +33,8 @@ export interface EngineConfig {
   pixelated?: boolean;
   /** Use WebGL renderer instead of Canvas2D. */
   webgl?: boolean;
+  /** Try WebGPU renderer before WebGL2/Canvas2D. */
+  webgpu?: boolean;
   /** Fixed update rate in Hz (default 60). */
   fixedHz?: number;
   /** Max fixed steps per frame to prevent spiral of death (default 5). */
@@ -130,7 +132,11 @@ export class Engine {
       pixelated: config.pixelated,
     });
 
-    const renderSetup = createRenderer(this.canvasManager.canvas, config.webgl ?? false, this.canvasManager);
+    const renderSetup = createRenderer(this.canvasManager.canvas, {
+      webgl: config.webgl ?? config.webgpu ?? false,
+      webgpu: config.webgpu ?? false,
+      canvasManager: this.canvasManager,
+    });
     this.renderer = renderSetup.renderer;
     this.overlayCanvas = renderSetup.overlayCanvas;
     this.removeResizeListener = renderSetup.removeResizeListener;

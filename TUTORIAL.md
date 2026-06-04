@@ -519,7 +519,7 @@ if (engine.overlayCanvas) {
 }
 ```
 
-`engine.canvasManager.canvas` is the WebGL2 canvas used for all batch-drawn shapes. `engine.overlayCanvas` is the Canvas2D overlay used for text and debug overlays.
+`engine.canvasManager.canvas` is the GPU or Canvas2D render surface used for batch-drawn shapes. `engine.overlayCanvas` is the Canvas2D overlay used for text and debug overlays when a GPU backend is active.
 
 For mobile-friendly examples, add an on-screen control overlay after the canvas is attached. The controls emit normal key/action state, so the same `bindAction()` code works on keyboard and touch:
 

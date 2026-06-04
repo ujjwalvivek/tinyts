@@ -11,6 +11,7 @@ import type {
 } from "./types";
 import { preloadDefaultFontFace } from "./font";
 import { WebGL2Renderer } from "./rendererWebGL2";
+import { WebGPURenderer } from "./rendererWebGPU";
 import { Canvas2DRenderer } from "./rendererCanvas2d";
 
 /**
@@ -80,21 +81,60 @@ function probeWebGL2Shaders(): boolean {
 /**
  * Create and configure the rendering backend.
  * @param canvas - Target canvas element.
- * @param useWebGL - Try WebGL2 if true, fallback to Canvas2D if it fails.
- * @param canvasManager - Canvas manager for resizing and dimensions.
+ * @param options - Backend preferences and canvas manager.
  */
 export function createRenderer(
     canvas: HTMLCanvasElement,
-    useWebGL: boolean,
-    canvasManager: CanvasManager,
+    options: {
+        webgl: boolean;
+        webgpu: boolean;
+        canvasManager: CanvasManager;
+    },
 ): {
     renderer: Renderer;
     overlayCanvas: HTMLCanvasElement | null;
     removeResizeListener: (() => void) | null;
 } {
     preloadDefaultFontFace();
+    const { canvasManager } = options;
 
-    if (useWebGL) {
+    if (options.webgpu) {
+        if ((navigator as Navigator & { gpu?: unknown }).gpu) {
+            const overlay = document.createElement("canvas");
+            overlay.style.cssText = "position:absolute;pointer-events:none;";
+            overlay.getContext("2d")!.imageSmoothingEnabled = false;
+            if (canvas.parentElement) {
+                canvas.parentElement.appendChild(overlay);
+            }
+            syncOverlayCanvas(overlay, canvas, canvasManager);
+
+            try {
+                const webgpuRenderer = new WebGPURenderer(
+                    canvas,
+                    overlay.getContext("2d")!,
+                );
+                const removeResizeListener = canvasManager.addResizeListener(
+                    () => {
+                        syncOverlayCanvas(overlay, canvas, canvasManager);
+                    },
+                );
+                return {
+                    renderer: webgpuRenderer,
+                    overlayCanvas: overlay,
+                    removeResizeListener,
+                };
+            } catch (err) {
+                console.warn("[tinyts] WebGPU init failed:", err);
+                overlay.remove();
+            }
+        } else {
+            console.warn(
+                "[tinyts] WebGPU requested but navigator.gpu is unavailable",
+            );
+        }
+    }
+
+    if (options.webgl) {
         // Probe shaders first, BEFORE creating a WebGL context on the real canvas
         if (!probeWebGL2Shaders()) {
             console.warn(
