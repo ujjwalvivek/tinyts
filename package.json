@@ -1,6 +1,6 @@
 {
     "name": "@ujjwalvivek/tinyts",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "description": "A tiny TypeScript-first 2D web game engine",
     "license": "MIT",
     "author": "ujjwalvivek",
