@@ -73,6 +73,7 @@ export {
     bindFrameBuffer,
     drawFrameBuffer,
     getRendererStats,
+    createRenderer,
 } from "./render/renderer2d";
 export { SpriteAnimation } from "./render/spriteAnimation";
 export type { SpriteAnimationConfig } from "./render/spriteAnimation";

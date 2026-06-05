@@ -82,7 +82,7 @@ export class Engine {
   readonly audioManager: AudioManager;
   readonly particleSystem: ParticleSystem;
   readonly tweenManager: TweenManager;
-  private overlayCanvas: HTMLCanvasElement | null = null;
+  readonly overlayCanvas: HTMLCanvasElement | null = null;
   private removeResizeListener: (() => void) | null = null;
   private readonly plugins: EnginePlugin[] = [];
 

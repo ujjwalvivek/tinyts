@@ -144,7 +144,7 @@ fn fs(input: VOut) -> @location(0) vec4f {
       let outer = 1.0 - smoothstep(0.5 - aa, 0.5 + aa, max(d.x, d.y));
       let holeX = smoothstep(inner.x - aa, inner.x + aa, d.x);
       let holeY = smoothstep(inner.y - aa, inner.y + aa, d.y);
-      base.a *= outer * (1.0 - holeX * holeY);
+      base.a *= outer * (1.0 - (1.0 - holeX) * (1.0 - holeY));
 
     } else if (shape == 3) {
       // Circle outline

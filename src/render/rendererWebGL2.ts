@@ -72,7 +72,7 @@ void main() {
     float outer = 1.0 - smoothstep(0.5 - aa, 0.5 + aa, max(d.x, d.y));
     float holeX = smoothstep(inner.x - aa, inner.x + aa, d.x);
     float holeY = smoothstep(inner.y - aa, inner.y + aa, d.y);
-    float alpha = outer * (1.0 - holeX * holeY);
+    float alpha = outer * (1.0 - (1.0 - holeX) * (1.0 - holeY));
     base.a *= alpha;
 
   } else if (uShape == 3) {
