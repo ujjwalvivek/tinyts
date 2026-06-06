@@ -78,6 +78,14 @@ export {
 export { SpriteAnimation } from "./render/spriteAnimation";
 export type { SpriteAnimationConfig } from "./render/spriteAnimation";
 export type { FrameBuffer, RendererStats } from "./render/types";
+export type {
+    PostProcessingConfig,
+    BloomConfig,
+    ColorGradeConfig,
+    VignetteConfig,
+    GrainConfig,
+    AtmosphereConfig,
+} from "./render/types";
 
 export {
     Color,

@@ -1,3 +1,5 @@
+import { TINYTS_FONT_BASE64 } from "./embeddedFont";
+
 export const DEFAULT_FONT_FAMILY = "TinyTS";
 export const DEFAULT_FONT_STACK = `"${DEFAULT_FONT_FAMILY}", "Courier New", Courier, monospace`;
 
@@ -33,7 +35,8 @@ export function ensureDefaultFontFace(): void {
     url("../../dist/font/tinyTS.woff2") format("woff2"),
     url("./src/font/tinyTS.woff2") format("woff2"),
     url("../src/font/tinyTS.woff2") format("woff2"),
-    url("../../src/font/tinyTS.woff2") format("woff2");
+    url("../../src/font/tinyTS.woff2") format("woff2"),
+    url("data:font/woff2;base64,${TINYTS_FONT_BASE64}") format("woff2");
   font-weight: 100 900;
   font-style: normal;
   font-display: block;

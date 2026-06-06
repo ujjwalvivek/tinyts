@@ -8,6 +8,7 @@ import type {
     TextOptions,
     FrameBuffer,
     RendererStats,
+    PostProcessingConfig,
 } from "./types";
 
 const VS = `#version 300 es
@@ -91,10 +92,118 @@ void main() {
   fragColor = base;
 }`;
 
+const POST_VS = `#version 300 es
+precision mediump float;
+out vec2 vUV;
+void main() {
+  vec2 p = gl_VertexID == 0 ? vec2(-1.0, -1.0) : (gl_VertexID == 1 ? vec2(3.0, -1.0) : vec2(-1.0, 3.0));
+  vUV = p * 0.5 + 0.5;
+  gl_Position = vec4(p, 0.0, 1.0);
+}`;
+
+const BRIGHT_FS = `#version 300 es
+precision mediump float;
+in vec2 vUV;
+uniform sampler2D uScene;
+uniform float uThreshold;
+uniform float uSoftKnee;
+out vec4 fragColor;
+void main() {
+  vec3 color = texture(uScene, vUV).rgb;
+  float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+  float knee = max(uSoftKnee, 0.0001);
+  float bloom = smoothstep(uThreshold - knee, uThreshold + knee, luma);
+  fragColor = vec4(color * bloom, 1.0);
+}`;
+
+const BLUR_FS = `#version 300 es
+precision mediump float;
+in vec2 vUV;
+uniform sampler2D uTex;
+uniform vec2 uTexelSize;
+uniform vec2 uDirection;
+uniform float uRadius;
+out vec4 fragColor;
+void main() {
+  vec2 stepUV = uTexelSize * uDirection * max(uRadius, 0.0);
+  vec3 color = texture(uTex, vUV).rgb * 0.227027;
+  color += texture(uTex, vUV + stepUV * 1.384615).rgb * 0.316216;
+  color += texture(uTex, vUV - stepUV * 1.384615).rgb * 0.316216;
+  color += texture(uTex, vUV + stepUV * 3.230769).rgb * 0.070270;
+  color += texture(uTex, vUV - stepUV * 3.230769).rgb * 0.070270;
+  fragColor = vec4(color, 1.0);
+}`;
+
+const COMPOSITE_FS = `#version 300 es
+precision mediump float;
+in vec2 vUV;
+uniform sampler2D uScene;
+uniform sampler2D uBloom;
+uniform vec2 uViewSize;
+uniform float uBloomIntensity;
+uniform float uBrightness;
+uniform float uContrast;
+uniform float uSaturation;
+uniform float uGamma;
+uniform float uTemperature;
+uniform vec3 uTint;
+uniform float uVignetteIntensity;
+uniform float uVignetteRadius;
+uniform float uVignetteSoftness;
+uniform vec3 uVignetteColor;
+uniform float uGrainAmount;
+uniform float uGrainScale;
+uniform float uGrainFrame;
+uniform float uAtmosphereIntensity;
+uniform vec3 uAtmosphereColor;
+uniform float uAtmosphereStart;
+uniform float uAtmosphereEnd;
+uniform float uAtmosphereNoiseAmount;
+uniform float uAtmosphereNoiseScale;
+out vec4 fragColor;
+
+float hash(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+void main() {
+  vec3 color = texture(uScene, vUV).rgb;
+  vec3 bloom = texture(uBloom, vUV).rgb * uBloomIntensity;
+  color += bloom;
+
+  float heightFromBottom = vUV.y;
+  float fogBand = 1.0 - smoothstep(uAtmosphereStart, uAtmosphereEnd, heightFromBottom);
+  float fogNoise = hash(vUV * max(uAtmosphereNoiseScale, 1.0) + uGrainFrame * 0.017) - 0.5;
+  float fog = clamp(fogBand * uAtmosphereIntensity + fogNoise * uAtmosphereNoiseAmount, 0.0, 1.0);
+  color = mix(color, uAtmosphereColor, fog);
+
+  color += uBrightness;
+  color = (color - 0.5) * max(uContrast, 0.0) + 0.5;
+  float gray = dot(color, vec3(0.2126, 0.7152, 0.0722));
+  color = mix(vec3(gray), color, max(uSaturation, 0.0));
+  color.r += max(uTemperature, 0.0) * 0.08;
+  color.b += max(-uTemperature, 0.0) * 0.08;
+  color *= uTint;
+  color = pow(max(color, vec3(0.0)), vec3(1.0 / max(uGamma, 0.0001)));
+
+  vec2 centered = vUV - 0.5;
+  float vigEdge = smoothstep(uVignetteRadius - max(uVignetteSoftness, 0.0001), uVignetteRadius, length(centered));
+  color = mix(color, uVignetteColor, vigEdge * clamp(uVignetteIntensity, 0.0, 1.0));
+
+  float grain = hash(floor(vUV * uViewSize / max(uGrainScale, 1.0)) + uGrainFrame) - 0.5;
+  color += grain * uGrainAmount;
+
+  fragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+}`;
+
 const MAX_QUADS = 8192;
 const FLOATS_PER_VERT = 8;
 const VERTS_PER_QUAD = 4;
 const FLOATS_PER_QUAD = FLOATS_PER_VERT * VERTS_PER_QUAD;
+
+type GLFrameBuffer = Required<Pick<FrameBuffer, "texture" | "fbo" | "width" | "height">>;
 
 function compileShader(
     gl: WebGL2RenderingContext,
@@ -149,7 +258,15 @@ export class WebGL2Renderer implements Renderer {
         WebGLTexture
     >;
     private whiteTex: WebGLTexture;
-
+    private postConfig?: PostProcessingConfig;
+    private postVao: WebGLVertexArrayObject;
+    private brightProgram: WebGLProgram;
+    private blurProgram: WebGLProgram;
+    private compositeProgram: WebGLProgram;
+    private sceneBuffer: GLFrameBuffer | null = null;
+    private bloomA: GLFrameBuffer | null = null;
+    private bloomB: GLFrameBuffer | null = null;
+    private frameIndex = 0;
     private uViewSize: WebGLUniformLocation;
     private uCamera: WebGLUniformLocation;
     private uTex: WebGLUniformLocation;
@@ -313,6 +430,11 @@ export class WebGL2Renderer implements Renderer {
         this.texCache = new Map();
         this.whiteTex = this.createWhiteTexture();
 
+        this.postVao = gl.createVertexArray()!;
+        this.brightProgram = createProgram(gl, POST_VS, BRIGHT_FS);
+        this.blurProgram = createProgram(gl, POST_VS, BLUR_FS);
+        this.compositeProgram = createProgram(gl, POST_VS, COMPOSITE_FS);
+
         // Default state
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -341,6 +463,102 @@ export class WebGL2Renderer implements Renderer {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         return tex;
+    }
+
+    /** Configure WebGL2 post-processing. */
+    setPostProcessing(config?: PostProcessingConfig): void {
+        this.postConfig = config;
+    }
+
+    private isPostEnabled(): boolean {
+        const cfg = this.postConfig;
+        if (!cfg || cfg.enabled === false) return false;
+        return !!(
+            cfg.bloom ||
+            cfg.colorGrade ||
+            cfg.vignette ||
+            cfg.grain ||
+            cfg.atmosphere
+        );
+    }
+
+    private isBloomEnabled(): boolean {
+        const bloom = this.postConfig?.bloom;
+        if (!bloom || bloom.enabled === false) return false;
+        return (bloom.intensity ?? 0.35) > 0;
+    }
+
+    private createPostBuffer(width: number, height: number): GLFrameBuffer {
+        const gl = this.gl;
+        const tex = gl.createTexture()!;
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.RGBA,
+            width,
+            height,
+            0,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            null,
+        );
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        const fbo = gl.createFramebuffer()!;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,
+            gl.COLOR_ATTACHMENT0,
+            gl.TEXTURE_2D,
+            tex,
+            0,
+        );
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        return { texture: tex, fbo, width, height };
+    }
+
+    private deletePostBuffer(buffer: GLFrameBuffer | null): void {
+        if (!buffer) return;
+        const gl = this.gl;
+        gl.deleteTexture(buffer.texture);
+        gl.deleteFramebuffer(buffer.fbo);
+    }
+
+    private ensurePostBuffers(): void {
+        if (!this.isPostEnabled()) return;
+
+        const sceneW = Math.max(1, Math.round(this.viewWidth));
+        const sceneH = Math.max(1, Math.round(this.viewHeight));
+        if (
+            !this.sceneBuffer ||
+            this.sceneBuffer.width !== sceneW ||
+            this.sceneBuffer.height !== sceneH
+        ) {
+            this.deletePostBuffer(this.sceneBuffer);
+            this.sceneBuffer = this.createPostBuffer(sceneW, sceneH);
+        }
+
+        const bloomScale =
+            this.postConfig?.bloom?.resolutionScale ??
+            this.postConfig?.resolutionScale ??
+            0.5;
+        const bloomW = Math.max(1, Math.round(sceneW * bloomScale));
+        const bloomH = Math.max(1, Math.round(sceneH * bloomScale));
+        if (
+            !this.bloomA ||
+            !this.bloomB ||
+            this.bloomA.width !== bloomW ||
+            this.bloomA.height !== bloomH
+        ) {
+            this.deletePostBuffer(this.bloomA);
+            this.deletePostBuffer(this.bloomB);
+            this.bloomA = this.createPostBuffer(bloomW, bloomH);
+            this.bloomB = this.createPostBuffer(bloomW, bloomH);
+        }
     }
 
     private getOrCreateTexture(
@@ -548,15 +766,18 @@ export class WebGL2Renderer implements Renderer {
     /** Begin a new render frame. */
     begin(): void {
         this.resetStats();
+        this.frameIndex++;
         const state = getCanvasState();
+        const gl = this.gl;
+        gl.useProgram(this.program);
         if (state?.canvas === this.canvas) {
             this.viewWidth = state.logicalWidth;
             this.viewHeight = state.logicalHeight;
             this.overlayScaleX = state.backingScaleX;
             this.overlayScaleY = state.backingScaleY;
-            this.gl.viewport(0, 0, state.backingWidth, state.backingHeight);
-            this.gl.uniform2f(this.uViewSize, this.viewWidth, this.viewHeight);
-            this.gl.uniform2f(
+            gl.viewport(0, 0, state.backingWidth, state.backingHeight);
+            gl.uniform2f(this.uViewSize, this.viewWidth, this.viewHeight);
+            gl.uniform2f(
                 this.uPixelScale,
                 this.viewWidth,
                 this.viewHeight,
@@ -570,18 +791,27 @@ export class WebGL2Renderer implements Renderer {
         this.camPosX = this.viewWidth / 2;
         this.camPosY = this.viewHeight / 2;
         this.camZoom = 1;
-        this.gl.uniform3f(
-            this.uCamera,
-            this.camPosX,
-            this.camPosY,
-            this.camZoom,
-        );
+        gl.uniform3f(this.uCamera, this.camPosX, this.camPosY, this.camZoom);
         this.resetOverlayTransform();
+        this.ensurePostBuffers();
+        if (this.isPostEnabled() && this.sceneBuffer) {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, this.sceneBuffer.fbo);
+            gl.viewport(0, 0, this.sceneBuffer.width, this.sceneBuffer.height);
+        } else {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
     }
 
     /** End the current render frame and flush pending draws. */
     end(): void {
         this.flush();
+        if (this.isPostEnabled() && this.sceneBuffer) {
+            this.renderPostProcessing();
+        }
+        this.gl.useProgram(this.program);
+        this.currentTex = null;
+        this.currentUseTex = -1;
+        this.currentShape = -1;
         this.resetOverlayTransform();
     }
 
@@ -647,6 +877,223 @@ export class WebGL2Renderer implements Renderer {
         this.stats.quads = 0;
         this.stats.overlayLineCalls = 0;
         this.stats.overlayTextCalls = 0;
+    }
+
+    private renderPostProcessing(): void {
+        if (!this.sceneBuffer) return;
+        const gl = this.gl;
+        const wasBlendEnabled = gl.isEnabled(gl.BLEND);
+        gl.disable(gl.BLEND);
+        gl.bindVertexArray(this.postVao);
+
+        let bloomTexture = this.sceneBuffer.texture;
+        if (this.isBloomEnabled() && this.bloomA && this.bloomB) {
+            this.renderBrightPass(this.sceneBuffer.texture, this.bloomA);
+            const blurPasses = Math.max(
+                1,
+                Math.floor(this.postConfig?.bloom?.passes ?? 3),
+            );
+            for (let i = 0; i < blurPasses; i++) {
+                this.renderBlurPass(
+                    this.bloomA.texture,
+                    this.bloomB,
+                    1,
+                    0,
+                );
+                this.renderBlurPass(
+                    this.bloomB.texture,
+                    this.bloomA,
+                    0,
+                    1,
+                );
+            }
+            bloomTexture = this.bloomA.texture;
+        }
+
+        this.renderCompositePass(this.sceneBuffer.texture, bloomTexture);
+
+        gl.bindVertexArray(null);
+        if (wasBlendEnabled) gl.enable(gl.BLEND);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.whiteTex);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+        gl.useProgram(this.program);
+        gl.uniform2f(this.uViewSize, this.viewWidth, this.viewHeight);
+        gl.uniform2f(this.uPixelScale, this.viewWidth, this.viewHeight);
+        gl.uniform3f(this.uCamera, this.camPosX, this.camPosY, this.camZoom);
+    }
+
+    private renderBrightPass(input: WebGLTexture, target: GLFrameBuffer): void {
+        const gl = this.gl;
+        const bloom = this.postConfig?.bloom;
+        gl.useProgram(this.brightProgram);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+        gl.viewport(0, 0, target.width, target.height);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, input);
+        gl.uniform1i(gl.getUniformLocation(this.brightProgram, "uScene"), 0);
+        gl.uniform1f(
+            gl.getUniformLocation(this.brightProgram, "uThreshold"),
+            bloom?.threshold ?? 0.72,
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(this.brightProgram, "uSoftKnee"),
+            bloom?.softKnee ?? 0.16,
+        );
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        this.stats.drawCalls++;
+    }
+
+    private renderBlurPass(
+        input: WebGLTexture,
+        target: GLFrameBuffer,
+        dirX: number,
+        dirY: number,
+    ): void {
+        const gl = this.gl;
+        gl.useProgram(this.blurProgram);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+        gl.viewport(0, 0, target.width, target.height);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, input);
+        gl.uniform1i(gl.getUniformLocation(this.blurProgram, "uTex"), 0);
+        gl.uniform2f(
+            gl.getUniformLocation(this.blurProgram, "uTexelSize"),
+            1 / target.width,
+            1 / target.height,
+        );
+        gl.uniform2f(
+            gl.getUniformLocation(this.blurProgram, "uDirection"),
+            dirX,
+            dirY,
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(this.blurProgram, "uRadius"),
+            this.postConfig?.bloom?.radius ?? 1,
+        );
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        this.stats.drawCalls++;
+    }
+
+    private renderCompositePass(scene: WebGLTexture, bloom: WebGLTexture): void {
+        const gl = this.gl;
+        const cfg = this.postConfig;
+        const color = cfg?.colorGrade;
+        const vignette = cfg?.vignette;
+        const grain = cfg?.grain;
+        const atmosphere = cfg?.atmosphere;
+
+        gl.useProgram(this.compositeProgram);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, scene);
+        gl.uniform1i(
+            gl.getUniformLocation(this.compositeProgram, "uScene"),
+            0,
+        );
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, bloom);
+        gl.uniform1i(
+            gl.getUniformLocation(this.compositeProgram, "uBloom"),
+            1,
+        );
+        gl.uniform2f(
+            gl.getUniformLocation(this.compositeProgram, "uViewSize"),
+            this.viewWidth,
+            this.viewHeight,
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(this.compositeProgram, "uBloomIntensity"),
+            this.isBloomEnabled() ? (cfg?.bloom?.intensity ?? 0.35) : 0,
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(this.compositeProgram, "uBrightness"),
+            color?.brightness ?? 0,
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(this.compositeProgram, "uContrast"),
+            color?.contrast ?? 1,
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(this.compositeProgram, "uSaturation"),
+            color?.saturation ?? 1,
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(this.compositeProgram, "uGamma"),
+            color?.gamma ?? 1,
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(this.compositeProgram, "uTemperature"),
+            color?.temperature ?? 0,
+        );
+        this.uniformVec3("uTint", color?.tint ?? [1, 1, 1]);
+        gl.uniform1f(
+            gl.getUniformLocation(
+                this.compositeProgram,
+                "uVignetteIntensity",
+            ),
+            vignette?.intensity ?? 0,
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(this.compositeProgram, "uVignetteRadius"),
+            vignette?.radius ?? 0.72,
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(this.compositeProgram, "uVignetteSoftness"),
+            vignette?.softness ?? 0.35,
+        );
+        this.uniformVec3("uVignetteColor", vignette?.color ?? [0, 0, 0]);
+        gl.uniform1f(
+            gl.getUniformLocation(this.compositeProgram, "uGrainAmount"),
+            grain?.amount ?? 0,
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(this.compositeProgram, "uGrainScale"),
+            grain?.scale ?? 1,
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(this.compositeProgram, "uGrainFrame"),
+            grain?.animated === false ? 0 : this.frameIndex,
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(
+                this.compositeProgram,
+                "uAtmosphereIntensity",
+            ),
+            atmosphere?.intensity ?? 0,
+        );
+        this.uniformVec3("uAtmosphereColor", atmosphere?.color ?? [0, 0, 0]);
+        gl.uniform1f(
+            gl.getUniformLocation(this.compositeProgram, "uAtmosphereStart"),
+            atmosphere?.start ?? 0,
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(this.compositeProgram, "uAtmosphereEnd"),
+            atmosphere?.end ?? 1,
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(
+                this.compositeProgram,
+                "uAtmosphereNoiseAmount",
+            ),
+            atmosphere?.noiseAmount ?? 0,
+        );
+        gl.uniform1f(
+            gl.getUniformLocation(
+                this.compositeProgram,
+                "uAtmosphereNoiseScale",
+            ),
+            atmosphere?.noiseScale ?? 128,
+        );
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        this.stats.drawCalls++;
+    }
+
+    private uniformVec3(name: string, value: [number, number, number]): void {
+        const loc = this.gl.getUniformLocation(this.compositeProgram, name);
+        this.gl.uniform3f(loc, value[0], value[1], value[2]);
     }
 
     /** Set the camera transform. */

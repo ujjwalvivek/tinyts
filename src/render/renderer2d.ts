@@ -8,6 +8,7 @@ import type {
     TextOptions,
     FrameBuffer,
     RendererStats,
+    PostProcessingConfig,
 } from "./types";
 import { preloadDefaultFontFace } from "./font";
 import { WebGL2Renderer } from "./rendererWebGL2";
@@ -89,6 +90,7 @@ export function createRenderer(
         webgl: boolean;
         webgpu: boolean;
         canvasManager: CanvasManager;
+        post?: PostProcessingConfig;
     },
 ): {
     renderer: Renderer;
@@ -113,6 +115,7 @@ export function createRenderer(
                     canvas,
                     overlay.getContext("2d")!,
                 );
+                webgpuRenderer.setPostProcessing(options.post);
                 const removeResizeListener = canvasManager.addResizeListener(
                     () => {
                         syncOverlayCanvas(overlay, canvas, canvasManager);
@@ -154,6 +157,7 @@ export function createRenderer(
                     canvas,
                     overlay.getContext("2d")!,
                 );
+                webglRenderer.setPostProcessing(options.post);
                 const removeResizeListener = canvasManager.addResizeListener(
                     () => {
                         syncOverlayCanvas(overlay, canvas, canvasManager);
@@ -187,6 +191,7 @@ export function createRenderer(
     }
 
     const r = new Canvas2DRenderer(fallbackCanvas);
+    r.setPostProcessing(options.post);
     return { renderer: r, overlayCanvas: null, removeResizeListener: null };
 }
 

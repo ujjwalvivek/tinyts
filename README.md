@@ -5,6 +5,8 @@
 [![Engine API](https://echopoint.ujjwalvivek.com/svg/badges/custom?bg=111111&badgeColor=7316e4&textColor=e8e8e8&border=7316e4&borderWidth=2&rx=0&px=2&py=2&logo=typescript&leftText=ENGINE&rightText=API)](https://tinyts.ujjwalvivek.com)
 [![NPM](https://echopoint.ujjwalvivek.com/svg/badges/npm?bg=111111&badgeColor=7316e4&textColor=e8e8e8&border=7316e4&borderWidth=2&rx=0&px=2&py=2&logo=npm&package=tinyts)](https://www.npmjs.com/package/@ujjwalvivek/tinyts)
 
+<img src="https://cdn.ujjwalvivek.com/showcase/tinyts-untitled.gif" alt="Engine API" />
+
 A tiny, fast, TypeScript-first 2D web game engine.
 
 **~88 KB minified, ~27 KB gzip** - zero runtime dependencies.

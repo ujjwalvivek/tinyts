@@ -2,7 +2,7 @@ import type { Vec2 } from '../core/math';
 import { getCanvasState } from '../core/canvas';
 import { Color } from './color';
 import { defaultTextFont, ensureDefaultFontFace } from './font';
-import type { Renderer, SpriteOptions, TextOptions, FrameBuffer, RendererStats } from './types';
+import type { Renderer, SpriteOptions, TextOptions, FrameBuffer, RendererStats, PostProcessingConfig } from './types';
 
 function resolveColor(c: string | Color): string {
   return c instanceof Color ? c.toString() : c;
@@ -94,6 +94,9 @@ export class Canvas2DRenderer implements Renderer {
   getStats(): RendererStats {
     return { ...this.stats };
   }
+
+  /** Configure post-processing. Canvas2D currently renders without post effects. */
+  setPostProcessing(_config?: PostProcessingConfig): void {}
 
   private resetStats(): void {
     this.stats.drawCalls = 0;

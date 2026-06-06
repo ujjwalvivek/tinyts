@@ -263,6 +263,59 @@ Defined in [renderer2d.ts](src/render/renderer2d.ts)
 - **Render backends**
   `Renderer.type` can be `"canvas2d"`, `"webgl2"`, or `"webgpu"`. The WebGPU backend is highly optimized (using instanced rendering and a texture atlas) and targets the primary batched canvas path.
 
+### Post Processing
+
+Defined in [types.ts](src/render/types.ts)
+
+- **`PostProcessingConfig`**
+  Passed via `engineStart({ post: {...} })`.
+  - `enabled?: boolean` - Master toggle (default true when object is given).
+  - `resolutionScale?: number` - Global scale for intermediate targets (1.0 = full res).
+  - `bloom?: BloomConfig` - Bright-pass bloom with separable gaussian blur.
+  - `colorGrade?: ColorGradeConfig` - Contrast, saturation, gamma, temperature, tint.
+  - `vignette?: VignetteConfig` - Screen-edge darkening.
+  - `grain?: GrainConfig` - Film-grain noise overlay.
+  - `atmosphere?: AtmosphereConfig` - Gradient fog rising from the bottom of the screen.
+
+- **`BloomConfig`**
+  `{ enabled?, threshold?, softKnee?, intensity?, radius?, passes?, resolutionScale? }`
+  - `threshold` (default 0.72) - Luminance threshold for bright-pass extraction.
+  - `softKnee` (default 0.16) - Smooth transition width around the threshold.
+  - `intensity` (default 0.35) - Bloom brightness multiplier during compositing.
+  - `radius` (default 1) - Blur spread radius in pixels.
+  - `passes` (default 3) - Number of separable blur passes (each direction counts as one).
+
+- **`ColorGradeConfig`**
+  `{ brightness?, contrast?, saturation?, gamma?, temperature?, tint? }`
+  - `brightness` (default 0) - Brightness offset added before other adjustments.
+  - `contrast` (default 1) - Contrast multiplier.
+  - `saturation` (default 1) - Saturation multiplier.
+  - `gamma` (default 1) - Gamma correction exponent.
+  - `temperature` (default 0) - Color temperature shift (negative = cooler/blue, positive = warmer/red).
+  - `tint` (default [1,1,1]) - RGB tint multiplier applied before gamma.
+
+- **`VignetteConfig`**
+  `{ intensity?, radius?, softness?, color? }`
+  - `intensity` (default 0) - Darkening strength.
+  - `radius` (default 0.72) - Normalised inner radius of the vignette.
+  - `softness` (default 0.35) - Feather width of the vignette edge.
+  - `color` (default [0,0,0]) - Color applied at the screen edges.
+
+- **`GrainConfig`**
+  `{ amount?, scale?, animated? }`
+  - `amount` (default 0) - Noise intensity.
+  - `scale` (default 1) - Grain size in pixels.
+  - `animated` (default true) - Animate the noise pattern each frame.
+
+- **`AtmosphereConfig`**
+  `{ intensity?, color?, start?, end?, noiseAmount?, noiseScale? }`
+  - `intensity` (default 0) - Fog opacity (0-1).
+  - `color` (default [0,0,0]) - Fog tint.
+  - `start` (default 0) - Normalised height where fog begins (0 = bottom edge of screen).
+  - `end` (default 1) - Normalised height where fog reaches full strength.
+  - `noiseAmount` (default 0) - Amount of procedural noise variation.
+  - `noiseScale` (default 128) - Scale of the noise pattern in pixels.
+
 ### Color
 
 Defined in [color.ts](src/render/color.ts)

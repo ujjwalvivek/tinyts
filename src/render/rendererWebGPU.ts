@@ -8,6 +8,7 @@ import type {
     RendererStats,
     SpriteOptions,
     TextOptions,
+    PostProcessingConfig,
 } from "./types";
 import { WebGL2Renderer } from "./rendererWebGL2";
 import { Canvas2DRenderer } from "./rendererCanvas2d";
@@ -16,14 +17,15 @@ type GPUAny = any;
 const GPU_BUFFER_USAGE = (globalThis as any).GPUBufferUsage;
 const GPU_TEXTURE_USAGE = (globalThis as any).GPUTextureUsage;
 
-// Instance layout: 16 floats (4 × vec4f = 64 bytes) per instance
+// Instance layout: 20 floats (5 × vec4f = 80 bytes) per instance
 //
 //  [0..3]   posSize:  centerX, centerY, halfW, halfH
 //  [4..7]   uvRect:   u0, v0, u1, v1  (atlas coordinates)
 //  [8..11]  color:    r, g, b, a
 //  [12..15] misc:     shapePacked, shapeParam0, shapeParam1, rotation
+//  [16..19] cam:      camX, camY, camZoom, _pad
 //
-const FLOATS_PER_INSTANCE = 16;
+const FLOATS_PER_INSTANCE = 20;
 const INITIAL_CAPACITY = 8192;
 const ATLAS_SIZE = 2048;
 const ATLAS_PAD = 1;
@@ -39,10 +41,7 @@ const ATLAS_PAD = 1;
 const SHADER = `
 struct Uniforms {
   viewSize: vec2f,
-  camPos: vec2f,
-  camZoom: f32,
-  _pad0: f32,
-  _pad1: vec2f,
+  _pad: vec2f,
 };
 
 struct Instance {
@@ -50,6 +49,7 @@ struct Instance {
   uvRect:  vec4f,
   color:   vec4f,
   misc:    vec4f,
+  cam:     vec4f,   // camX, camY, camZoom, _pad
 };
 
 @group(0) @binding(0) var<uniform> u: Uniforms;
@@ -99,8 +99,8 @@ fn vs(@builtin(vertex_index) vid: u32, @builtin(instance_index) iid: u32) -> VOu
 
   let worldPos = vec2f(inst.posSize.x + rx, inst.posSize.y + ry);
 
-  // Camera transform
-  let s   = (worldPos - u.camPos) * u.camZoom;
+  // Camera transform (per-instance)
+  let s   = (worldPos - inst.cam.xy) * inst.cam.z;
   let ndc = s / u.viewSize * 2.0;
 
   var out: VOut;
@@ -161,6 +161,129 @@ fn fs(input: VOut) -> @location(0) vec4f {
 }
 `;
 
+const POST_VERTEX = `
+struct VOut {
+  @builtin(position) pos: vec4f,
+  @location(0) uv: vec2f,
+};
+
+@vertex
+fn vs(@builtin(vertex_index) vid: u32) -> VOut {
+  var p = vec2f(-1.0, 3.0);
+  if (vid == 0u) {
+    p = vec2f(-1.0, -1.0);
+  } else if (vid == 1u) {
+    p = vec2f(3.0, -1.0);
+  }
+  var out: VOut;
+  out.pos = vec4f(p, 0.0, 1.0);
+  out.uv = vec2f(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5);
+  return out;
+}`;
+
+const BRIGHT_SHADER = `${POST_VERTEX}
+
+struct BrightUniforms {
+  threshold: f32,
+  softKnee: f32,
+  _pad: vec2f,
+};
+
+@group(0) @binding(0) var samp: sampler;
+@group(0) @binding(1) var sceneTex: texture_2d<f32>;
+@group(0) @binding(2) var<uniform> u: BrightUniforms;
+
+@fragment
+fn fs(input: VOut) -> @location(0) vec4f {
+  let color = textureSample(sceneTex, samp, input.uv).rgb;
+  let luma = dot(color, vec3f(0.2126, 0.7152, 0.0722));
+  let knee = max(u.softKnee, 0.0001);
+  let bloom = smoothstep(u.threshold - knee, u.threshold + knee, luma);
+  return vec4f(color * bloom, 1.0);
+}`;
+
+const BLUR_SHADER = `${POST_VERTEX}
+
+struct BlurUniforms {
+  texelSize: vec2f,
+  direction: vec2f,
+  radius: f32,
+  _pad: vec3f,
+};
+
+@group(0) @binding(0) var samp: sampler;
+@group(0) @binding(1) var sourceTex: texture_2d<f32>;
+@group(0) @binding(2) var<uniform> u: BlurUniforms;
+
+@fragment
+fn fs(input: VOut) -> @location(0) vec4f {
+  let stepUV = u.texelSize * u.direction * max(u.radius, 0.0);
+  var color = textureSample(sourceTex, samp, input.uv).rgb * 0.227027;
+  color += textureSample(sourceTex, samp, input.uv + stepUV * 1.384615).rgb * 0.316216;
+  color += textureSample(sourceTex, samp, input.uv - stepUV * 1.384615).rgb * 0.316216;
+  color += textureSample(sourceTex, samp, input.uv + stepUV * 3.230769).rgb * 0.070270;
+  color += textureSample(sourceTex, samp, input.uv - stepUV * 3.230769).rgb * 0.070270;
+  return vec4f(color, 1.0);
+}`;
+
+const COMPOSITE_SHADER = `${POST_VERTEX}
+
+struct CompositeUniforms {
+  viewBloomBrightness: vec4f,
+  contrastSaturationGammaTemperature: vec4f,
+  tintVignetteIntensity: vec4f,
+  vignetteRadiusSoftnessColorRG: vec4f,
+  vignetteColorBGrainAmountScaleFrame: vec4f,
+  atmosphereIntensityStartEndNoise: vec4f,
+  atmosphereColorNoiseScale: vec4f,
+};
+
+@group(0) @binding(0) var samp: sampler;
+@group(0) @binding(1) var sceneTex: texture_2d<f32>;
+@group(0) @binding(2) var bloomTex: texture_2d<f32>;
+@group(0) @binding(3) var<uniform> u: CompositeUniforms;
+
+fn hash(p: vec2f) -> f32 {
+  var p3 = fract(vec3f(p.x, p.y, p.x) * 0.1031);
+  p3 += dot(p3, p3.yzx + vec3f(33.33));
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+@fragment
+fn fs(input: VOut) -> @location(0) vec4f {
+  var color = textureSample(sceneTex, samp, input.uv).rgb;
+  color += textureSample(bloomTex, samp, input.uv).rgb * u.viewBloomBrightness.z;
+
+  let heightFromBottom = 1.0 - input.uv.y;
+  let fogBand = 1.0 - smoothstep(u.atmosphereIntensityStartEndNoise.y, u.atmosphereIntensityStartEndNoise.z, heightFromBottom);
+  let fogNoise = hash(input.uv * max(u.atmosphereColorNoiseScale.w, 1.0) + u.vignetteColorBGrainAmountScaleFrame.w * 0.017) - 0.5;
+  let fog = clamp(fogBand * u.atmosphereIntensityStartEndNoise.x + fogNoise * u.atmosphereIntensityStartEndNoise.w, 0.0, 1.0);
+  color = mix(color, u.atmosphereColorNoiseScale.rgb, fog);
+
+  color += u.viewBloomBrightness.w;
+  color = (color - vec3f(0.5)) * max(u.contrastSaturationGammaTemperature.x, 0.0) + vec3f(0.5);
+  let gray = dot(color, vec3f(0.2126, 0.7152, 0.0722));
+  color = mix(vec3f(gray), color, max(u.contrastSaturationGammaTemperature.y, 0.0));
+  color.r += max(u.contrastSaturationGammaTemperature.w, 0.0) * 0.08;
+  color.b += max(-u.contrastSaturationGammaTemperature.w, 0.0) * 0.08;
+  color *= u.tintVignetteIntensity.rgb;
+  color = pow(max(color, vec3f(0.0)), vec3f(1.0 / max(u.contrastSaturationGammaTemperature.z, 0.0001)));
+
+  let centered = input.uv - vec2f(0.5, 0.5);
+  let vigEdge = smoothstep(
+    u.vignetteRadiusSoftnessColorRG.x - max(u.vignetteRadiusSoftnessColorRG.y, 0.0001),
+    u.vignetteRadiusSoftnessColorRG.x,
+    length(centered),
+  );
+  let vigColor = vec3f(u.vignetteRadiusSoftnessColorRG.z, u.vignetteRadiusSoftnessColorRG.w, u.vignetteColorBGrainAmountScaleFrame.x);
+  color = mix(color, vigColor, vigEdge * clamp(u.tintVignetteIntensity.w, 0.0, 1.0));
+
+  let grain = hash(floor(input.uv * u.viewBloomBrightness.xy / max(u.vignetteColorBGrainAmountScaleFrame.z, 1.0)) + u.vignetteColorBGrainAmountScaleFrame.w) - 0.5;
+  color += grain * u.vignetteColorBGrainAmountScaleFrame.y;
+
+  return vec4f(clamp(color, vec3f(0.0), vec3f(1.0)), 1.0);
+}`;
+
 // Helpers
 
 interface AtlasRegion {
@@ -172,6 +295,13 @@ interface AtlasRegion {
     v0: number;
     u1: number;
     v1: number;
+}
+
+interface WebGPUPostTarget {
+    texture: GPUAny;
+    view: GPUAny;
+    width: number;
+    height: number;
 }
 
 // Renderer
@@ -198,11 +328,19 @@ export class WebGPURenderer implements Renderer {
     private context: GPUAny = null;
     private format = "";
     private pipeline: GPUAny = null;
+    private brightPipeline: GPUAny = null;
+    private blurPipeline: GPUAny = null;
+    private compositePipeline: GPUAny = null;
     private sampler: GPUAny = null;
+    private postSampler: GPUAny = null;
     private indexBuffer: GPUAny = null;
     private uniformBuffer: GPUAny = null;
+    private brightUniformBuffer: GPUAny = null;
+    private blurUniformBuffer: GPUAny = null;
+    private compositeUniformBuffer: GPUAny = null;
     private instanceBuffer: GPUAny = null;
     private bindGroup: GPUAny = null;
+    private postConfig?: PostProcessingConfig;
 
     // Atlas
     private atlasTexture: GPUAny = null;
@@ -216,14 +354,20 @@ export class WebGPURenderer implements Renderer {
 
     // Instance ring
     private instanceCapacity = INITIAL_CAPACITY;
-    private instanceData = new Float32Array(INITIAL_CAPACITY * FLOATS_PER_INSTANCE);
+    private instanceData = new Float32Array(
+        INITIAL_CAPACITY * FLOATS_PER_INSTANCE,
+    );
     private instanceCount = 0;
-    private uniformData = new Float32Array(8);
+    private uniformData = new Float32Array(4);
 
     // Frame state
     private frameTextureView: GPUAny = null;
+    private sceneTarget: WebGPUPostTarget | null = null;
+    private bloomA: WebGPUPostTarget | null = null;
+    private bloomB: WebGPUPostTarget | null = null;
     private commandEncoder: GPUAny = null;
     private pass: GPUAny = null;
+    private frameIndex = 0;
 
     // Lifecycle flags
     private ready = false;
@@ -253,12 +397,17 @@ export class WebGPURenderer implements Renderer {
 
     // Constructor
 
-    constructor(canvas: HTMLCanvasElement, overlayCtx: CanvasRenderingContext2D) {
+    constructor(
+        canvas: HTMLCanvasElement,
+        overlayCtx: CanvasRenderingContext2D,
+    ) {
         this.canvas = canvas;
         this.overlay = overlayCtx;
         const state = getCanvasState();
-        this.viewWidth = state?.canvas === canvas ? state.logicalWidth : canvas.width;
-        this.viewHeight = state?.canvas === canvas ? state.logicalHeight : canvas.height;
+        this.viewWidth =
+            state?.canvas === canvas ? state.logicalWidth : canvas.width;
+        this.viewHeight =
+            state?.canvas === canvas ? state.logicalHeight : canvas.height;
         this.overlayScaleX = state?.canvas === canvas ? state.backingScaleX : 1;
         this.overlayScaleY = state?.canvas === canvas ? state.backingScaleY : 1;
         void this.init();
@@ -271,21 +420,39 @@ export class WebGPURenderer implements Renderer {
         this.initializing = true;
 
         const gpu = (navigator as Navigator & { gpu?: GPUAny }).gpu;
-        if (!gpu) { this.activateFallback("navigator.gpu is not available"); return; }
+        if (!gpu) {
+            this.activateFallback("navigator.gpu is not available");
+            return;
+        }
         if (!GPU_BUFFER_USAGE || !GPU_TEXTURE_USAGE) {
-            this.activateFallback("WebGPU usage constants are not available"); return;
+            this.activateFallback("WebGPU usage constants are not available");
+            return;
         }
 
         let adapter: GPUAny = null;
-        try { adapter = await gpu.requestAdapter(); }
-        catch (err) { this.activateFallback(`requestAdapter() failed: ${String(err)}`); return; }
-        if (!adapter) { this.activateFallback("requestAdapter() returned null"); return; }
+        try {
+            adapter = await gpu.requestAdapter();
+        } catch (err) {
+            this.activateFallback(`requestAdapter() failed: ${String(err)}`);
+            return;
+        }
+        if (!adapter) {
+            this.activateFallback("requestAdapter() returned null");
+            return;
+        }
 
-        try { this.device = await adapter.requestDevice(); }
-        catch (err) { this.activateFallback(`requestDevice() failed: ${String(err)}`); return; }
+        try {
+            this.device = await adapter.requestDevice();
+        } catch (err) {
+            this.activateFallback(`requestDevice() failed: ${String(err)}`);
+            return;
+        }
 
         this.context = this.canvas.getContext("webgpu") as GPUAny;
-        if (!this.context) { this.activateFallback("canvas.getContext('webgpu') failed"); return; }
+        if (!this.context) {
+            this.activateFallback("canvas.getContext('webgpu') failed");
+            return;
+        }
 
         this.format = gpu.getPreferredCanvasFormat();
 
@@ -294,10 +461,19 @@ export class WebGPURenderer implements Renderer {
             magFilter: "nearest",
             minFilter: "nearest",
         });
+        this.postSampler = this.device.createSampler({
+            magFilter: "linear",
+            minFilter: "linear",
+            addressModeU: "clamp-to-edge",
+            addressModeV: "clamp-to-edge",
+        });
 
         // Index buffer (6 indices for one quad, reused across all instances)
         const indices = new Uint16Array([0, 1, 2, 2, 1, 3]);
-        this.indexBuffer = this.createStaticBuffer(indices, GPU_BUFFER_USAGE.INDEX);
+        this.indexBuffer = this.createStaticBuffer(
+            indices,
+            GPU_BUFFER_USAGE.INDEX,
+        );
 
         // Atlas texture
         this.atlasTexture = this.device.createTexture({
@@ -324,7 +500,19 @@ export class WebGPURenderer implements Renderer {
 
         // Uniform buffer (32 bytes: viewSize + camera + padding)
         this.uniformBuffer = this.device.createBuffer({
-            size: 32,
+            size: 16,
+            usage: GPU_BUFFER_USAGE.UNIFORM | GPU_BUFFER_USAGE.COPY_DST,
+        });
+        this.brightUniformBuffer = this.device.createBuffer({
+            size: 16,
+            usage: GPU_BUFFER_USAGE.UNIFORM | GPU_BUFFER_USAGE.COPY_DST,
+        });
+        this.blurUniformBuffer = this.device.createBuffer({
+            size: 48,
+            usage: GPU_BUFFER_USAGE.UNIFORM | GPU_BUFFER_USAGE.COPY_DST,
+        });
+        this.compositeUniformBuffer = this.device.createBuffer({
+            size: 112,
             usage: GPU_BUFFER_USAGE.UNIFORM | GPU_BUFFER_USAGE.COPY_DST,
         });
 
@@ -351,7 +539,7 @@ export class WebGPURenderer implements Renderer {
                         format: this.format,
                         blend: {
                             color: {
-                                srcFactor: "src-alpha",
+                                srcFactor: "one",
                                 dstFactor: "one-minus-src-alpha",
                                 operation: "add",
                             },
@@ -366,6 +554,11 @@ export class WebGPURenderer implements Renderer {
             },
             primitive: { topology: "triangle-list" },
         });
+
+        this.brightPipeline = this.createFullscreenPipeline(BRIGHT_SHADER);
+        this.blurPipeline = this.createFullscreenPipeline(BLUR_SHADER);
+        this.compositePipeline =
+            this.createFullscreenPipeline(COMPOSITE_SHADER);
 
         // Bind group
         this.bindGroup = this.createBindGroup();
@@ -386,10 +579,12 @@ export class WebGPURenderer implements Renderer {
         if (this.fallback) return;
         try {
             this.fallback = new WebGL2Renderer(this.canvas, this.overlay);
+            this.fallback.setPostProcessing(this.postConfig);
         } catch (err) {
             console.warn("[tinyts] WebGPU WebGL2 fallback failed:", err);
             if (this.canvas.getContext("2d")) {
                 this.fallback = new Canvas2DRenderer(this.canvas);
+                this.fallback.setPostProcessing(this.postConfig);
             }
         }
     }
@@ -397,10 +592,14 @@ export class WebGPURenderer implements Renderer {
     // Renderer interface: frame lifecycle
 
     begin(): void {
-        if (this.fallback) { this.fallback.begin(); return; }
+        if (this.fallback) {
+            this.fallback.begin();
+            return;
+        }
         if (!this.ready) return;
 
         this.resetStats();
+        this.frameIndex++;
         this.instanceCount = 0;
 
         const state = getCanvasState();
@@ -417,6 +616,7 @@ export class WebGPURenderer implements Renderer {
         this.camZoom = 1;
 
         this.frameTextureView = this.context.getCurrentTexture().createView();
+        this.ensurePostTargets();
         this.commandEncoder = null;
         this.pass = null;
 
@@ -424,7 +624,10 @@ export class WebGPURenderer implements Renderer {
     }
 
     end(): void {
-        if (this.fallback) { this.fallback.end(); return; }
+        if (this.fallback) {
+            this.fallback.end();
+            return;
+        }
         if (!this.ready) return;
 
         this.flush();
@@ -432,6 +635,9 @@ export class WebGPURenderer implements Renderer {
         if (this.pass) {
             this.pass.end();
             this.pass = null;
+        }
+        if (this.isPostEnabled() && this.sceneTarget) {
+            this.renderPostProcessing();
         }
         if (this.commandEncoder) {
             this.device.queue.submit([this.commandEncoder.finish()]);
@@ -442,7 +648,10 @@ export class WebGPURenderer implements Renderer {
     }
 
     clear(color: string | Color): void {
-        if (this.fallback) { this.fallback.clear(color); return; }
+        if (this.fallback) {
+            this.fallback.clear(color);
+            return;
+        }
         if (!this.ready) return;
 
         // Flush and submit any prior work on the current pass
@@ -461,7 +670,7 @@ export class WebGPURenderer implements Renderer {
         this.pass = this.commandEncoder.beginRenderPass({
             colorAttachments: [
                 {
-                    view: this.frameTextureView,
+                    view: this.getRenderTargetView(),
                     clearValue: { r: c.r, g: c.g, b: c.b, a: c.a },
                     loadOp: "clear",
                     storeOp: "store",
@@ -472,7 +681,12 @@ export class WebGPURenderer implements Renderer {
         // Clear Canvas2D overlay
         this.overlay.save();
         this.overlay.setTransform(1, 0, 0, 1, 0, 0);
-        this.overlay.clearRect(0, 0, this.overlay.canvas.width, this.overlay.canvas.height);
+        this.overlay.clearRect(
+            0,
+            0,
+            this.overlay.canvas.width,
+            this.overlay.canvas.height,
+        );
         this.overlay.restore();
     }
 
@@ -488,11 +702,19 @@ export class WebGPURenderer implements Renderer {
         return { ...this.stats };
     }
 
+    setPostProcessing(config?: PostProcessingConfig): void {
+        this.postConfig = config;
+        this.fallback?.setPostProcessing(config);
+    }
+
     // Renderer interface: camera
     // Camera is stored per-instance, so changing it never forces a flush.
 
     setTransform(pos: Vec2, zoom: number): void {
-        if (this.fallback) { this.fallback.setTransform(pos, zoom); return; }
+        if (this.fallback) {
+            this.fallback.setTransform(pos, zoom);
+            return;
+        }
         this.camPosX = pos.x;
         this.camPosY = pos.y;
         this.camZoom = zoom;
@@ -500,7 +722,10 @@ export class WebGPURenderer implements Renderer {
     }
 
     resetTransform(): void {
-        if (this.fallback) { this.fallback.resetTransform(); return; }
+        if (this.fallback) {
+            this.fallback.resetTransform();
+            return;
+        }
         this.camPosX = this.viewWidth / 2;
         this.camPosY = this.viewHeight / 2;
         this.camZoom = 1;
@@ -510,54 +735,96 @@ export class WebGPURenderer implements Renderer {
     // Renderer interface: framebuffers (stubs)
 
     createFrameBuffer(width: number, height: number): FrameBuffer {
-        if (this.fallback) return this.fallback.createFrameBuffer(width, height);
+        if (this.fallback)
+            return this.fallback.createFrameBuffer(width, height);
         return { width, height };
     }
 
     bindFrameBuffer(fb: FrameBuffer | null): void {
-        if (this.fallback) { this.fallback.bindFrameBuffer(fb); return; }
+        if (this.fallback) {
+            this.fallback.bindFrameBuffer(fb);
+            return;
+        }
         // WebGPU framebuffer support is not yet implemented.
     }
 
-    drawFrameBuffer(fb: FrameBuffer, x: number, y: number, w: number, h: number): void {
-        if (this.fallback) { this.fallback.drawFrameBuffer(fb, x, y, w, h); return; }
+    drawFrameBuffer(
+        fb: FrameBuffer,
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+    ): void {
+        if (this.fallback) {
+            this.fallback.drawFrameBuffer(fb, x, y, w, h);
+            return;
+        }
         // WebGPU framebuffer support is not yet implemented.
     }
 
     // Renderer interface: draw primitives
 
     drawRect(pos: Vec2, size: Vec2, color: string | Color): void {
-        if (this.fallback) { this.fallback.drawRect(pos, size, color); return; }
+        if (this.fallback) {
+            this.fallback.drawRect(pos, size, color);
+            return;
+        }
         const c = color instanceof Color ? color : Color.fromHex(color);
         const wu = this.whiteU;
         const wv = this.whiteV;
         this.addInstance(
-            pos.x + size.x * 0.5, pos.y + size.y * 0.5,
-            size.x * 0.5, size.y * 0.5,
-            wu, wv, wu, wv,
-            c.r, c.g, c.b, c.a,
-            0, 0, 0,
+            pos.x + size.x * 0.5,
+            pos.y + size.y * 0.5,
+            size.x * 0.5,
+            size.y * 0.5,
+            wu,
+            wv,
+            wu,
+            wv,
+            c.r,
+            c.g,
+            c.b,
+            c.a,
+            0,
+            0,
+            0,
             0,
         );
     }
 
     drawCircle(pos: Vec2, radius: number, color: string | Color): void {
-        if (this.fallback) { this.fallback.drawCircle(pos, radius, color); return; }
+        if (this.fallback) {
+            this.fallback.drawCircle(pos, radius, color);
+            return;
+        }
         const c = color instanceof Color ? color : Color.fromHex(color);
         const wu = this.whiteU;
         const wv = this.whiteV;
         this.addInstance(
-            pos.x, pos.y,
-            radius, radius,
-            wu, wv, wu, wv,
-            c.r, c.g, c.b, c.a,
-            1, 0, 0,
+            pos.x,
+            pos.y,
+            radius,
+            radius,
+            wu,
+            wv,
+            wu,
+            wv,
+            c.r,
+            c.g,
+            c.b,
+            c.a,
+            1,
+            0,
+            0,
             0,
         );
     }
 
     drawLine(a: Vec2, b: Vec2, color: string | Color, thickness = 1): void {
-        if (this.fallback) { this.fallback.drawLine(a, b, color, thickness); return; }
+        if (this.fallback) {
+            this.fallback.drawLine(a, b, color, thickness);
+            return;
+        }
         const dx = b.x - a.x;
         const dy = b.y - a.y;
         const len = Math.hypot(dx, dy);
@@ -570,42 +837,88 @@ export class WebGPURenderer implements Renderer {
         // shape = 0.
         // shapePacked = shape + rotType * 10 = 0 + 2 * 10 = 20.
         this.addInstance(
-            (a.x + b.x) * 0.5, (a.y + b.y) * 0.5,
-            len * 0.5, -(thickness * 0.5),
-            wu, wv, wu, wv,
-            c.r, c.g, c.b, c.a,
-            20, dy / len, dx / len,
+            (a.x + b.x) * 0.5,
+            (a.y + b.y) * 0.5,
+            len * 0.5,
+            -(thickness * 0.5),
+            wu,
+            wv,
+            wu,
+            wv,
+            c.r,
+            c.g,
+            c.b,
+            c.a,
+            20,
+            dy / len,
+            dx / len,
             0,
         );
     }
 
-    drawRectOutline(pos: Vec2, size: Vec2, color: string | Color, thickness = 1): void {
-        if (this.fallback) { this.fallback.drawRectOutline(pos, size, color, thickness); return; }
+    drawRectOutline(
+        pos: Vec2,
+        size: Vec2,
+        color: string | Color,
+        thickness = 1,
+    ): void {
+        if (this.fallback) {
+            this.fallback.drawRectOutline(pos, size, color, thickness);
+            return;
+        }
         const c = color instanceof Color ? color : Color.fromHex(color);
         const wu = this.whiteU;
         const wv = this.whiteV;
         this.addInstance(
-            pos.x + size.x * 0.5, pos.y + size.y * 0.5,
-            size.x * 0.5, size.y * 0.5,
-            wu, wv, wu, wv,
-            c.r, c.g, c.b, c.a,
-            2, thickness / Math.max(1, size.x), thickness / Math.max(1, size.y),
+            pos.x + size.x * 0.5,
+            pos.y + size.y * 0.5,
+            size.x * 0.5,
+            size.y * 0.5,
+            wu,
+            wv,
+            wu,
+            wv,
+            c.r,
+            c.g,
+            c.b,
+            c.a,
+            2,
+            thickness / Math.max(1, size.x),
+            thickness / Math.max(1, size.y),
             0,
         );
     }
 
-    drawCircleOutline(pos: Vec2, radius: number, color: string | Color, thickness = 1): void {
-        if (this.fallback) { this.fallback.drawCircleOutline(pos, radius, color, thickness); return; }
+    drawCircleOutline(
+        pos: Vec2,
+        radius: number,
+        color: string | Color,
+        thickness = 1,
+    ): void {
+        if (this.fallback) {
+            this.fallback.drawCircleOutline(pos, radius, color, thickness);
+            return;
+        }
         const c = color instanceof Color ? color : Color.fromHex(color);
         const d = radius * 2;
         const wu = this.whiteU;
         const wv = this.whiteV;
         this.addInstance(
-            pos.x, pos.y,
-            radius, radius,
-            wu, wv, wu, wv,
-            c.r, c.g, c.b, c.a,
-            3, thickness / Math.max(1, d), 0,
+            pos.x,
+            pos.y,
+            radius,
+            radius,
+            wu,
+            wv,
+            wu,
+            wv,
+            c.r,
+            c.g,
+            c.b,
+            c.a,
+            3,
+            thickness / Math.max(1, d),
+            0,
             0,
         );
     }
@@ -616,7 +929,10 @@ export class WebGPURenderer implements Renderer {
         size?: Vec2,
         options?: SpriteOptions,
     ): void {
-        if (this.fallback) { this.fallback.drawSprite(image, pos, size, options); return; }
+        if (this.fallback) {
+            this.fallback.drawSprite(image, pos, size, options);
+            return;
+        }
         if (!this.ready) return;
 
         const region = this.getAtlasRegion(image);
@@ -634,7 +950,12 @@ export class WebGPURenderer implements Renderer {
             const sy = options.sourceY;
             const sw = options.sourceWidth;
             const sh = options.sourceHeight;
-            if (sx !== undefined || sy !== undefined || sw !== undefined || sh !== undefined) {
+            if (
+                sx !== undefined ||
+                sy !== undefined ||
+                sw !== undefined ||
+                sh !== undefined
+            ) {
                 const rx = region.x;
                 const ry = region.y;
                 const rw = region.w;
@@ -648,8 +969,16 @@ export class WebGPURenderer implements Renderer {
                 u1 = (rx + x + w) / ATLAS_SIZE;
                 v1 = (ry + y + h) / ATLAS_SIZE;
             }
-            if (options.flipX) { const t = u0; u0 = u1; u1 = t; }
-            if (options.flipY) { const t = v0; v0 = v1; v1 = t; }
+            if (options.flipX) {
+                const t = u0;
+                u0 = u1;
+                u1 = t;
+            }
+            if (options.flipY) {
+                const t = v0;
+                v0 = v1;
+                v1 = t;
+            }
         }
 
         let r = 1;
@@ -666,20 +995,33 @@ export class WebGPURenderer implements Renderer {
             a = tint.a;
         }
 
-        const angle = options ? options.angle ?? 0 : 0;
+        const angle = options ? (options.angle ?? 0) : 0;
 
         this.addInstance(
-            pos.x + dw * 0.5, pos.y + dh * 0.5,
-            dw * 0.5, dh * 0.5,
-            u0, v0, u1, v1,
-            r, g, b, a,
-            angle !== 0 ? 10 : 0, 0, 0,
+            pos.x + dw * 0.5,
+            pos.y + dh * 0.5,
+            dw * 0.5,
+            dh * 0.5,
+            u0,
+            v0,
+            u1,
+            v1,
+            r,
+            g,
+            b,
+            a,
+            angle !== 0 ? 10 : 0,
+            0,
+            0,
             angle,
         );
     }
 
     drawText(text: string, pos: Vec2, options?: TextOptions): void {
-        if (this.fallback) { this.fallback.drawText(text, pos, options); return; }
+        if (this.fallback) {
+            this.fallback.drawText(text, pos, options);
+            return;
+        }
         ensureDefaultFontFace();
         const sz = options?.size ?? 16;
         this.overlay.font = options?.font ?? defaultTextFont(sz);
@@ -715,33 +1057,47 @@ export class WebGPURenderer implements Renderer {
      * @param angle - Rotation angle in radians (used on GPU when rotType is 1).
      */
     private addInstance(
-        cx: number, cy: number,
-        hw: number, hh: number,
-        u0: number, v0: number, u1: number, v1: number,
-        r: number, g: number, b: number, a: number,
-        shapePacked: number, sp0: number, sp1: number,
+        cx: number,
+        cy: number,
+        hw: number,
+        hh: number,
+        u0: number,
+        v0: number,
+        u1: number,
+        v1: number,
+        r: number,
+        g: number,
+        b: number,
+        a: number,
+        shapePacked: number,
+        sp0: number,
+        sp1: number,
         angle: number,
     ): void {
         if (!this.ready) return;
         if (this.instanceCount >= this.instanceCapacity) this.grow();
-        const o = this.instanceCount * 16;
+        const o = this.instanceCount * 20;
         const d = this.instanceData;
-        d[o]      = cx;
-        d[o + 1]  = cy;
-        d[o + 2]  = hw;
-        d[o + 3]  = hh;
-        d[o + 4]  = u0;
-        d[o + 5]  = v0;
-        d[o + 6]  = u1;
-        d[o + 7]  = v1;
-        d[o + 8]  = r;
-        d[o + 9]  = g;
+        d[o] = cx;
+        d[o + 1] = cy;
+        d[o + 2] = hw;
+        d[o + 3] = hh;
+        d[o + 4] = u0;
+        d[o + 5] = v0;
+        d[o + 6] = u1;
+        d[o + 7] = v1;
+        d[o + 8] = r;
+        d[o + 9] = g;
         d[o + 10] = b;
         d[o + 11] = a;
         d[o + 12] = shapePacked;
         d[o + 13] = sp0;
         d[o + 14] = sp1;
         d[o + 15] = angle;
+        d[o + 16] = this.camPosX;
+        d[o + 17] = this.camPosY;
+        d[o + 18] = this.camZoom;
+        d[o + 19] = 0;
         this.instanceCount++;
         this.stats.quads++;
     }
@@ -752,20 +1108,18 @@ export class WebGPURenderer implements Renderer {
         if (!this.ready || this.instanceCount === 0) return;
         this.ensurePass();
 
-        const byteLen = this.instanceCount * 16 * 4;
+        const byteLen = this.instanceCount * 20 * 4;
         this.device.queue.writeBuffer(
-            this.instanceBuffer, 0,
+            this.instanceBuffer,
+            0,
             this.instanceData.buffer,
             this.instanceData.byteOffset,
             byteLen,
         );
 
-        // Uniform: viewSize + camera (written once per flush, 32 bytes, zero alloc)
+        // Uniform: viewSize only (camera is per-instance)
         this.uniformData[0] = this.viewWidth;
         this.uniformData[1] = this.viewHeight;
-        this.uniformData[2] = this.camPosX;
-        this.uniformData[3] = this.camPosY;
-        this.uniformData[4] = this.camZoom;
         this.device.queue.writeBuffer(this.uniformBuffer, 0, this.uniformData);
 
         this.pass.setPipeline(this.pipeline);
@@ -777,6 +1131,259 @@ export class WebGPURenderer implements Renderer {
         this.stats.batchFlushes++;
         this.instanceCount = 0;
     }
+
+    private isPostEnabled(): boolean {
+        const cfg = this.postConfig;
+        if (!cfg || cfg.enabled === false) return false;
+        return !!(
+            cfg.bloom ||
+            cfg.colorGrade ||
+            cfg.vignette ||
+            cfg.grain ||
+            cfg.atmosphere
+        );
+    }
+
+    private isBloomEnabled(): boolean {
+        const bloom = this.postConfig?.bloom;
+        if (!bloom || bloom.enabled === false) return false;
+        return (bloom.intensity ?? 0.35) > 0;
+    }
+
+    private getRenderTargetView(): GPUAny {
+        return this.isPostEnabled() && this.sceneTarget
+            ? this.sceneTarget.view
+            : this.frameTextureView;
+    }
+
+    private ensurePostTargets(): void {
+        if (!this.isPostEnabled() || !this.ready) return;
+
+        const sceneW = Math.max(1, Math.round(this.viewWidth));
+        const sceneH = Math.max(1, Math.round(this.viewHeight));
+        if (
+            !this.sceneTarget ||
+            this.sceneTarget.width !== sceneW ||
+            this.sceneTarget.height !== sceneH
+        ) {
+            this.destroyPostTarget(this.sceneTarget);
+            this.sceneTarget = this.createPostTarget(sceneW, sceneH);
+        }
+
+        const scale =
+            this.postConfig?.bloom?.resolutionScale ??
+            this.postConfig?.resolutionScale ??
+            0.5;
+        const bloomW = Math.max(1, Math.round(sceneW * scale));
+        const bloomH = Math.max(1, Math.round(sceneH * scale));
+        if (
+            !this.bloomA ||
+            !this.bloomB ||
+            this.bloomA.width !== bloomW ||
+            this.bloomA.height !== bloomH
+        ) {
+            this.destroyPostTarget(this.bloomA);
+            this.destroyPostTarget(this.bloomB);
+            this.bloomA = this.createPostTarget(bloomW, bloomH);
+            this.bloomB = this.createPostTarget(bloomW, bloomH);
+        }
+    }
+
+    private createPostTarget(width: number, height: number): WebGPUPostTarget {
+        const texture = this.device.createTexture({
+            size: [width, height],
+            format: this.format,
+            usage:
+                GPU_TEXTURE_USAGE.RENDER_ATTACHMENT |
+                GPU_TEXTURE_USAGE.TEXTURE_BINDING,
+        });
+        return {
+            texture,
+            view: texture.createView(),
+            width,
+            height,
+        };
+    }
+
+    private destroyPostTarget(target: WebGPUPostTarget | null): void {
+        target?.texture?.destroy?.();
+    }
+
+    private renderPostProcessing(): void {
+        if (!this.commandEncoder) {
+            this.commandEncoder = this.device.createCommandEncoder();
+        }
+        if (!this.sceneTarget) return;
+
+        let bloomView = this.sceneTarget.view;
+        if (this.isBloomEnabled() && this.bloomA && this.bloomB) {
+            this.renderBrightPass(this.sceneTarget.view, this.bloomA);
+            const passes = Math.max(
+                1,
+                Math.floor(this.postConfig?.bloom?.passes ?? 3),
+            );
+            for (let i = 0; i < passes; i++) {
+                this.renderBlurPass(this.bloomA.view, this.bloomB, 1, 0);
+                this.renderBlurPass(this.bloomB.view, this.bloomA, 0, 1);
+            }
+            bloomView = this.bloomA.view;
+        }
+
+        this.renderCompositePass(this.sceneTarget.view, bloomView);
+    }
+
+    private renderBrightPass(
+        sourceView: GPUAny,
+        target: WebGPUPostTarget,
+    ): void {
+        const bloom = this.postConfig?.bloom;
+        this.device.queue.writeBuffer(
+            this.brightUniformBuffer,
+            0,
+            new Float32Array([
+                bloom?.threshold ?? 0.72,
+                bloom?.softKnee ?? 0.16,
+                0,
+                0,
+            ]),
+        );
+        const pass = this.commandEncoder.beginRenderPass({
+            colorAttachments: [
+                {
+                    view: target.view,
+                    loadOp: "clear",
+                    storeOp: "store",
+                    clearValue: { r: 0, g: 0, b: 0, a: 1 },
+                },
+            ],
+        });
+        pass.setPipeline(this.brightPipeline);
+        pass.setBindGroup(
+            0,
+            this.createPostBindGroup(this.brightPipeline, [
+                this.postSampler,
+                sourceView,
+                { buffer: this.brightUniformBuffer },
+            ]),
+        );
+        pass.draw(3);
+        pass.end();
+        this.stats.drawCalls++;
+    }
+
+    private renderBlurPass(
+        sourceView: GPUAny,
+        target: WebGPUPostTarget,
+        dirX: number,
+        dirY: number,
+    ): void {
+        this.device.queue.writeBuffer(
+            this.blurUniformBuffer,
+            0,
+            new Float32Array([
+                1 / target.width,
+                1 / target.height,
+                dirX,
+                dirY,
+                this.postConfig?.bloom?.radius ?? 1,
+                0,
+                0,
+                0,
+            ]),
+        );
+        const pass = this.commandEncoder.beginRenderPass({
+            colorAttachments: [
+                {
+                    view: target.view,
+                    loadOp: "clear",
+                    storeOp: "store",
+                    clearValue: { r: 0, g: 0, b: 0, a: 1 },
+                },
+            ],
+        });
+        pass.setPipeline(this.blurPipeline);
+        pass.setBindGroup(
+            0,
+            this.createPostBindGroup(this.blurPipeline, [
+                this.postSampler,
+                sourceView,
+                { buffer: this.blurUniformBuffer },
+            ]),
+        );
+        pass.draw(3);
+        pass.end();
+        this.stats.drawCalls++;
+    }
+
+    private renderCompositePass(sceneView: GPUAny, bloomView: GPUAny): void {
+        const cfg = this.postConfig;
+        const color = cfg?.colorGrade;
+        const vignette = cfg?.vignette;
+        const grain = cfg?.grain;
+        const atmosphere = cfg?.atmosphere;
+        const tint = color?.tint ?? [1, 1, 1];
+        const vignetteColor = vignette?.color ?? [0, 0, 0];
+        const atmosphereColor = atmosphere?.color ?? [0, 0, 0];
+
+        this.device.queue.writeBuffer(
+            this.compositeUniformBuffer,
+            0,
+            new Float32Array([
+                this.viewWidth,
+                this.viewHeight,
+                this.isBloomEnabled() ? (cfg?.bloom?.intensity ?? 0.35) : 0,
+                color?.brightness ?? 0,
+                color?.contrast ?? 1,
+                color?.saturation ?? 1,
+                color?.gamma ?? 1,
+                color?.temperature ?? 0,
+                tint[0],
+                tint[1],
+                tint[2],
+                vignette?.intensity ?? 0,
+                vignette?.radius ?? 0.72,
+                vignette?.softness ?? 0.35,
+                vignetteColor[0],
+                vignetteColor[1],
+                vignetteColor[2],
+                grain?.amount ?? 0,
+                grain?.scale ?? 1,
+                grain?.animated === false ? 0 : this.frameIndex,
+                atmosphere?.intensity ?? 0,
+                atmosphere?.start ?? 0,
+                atmosphere?.end ?? 1,
+                atmosphere?.noiseAmount ?? 0,
+                atmosphereColor[0],
+                atmosphereColor[1],
+                atmosphereColor[2],
+                atmosphere?.noiseScale ?? 128,
+            ]),
+        );
+        const pass = this.commandEncoder.beginRenderPass({
+            colorAttachments: [
+                {
+                    view: this.frameTextureView,
+                    loadOp: "clear",
+                    storeOp: "store",
+                    clearValue: { r: 0, g: 0, b: 0, a: 1 },
+                },
+            ],
+        });
+        pass.setPipeline(this.compositePipeline);
+        pass.setBindGroup(
+            0,
+            this.createPostBindGroup(this.compositePipeline, [
+                this.postSampler,
+                sceneView,
+                bloomView,
+                { buffer: this.compositeUniformBuffer },
+            ]),
+        );
+        pass.draw(3);
+        pass.end();
+        this.stats.drawCalls++;
+    }
+
     // Render pass management
 
     private ensurePass(): void {
@@ -785,7 +1392,7 @@ export class WebGPURenderer implements Renderer {
         this.pass = this.commandEncoder.beginRenderPass({
             colorAttachments: [
                 {
-                    view: this.frameTextureView,
+                    view: this.getRenderTargetView(),
                     loadOp: "load",
                     storeOp: "store",
                 },
@@ -797,7 +1404,9 @@ export class WebGPURenderer implements Renderer {
 
     private grow(): void {
         this.instanceCapacity *= 2;
-        const newData = new Float32Array(this.instanceCapacity * FLOATS_PER_INSTANCE);
+        const newData = new Float32Array(
+            this.instanceCapacity * FLOATS_PER_INSTANCE,
+        );
         newData.set(this.instanceData);
         this.instanceData = newData;
         // Old buffer will be GC'd after pending GPU work completes.
@@ -819,6 +1428,33 @@ export class WebGPURenderer implements Renderer {
                 { binding: 2, resource: this.sampler },
                 { binding: 3, resource: this.atlasView },
             ],
+        });
+    }
+
+    private createFullscreenPipeline(shaderCode: string): GPUAny {
+        const shader = this.device.createShaderModule({ code: shaderCode });
+        return this.device.createRenderPipeline({
+            layout: "auto",
+            vertex: {
+                module: shader,
+                entryPoint: "vs",
+            },
+            fragment: {
+                module: shader,
+                entryPoint: "fs",
+                targets: [{ format: this.format }],
+            },
+            primitive: { topology: "triangle-list" },
+        });
+    }
+
+    private createPostBindGroup(pipeline: GPUAny, resources: GPUAny[]): GPUAny {
+        return this.device.createBindGroup({
+            layout: pipeline.getBindGroupLayout(0),
+            entries: resources.map((resource, binding) => ({
+                binding,
+                resource,
+            })),
         });
     }
 
@@ -850,8 +1486,10 @@ export class WebGPURenderer implements Renderer {
      */
     private packIntoAtlas(image: CanvasImageSource): AtlasRegion {
         const img = image as CanvasImageSource & {
-            width?: number; height?: number;
-            naturalWidth?: number; naturalHeight?: number;
+            width?: number;
+            height?: number;
+            naturalWidth?: number;
+            naturalHeight?: number;
         };
         const w = img.width ?? img.naturalWidth ?? 0;
         const h = img.height ?? img.naturalHeight ?? 0;
@@ -859,9 +1497,14 @@ export class WebGPURenderer implements Renderer {
         if (w <= 0 || h <= 0) {
             // Zero-size image → white pixel
             return {
-                x: 0, y: 0, w: 1, h: 1,
-                u0: this.whiteU, v0: this.whiteV,
-                u1: this.whiteU, v1: this.whiteV
+                x: 0,
+                y: 0,
+                w: 1,
+                h: 1,
+                u0: this.whiteU,
+                v0: this.whiteV,
+                u1: this.whiteU,
+                v1: this.whiteV,
             };
         }
 
@@ -876,11 +1519,18 @@ export class WebGPURenderer implements Renderer {
         }
 
         if (this.shelfY + ph > ATLAS_SIZE) {
-            console.warn("[tinyts] WebGPU texture atlas full, sprite will render as white");
+            console.warn(
+                "[tinyts] WebGPU texture atlas full, sprite will render as white",
+            );
             return {
-                x: 0, y: 0, w: 1, h: 1,
-                u0: this.whiteU, v0: this.whiteV,
-                u1: this.whiteU, v1: this.whiteV
+                x: 0,
+                y: 0,
+                w: 1,
+                h: 1,
+                u0: this.whiteU,
+                v0: this.whiteV,
+                u1: this.whiteU,
+                v1: this.whiteV,
             };
         }
 
@@ -892,7 +1542,7 @@ export class WebGPURenderer implements Renderer {
             u0: this.shelfX / ATLAS_SIZE,
             v0: this.shelfY / ATLAS_SIZE,
             u1: (this.shelfX + w) / ATLAS_SIZE,
-            v1: (this.shelfY + h) / ATLAS_SIZE
+            v1: (this.shelfY + h) / ATLAS_SIZE,
         };
         this.shelfX += pw;
         this.shelfRowH = Math.max(this.shelfRowH, ph);
@@ -900,15 +1550,23 @@ export class WebGPURenderer implements Renderer {
         try {
             this.device.queue.copyExternalImageToTexture(
                 { source: image },
-                { texture: this.atlasTexture, origin: { x: region.x, y: region.y } },
+                {
+                    texture: this.atlasTexture,
+                    origin: { x: region.x, y: region.y },
+                },
                 { width: w, height: h },
             );
         } catch (err) {
             console.warn("[tinyts] WebGPU atlas upload failed:", err);
             return {
-                x: 0, y: 0, w: 1, h: 1,
-                u0: this.whiteU, v0: this.whiteV,
-                u1: this.whiteU, v1: this.whiteV
+                x: 0,
+                y: 0,
+                w: 1,
+                h: 1,
+                u0: this.whiteU,
+                v0: this.whiteV,
+                u1: this.whiteU,
+                v1: this.whiteV,
             };
         }
 
@@ -938,7 +1596,8 @@ export class WebGPURenderer implements Renderer {
 
     private configureIfNeeded(width: number, height: number): void {
         if (!this.ready || !this.context) return;
-        if (width === this.configuredWidth && height === this.configuredHeight) return;
+        if (width === this.configuredWidth && height === this.configuredHeight)
+            return;
         this.configuredWidth = width;
         this.configuredHeight = height;
         this.context.configure({
@@ -951,7 +1610,14 @@ export class WebGPURenderer implements Renderer {
     // Overlay helpers
 
     private resetOverlayTransform(): void {
-        this.overlay.setTransform(this.overlayScaleX, 0, 0, this.overlayScaleY, 0, 0);
+        this.overlay.setTransform(
+            this.overlayScaleX,
+            0,
+            0,
+            this.overlayScaleY,
+            0,
+            0,
+        );
         this.overlay.imageSmoothingEnabled = false;
     }
 
