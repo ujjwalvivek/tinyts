@@ -72,10 +72,16 @@ jobs:
                   node-version: 24
             - name: Install dependencies
               run: npm install
+            - name: Build engine declarations
+              run: npm run build:types
             - name: Install game dependencies
               run: cd game && npm install
-            - name: Build Engine, Game, and Docs
+            - name: Build Engine and Docs
               run: npm run build:all
+            - name: Build game
+              run: cd game && npm run build
+            - name: Copy game into docs
+              run: rm -rf docs/game && cp -r game/dist docs/game
             - name: Deploy to Cloudflare Pages
               uses: cloudflare/wrangler-action@v3
               with:
