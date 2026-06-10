@@ -900,6 +900,7 @@ input[type="checkbox"]:checked ~ svg .tsd-checkbox-checkmark {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    margin-top: 1rem;
 }
 
 .tsd-member {

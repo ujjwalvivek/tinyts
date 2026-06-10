@@ -134,7 +134,7 @@ export class AudioHandle {
 // Voice - internal tracking of a single active sound
 // ═════════════════════════════════════════════════════════════════════════════
 
-class Voice {
+export class Voice {
     readonly ctx: AudioContext;
     readonly source: AudioScheduledSourceNode;
     readonly gain: GainNode;

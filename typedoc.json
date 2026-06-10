@@ -5,6 +5,7 @@
     "customCss": "examples/public/customStyle.css",
     "customJs": "examples/public/customTheme.js",
     "navigationLinks": {
-        "Demos + Examples": "/examples/index.html"
+        "Examples": "/examples/index.html",
+        "Untitled Game": "/game"
     }
 }

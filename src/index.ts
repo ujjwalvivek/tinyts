@@ -50,6 +50,7 @@ export {
     addTouchControls,
     removeTouchControls,
 } from "./core/input";
+export { InputManager } from "./core/input";
 export type {
     TouchControlButtonConfig,
     TouchControlsConfig,
@@ -77,7 +78,7 @@ export {
 } from "./render/renderer2d";
 export { SpriteAnimation } from "./render/spriteAnimation";
 export type { SpriteAnimationConfig } from "./render/spriteAnimation";
-export type { FrameBuffer, RendererStats } from "./render/types";
+export type { FrameBuffer, RendererStats, Renderer, SpriteOptions, TextOptions } from "./render/types";
 export type {
     PostProcessingConfig,
     BloomConfig,
@@ -152,10 +153,13 @@ export type { VerletPoint, VerletStick, VerletRope } from "./physics/verlet";
 
 export { createSpatialGrid } from "./physics/spatialGrid";
 export type { SpatialGrid } from "./physics/spatialGrid";
+export { CanvasManager } from "./core/canvas";
+export type { CanvasOptions, CanvasResizeListener } from "./core/canvas";
 
-export { Camera, createCamera } from "./render/camera";
+export {
+    Camera, createCamera
+} from "./render/camera";
 export type { CameraConfig } from "./render/camera";
-
 export {
     initAudio,
     unlockAudio,
@@ -174,6 +178,7 @@ export {
     getAudioManager,
 } from "./audio/audio";
 export { Sequencer, Pattern, midiToFreq } from "./audio/audio";
+export { Voice } from "./audio/audio";
 export type {
     SoundParams,
     SynthOptions,
@@ -192,7 +197,7 @@ export {
     ParticleSystem,
     Emitter,
 } from "./fx/particles";
-export type { Particle, EmitParams, EmitterConfig } from "./fx/particles";
+export type { Particle, EmitParams, EmitterConfig, ParticleShape } from "./fx/particles";
 
 export {
     tween,
@@ -210,6 +215,7 @@ export {
     bounceOut,
     backOut,
 } from "./core/easing";
+export { TweenManager } from "./core/easing";
 export type { EasingFn, Tween, TweenConfig } from "./core/easing";
 
 export {
@@ -243,13 +249,14 @@ export {
     drawProceduralCapsule,
     drawProceduralQuadraticCurve,
 } from "./render/procedural";
+export type { ColorStop, Point2D } from "./render/procedural";
 
 export * as assets from "./plugins/assets";
 export * as fx from "./plugins/particlePresets";
 export * as sfx from "./plugins/audioPresets";
 
 export { Registry, Parent, Children } from "./core/ecs";
-export type { Entity, Component } from "./core/ecs";
+export type { Entity, Component, QueryConfig } from "./core/ecs";
 
 export { Timer } from "./core/timer";
 export { Scene, SceneManager } from "./core/scene";
